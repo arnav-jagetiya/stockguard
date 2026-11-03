@@ -1,0 +1,103 @@
+# ===========================
+# Java
+# ===========================
+*.class
+*.jar
+*.war
+*.ear
+*.logs
+*.log
+target/
+hs_err_pid*
+replay_pid*
+
+# ===========================
+# Maven
+# ===========================
+# Maven wrapper files should NOT be ignored
+!.mvn/wrapper/maven-wrapper.jar
+# Ignore Maven build output (already covered by target/)
+
+# ===========================
+# Node.js / Frontend
+# ===========================
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# ===========================
+# IDE — IntelliJ IDEA
+# ===========================
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ===========================
+# IDE — VS Code
+# ===========================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ===========================
+# IDE — Eclipse
+# ===========================
+.classpath
+.project
+.settings/
+
+# ===========================
+# Operating System
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===========================
+# Environment and Secrets
+# ===========================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+*credentials*.json
+*credentials*.yaml
+*credentials*.yml
+*secret*
+
+# ===========================
+# Docker — Local Development
+# ===========================
+docker-volumes/
+.docker-data/
+postgres-data/
+pgdata/
+
+# ===========================
+# Logs and Temporary Files
+# ===========================
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# ===========================
+# Generated / Build Artifacts
+# ===========================
+*.generated.*
+out/
