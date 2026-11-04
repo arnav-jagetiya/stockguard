@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stockguard}
+      POSTGRES_USER: ${DB_USER:-stockguard}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockguard}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - stockguard-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockguard} -d ${DB_NAME:-stockguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stockguard-postgres-data:
+    name: stockguard-postgres-data

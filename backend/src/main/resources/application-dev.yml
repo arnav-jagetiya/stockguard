@@ -1,0 +1,22 @@
+# Local development profile (active by default when no profile is explicitly specified)
+#
+# LOCAL DEVELOPMENT ONLY:
+# Fallback defaults (localhost:5432, database 'stockguard', user 'stockguard', password 'stockguard')
+# are strictly confined to this development profile. Production environments must supply
+# explicit environment variables and will fail fast if credentials are omitted.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:stockguard}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:stockguard}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:stockguard}}
+
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+logging:
+  level:
+    com.stockguard: DEBUG
+    org.springframework.jdbc.core: DEBUG

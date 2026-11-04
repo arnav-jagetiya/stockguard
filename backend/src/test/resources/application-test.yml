@@ -1,0 +1,30 @@
+# Automated testing profile (test)
+#
+# PURPOSE OF AUTOCONFIGURATION EXCLUSIONS:
+# The exclusions below disable live database auto-configurations:
+#   - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+#   - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+#   - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+#
+# Why this test isolation is intentional:
+# 1. It allows fast, deterministic application-context bootstrapping tests
+#    (verifying component scanning, bean definitions, and wiring) without requiring
+#    a running PostgreSQL daemon or live external network services.
+# 2. This test profile does NOT prove database connectivity, schema validity, or
+#    full infrastructure integration.
+# 3. Real PostgreSQL integration, container startup, and live SQL execution are
+#    verified separately using Testcontainers in TestcontainersPostgresTest.
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+
+server:
+  shutdown: immediate
+
+logging:
+  level:
+    com.stockguard: DEBUG
+    org.testcontainers: INFO
