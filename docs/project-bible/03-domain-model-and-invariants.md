@@ -81,6 +81,12 @@ erDiagram
   - `reserved >= 0`
   - `reserved <= on_hand`
   - Consequently, `available >= 0` holds at all times.
+- **Negative Stock Adjustment Decision (Approved):**
+  - An adjustment that would reduce `on_hand` below `reserved` (driving derived available stock negative) **must be rejected**.
+  - Multi-layer enforcement:
+    1. Database `CHECK` constraint: `CHECK (reserved <= on_hand)` and `CHECK (on_hand >= 0)`.
+    2. Application transaction validation: While holding the target inventory balance row lock (`SELECT ... FOR UPDATE`), verify $\mathtt{on\_hand + \Delta_{on\_hand} \ge reserved}$.
+    3. Failure atomicity: If rejected, the transaction immediately aborts without mutating `inventory_balances` or inserting any `inventory_transactions` or `inventory_ledger_entries`.
 
 ### 2. SKU Normalization & Uniqueness Policy
 - Each product represents a single stockable item with a unique SKU per organization. (Product variants are deferred to future releases).
@@ -111,8 +117,9 @@ $$\text{inventory\_balances.on\_hand} = \sum \text{inventory\_ledger\_entries.on
 $$\text{inventory\_balances.reserved} = \sum \text{inventory\_ledger\_entries.reserved\_delta}$$
 
 ### 7. Warehouse Transfer Invariants
-- Transfers are immediate and atomic in MVP.
+- Transfers are immediate and atomic in MVP without intermediate lifecycle states (no `status` column).
 - **Reserved inventory cannot be transferred:** Source warehouse must have `available >= quantity` (`on_hand - reserved >= quantity`).
+- **Paired Ledger Symmetry & Verification:** Every transfer line item generates paired `OUT` and `IN` ledger entries. Application transaction logic must explicitly verify before commit: exactly one `OUT` (at source) and one `IN` (at destination), matching product, equal-magnitude opposite on-hand deltas, zero reserved deltas, and linkage to an inventory transaction with `transaction_type = 'TRANSFER'` referencing the transfer header. Database partial unique indexes enforce at most one `OUT` and `IN` entry per item.
 
 ### 8. Order Item Historical Snapshots
 - `order_items` must capture `sku_snapshot`, `name_snapshot`, and `unit_price` at the moment of order placement to protect historical audit integrity against product catalog updates.
@@ -217,9 +224,9 @@ Independent of database lock order, the business allocation strategy evaluates w
 
 | # | Question | Status |
 |---|---|---|
-| 1 | **Authentication token/session strategy** — stateless JWT bearer tokens vs. session cookies vs. OAuth2 provider. | **Unresolved** |
-| 2 | **Exact role-permission matrix** — fine-grained endpoint and action permissions for roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
-| 3 | **Reservation duration before confirmation** — default TTL duration for unconfirmed reservations on `PENDING` orders (e.g., 15 min, 30 min, or per-org setting). | **Unresolved** |
-| 4 | **Deadlock retry and backoff configuration** — retry limits, jitter formula, and exponential backoff parameters for PostgreSQL deadlock recovery. | **Unresolved** |
-| 5 | **Negative stock adjustment behavior** — whether an adjustment reducing `on_hand` below `reserved` is rejected with an error or permitted with an audit alert. | **Unresolved** |
-| 6 | **Inter-module event strategy** — Spring in-memory domain events (`ApplicationEventPublisher`) vs. transactional outbox pattern vs. synchronous domain service calls. | **Unresolved** |
+| 1 | **JWT versus session authentication** — stateless JWT bearer tokens vs. server-side session cookies for API consumers. | **Unresolved** |
+| 2 | **Role-to-permission mapping** — granular action permissions vs. coarse role checks (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
+| 3 | **Reservation TTL configuration and default duration** — default expiration window for unconfirmed reservations (e.g., 15 min, 30 min, or per-org setting). | **Unresolved** |
+| 4 | **Deadlock retry and backoff policy** — retry limits, exponential backoff parameters, and jitter formula for PostgreSQL deadlock recovery. | **Unresolved** |
+| 5 | **Inter-module communication strategy** — Spring in-memory domain events (`ApplicationEventPublisher` / `@TransactionalEventListener`) vs. synchronous module interfaces. | **Unresolved** |
+| 6 | **Handling an HTTP timeout while an idempotency transaction is executing** — recovery and reconciliation when a client disconnects during active in-flight processing. | **Unresolved** |

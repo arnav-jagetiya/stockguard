@@ -49,7 +49,7 @@ Allocation follows a deterministic multi-step strategy for each order line item:
 
 - **Deterministic and reproducible:** Order allocation results are completely predictable and testable.
 - **Reduced split shipments:** Preferring complete line fulfillment minimizes fragmentation across warehouses.
-- **Deadlock safety:** Strict decoupling of business allocation order from database lock acquisition prevents concurrency deadlocks.
+- **Deadlock risk reduction:** Strict decoupling of business allocation order from database lock acquisition eliminates circular wait conditions among inventory balance rows across concurrent multi-item transactions.
 - **Auditability:** Allocation decisions are permanently recorded in `reservation_allocations` and `inventory_ledger_entries`.
 
 ### Risks and Trade-offs

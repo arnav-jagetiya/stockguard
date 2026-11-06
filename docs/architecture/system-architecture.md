@@ -53,7 +53,7 @@ flowchart TD
 
 ### 2. PostgreSQL Database
 - Single authoritative source of truth for all inventory state (see [ADR-002](adr/ADR-002-postgresql-source-of-truth.md)).
-- Relational schema of 19 baseline tables managed strictly via Flyway migrations.
+- Relational schema partitioned into 16 planned MVP tables and 3 deferred future extensions managed strictly via Flyway migrations.
 - Concurrency control via explicit row-level pessimistic locking (`SELECT ... FOR UPDATE`) under `READ COMMITTED` isolation (see [ADR-003](adr/ADR-003-inventory-concurrency.md)).
 - Canonical lock order: `product_id ASC, warehouse_id ASC`.
 
@@ -116,7 +116,7 @@ flowchart LR
 
 ## Cross-Cutting Concerns
 
-- **Idempotency:** PostgreSQL-backed, strictly scoped by `(organization_id, principal_id, operation_scope, idempotency_key)` with 7-day initial retention, payload hash verification (mismatches return HTTP `409 Conflict`), and concurrent duplicate request wait-and-replay serialization (see [ADR-007](adr/ADR-007-idempotency.md)).
+- **Idempotency:** PostgreSQL-backed, strictly scoped by `(organization_id, principal_type, principal_id, operation_scope, idempotency_key)` with 7-day initial retention, payload hash verification (mismatches return HTTP `409 Conflict`), and concurrent duplicate request wait-and-replay serialization (see [ADR-007](adr/ADR-007-idempotency.md)).
 - **Organization Scoping:** Starts with a single organization, but the schema uses organization-aware design (composite foreign keys and `organization_id` on all business tables) to enforce clean boundaries. Full multi-tenant SaaS capabilities (self-service tenant registration, tenant billing, custom domains) are deferred post-MVP.
 - **Audit Logging:** Append-only `audit_logs` records state-changing operations with user attribution.
 - **Error Handling:** Standardized error envelopes with machine-readable error codes.
@@ -128,18 +128,20 @@ flowchart LR
 ### 1. Stock Receiving & Opening Balance
 ```
 Receiving Request
-  ├── Verify Idempotency (7d retention, payload hash)
-  ├── Lock inventory_balances in canonical order (product_id, warehouse_id)
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
+  ├── Ensure inventory_balances row exists (INSERT ... ON CONFLICT DO NOTHING)
+  ├── Lock inventory_balances row in canonical order (SELECT ... FOR UPDATE)
   ├── Update on_hand (+quantity)
-  ├── Insert inventory_transactions (RECEIVE / OPENING_BALANCE)
+  ├── Insert inventory_transactions (transaction_type = 'RECEIPT' or 'OPENING_BALANCE', reference_type = NULL, reference_id = NULL)
   ├── Insert inventory_ledger_entries (on_hand_delta = +quantity, reserved_delta = 0)
-  └── Insert idempotency_records
+  ├── Update idempotency_records (populate committed response fields)
+  └── Commit Transaction
 ```
 
 ### 2. Order Creation & Reservation (Deterministic Multi-Warehouse)
 ```
 Order Placement
-  ├── Verify Idempotency
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
   ├── Insert orders (status = 'PENDING')
   ├── Insert order_items (with historical sku_snapshot, name_snapshot, unit_price)
   ├── Compute Allocation Plan (Business Allocation Priority):
@@ -153,58 +155,73 @@ Order Placement
   ├── Update inventory_balances: reserved = reserved + allocated_quantity
   ├── Insert reservations (status = 'ACTIVE', expires_at = NOW() + TTL)
   ├── Insert reservation_allocations (per-warehouse, per-product breakdown)
-  ├── Insert inventory_transactions & inventory_ledger_entries (reserved_delta = +quantity)
+  ├── Insert inventory_transactions (transaction_type = 'RESERVATION', reference_type = 'ORDER', reference_id = orders.id)
+  ├── Insert inventory_ledger_entries (reserved_delta = +quantity, on_hand_delta = 0)
+  ├── Update idempotency_records (populate committed response fields)
   └── Commit Transaction
 ```
 
 ### 3. Order Confirmation
 ```
 Confirmation (Payment Cleared):
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
   ├── Lock orders (assert status == 'PENDING')
+  ├── Lock active reservations (assert status == 'ACTIVE')
   ├── Transition orders: PENDING → CONFIRMED
-  └── Clear reservation expires_at (NULL)
-      └── Confirmed orders' active reservations do NOT automatically expire
+  ├── Clear reservation expires_at (NULL)
+  │     └── Confirmed orders' active reservations do NOT automatically expire
+  ├── Update idempotency_records (populate committed response fields)
+  └── Commit Transaction
 ```
 
 ### 4. Order Fulfillment
 ```
 Fulfillment:
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
   ├── Lock orders (assert status IN ('CONFIRMED', 'FULFILLING'))
   ├── Lock reservations (assert status == 'ACTIVE')
-  ├── Lock inventory_balances (canonical order: product_id ASC, warehouse_id ASC)
+  ├── Lock inventory_balances in canonical order (product_id ASC, warehouse_id ASC FOR UPDATE)
   ├── Deduct balances: on_hand = on_hand - qty, reserved = reserved - qty
-  ├── Insert inventory_transactions & inventory_ledger_entries (on_hand_delta = -qty, reserved_delta = -qty)
+  ├── Insert inventory_transactions (transaction_type = 'FULFILLMENT', reference_type = 'ORDER', reference_id = orders.id)
+  ├── Insert inventory_ledger_entries (on_hand_delta = -qty, reserved_delta = -qty)
   ├── Transition reservations: ACTIVE → CONSUMED (terminal state)
   ├── Transition orders: FULFILLING → FULFILLED (terminal state)
+  ├── Update idempotency_records (populate committed response fields)
   └── Commit Transaction
 ```
 
 ### 5. Order Cancellation
 ```
 Cancellation:
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
   ├── Lock orders (assert non-terminal)
   ├── Lock reservations (assert status == 'ACTIVE')
-  ├── Lock inventory_balances (canonical order: product_id ASC, warehouse_id ASC)
+  ├── Lock inventory_balances in canonical order (product_id ASC, warehouse_id ASC FOR UPDATE)
   ├── Release holds: reserved = reserved - qty (on_hand unchanged)
-  ├── Insert inventory_transactions & inventory_ledger_entries (reserved_delta = -qty, on_hand_delta = 0)
+  ├── Insert inventory_transactions (transaction_type = 'RELEASE', reference_type = 'ORDER', reference_id = orders.id)
+  ├── Insert inventory_ledger_entries (reserved_delta = -qty, on_hand_delta = 0)
   ├── Transition reservations: ACTIVE → RELEASED (terminal state)
   ├── Transition orders: CANCELLED (terminal state)
+  ├── Update idempotency_records (populate committed response fields)
   └── Commit Transaction
 ```
 
 ### 6. Reservation Expiration
 ```
 Background Scheduled Worker
-  ├── Poll expired active reservations belonging strictly to pending orders:
-  │     SELECT r.id, r.order_id FROM reservations r
-  │     JOIN orders o ON r.order_id = o.id
-  │     WHERE r.status = 'ACTIVE' AND o.status = 'PENDING' AND r.expires_at < NOW()
-  │     ORDER BY r.expires_at ASC LIMIT :batch_size
-  │     FOR UPDATE OF r, o SKIP LOCKED
-  ├── For each locked reservation:
-  │     ├── Lock inventory_balances (canonical order: product_id ASC, warehouse_id ASC)
+  ├── Poll expired PENDING orders first (canonical lock hierarchy: orders before reservations):
+  │     SELECT o.id, o.organization_id FROM orders o
+  │     WHERE o.status = 'PENDING' AND EXISTS (
+  │       SELECT 1 FROM reservations r WHERE r.order_id = o.id AND r.organization_id = o.organization_id
+  │         AND r.status = 'ACTIVE' AND r.expires_at <= NOW()
+  │     ) ORDER BY o.id ASC LIMIT :batch_size FOR UPDATE OF o SKIP LOCKED
+  ├── For each locked order:
+  │     ├── Lock active reservation (SELECT ... FROM reservations ... FOR UPDATE)
+  │     ├── Re-verify post-lock invariants (order PENDING, reservation ACTIVE, expires_at <= NOW)
+  │     ├── Lock inventory_balances in canonical order (product_id ASC, warehouse_id ASC FOR UPDATE)
   │     ├── Release hold: reserved = reserved - qty (on_hand unchanged)
-  │     ├── Insert inventory_transactions & ledger entries (reserved_delta = -qty)
+  │     ├── Insert inventory_transactions (transaction_type = 'RELEASE', reference_type = 'ORDER', reference_id = orders.id)
+  │     ├── Insert inventory_ledger_entries (reserved_delta = -qty, on_hand_delta = 0)
   │     ├── Transition reservations: ACTIVE → EXPIRED (terminal state)
   │     └── Transition orders: PENDING → EXPIRED (terminal state)
   └── Commit Transaction
@@ -213,33 +230,41 @@ Background Scheduled Worker
 ### 7. Warehouse Transfer
 ```
 Transfer Request
-  ├── Verify Idempotency
-  ├── Lock source & destination balances in canonical order:
-  │     Lock (product_id, LEAST(source_wh, dest_wh))
-  │     Lock (product_id, GREATEST(source_wh, dest_wh))
-  ├── Assert available stock: (source.on_hand - source.reserved) >= quantity
+  ├── Establish Idempotency Ownership (INSERT ... ON CONFLICT DO NOTHING RETURNING id; or read/wait committed)
+  ├── Ensure all missing destination balance rows exist (INSERT ... ON CONFLICT DO NOTHING)
+  ├── Lock all affected balance rows in one global canonical order:
+  │     SELECT ... WHERE product_id IN (:transfer_product_ids) AND warehouse_id IN (source, dest)
+  │     ORDER BY product_id ASC, warehouse_id ASC FOR UPDATE
+  ├── Assert available stock for each line: (source.on_hand - source.reserved) >= quantity
   │     (Reserved inventory cannot be transferred)
-  ├── Update source: on_hand = on_hand - quantity
-  ├── Update destination: on_hand = on_hand + quantity
-  ├── Insert transfers & transfer_items (status = 'COMPLETED')
-  ├── Insert inventory_transactions & dual ledger entries (TRANSFER_OUT / TRANSFER_IN)
+  ├── Update balances (source on_hand deducted, destination on_hand credited)
+  ├── Insert transfers header and transfer_items lines (atomic, immediate completion; no status column)
+  ├── Insert inventory_transactions (transaction_type = 'TRANSFER', reference_type = 'TRANSFER', reference_id = transfers.id)
+  ├── Insert paired inventory_ledger_entries:
+  │     ├── Source OUT: on_hand_delta = -qty, reserved_delta = 0, transfer_direction = 'OUT'
+  │     └── Destination IN: on_hand_delta = +qty, reserved_delta = 0, transfer_direction = 'IN'
+  ├── Update idempotency_records (populate committed response fields)
   └── Commit Transaction
 ```
 
 ---
 
-## Unresolved Architecture Questions
+## Unresolved Architectural Decisions
 
 > [!WARNING]
-> The following architectural decisions remain genuinely **unresolved** and must be resolved before implementation:
+> The following architectural decisions remain genuinely **unresolved** and must not be pre-empted without explicit direction:
 
 | # | Question | Notes | Status |
 |---|---|---|---|
-| 1 | **Inter-module communication & event strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service calls. | **Unresolved** |
-| 2 | **Authentication token/session strategy** | Stateless JWT bearer tokens vs. stateful session cookies vs. OAuth2 provider. | **Unresolved** |
-| 3 | **Exact role-permission matrix** | Explicit permission mappings for roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
-| 4 | **Reservation duration before confirmation** | Default TTL duration for `PENDING` order reservations (e.g., 15 min vs. 30 min vs. configurable). | **Unresolved** |
-| 5 | **Deadlock retry and backoff configuration** | Exact retry limits, jitter formula, and exponential backoff parameters for PostgreSQL deadlock recovery. | **Unresolved** |
-| 6 | **Negative stock adjustment behavior** | Whether an adjustment driving `on_hand < reserved` is rejected with an error or permitted with an audit alert. | **Unresolved** |
-| 7 | **Monitoring and observability approach** | Metrics (Micrometer/Prometheus), distributed tracing (OpenTelemetry), structured JSON logging configuration. | **Unresolved** |
-| 8 | **API gateway needs** | Whether an API gateway / reverse proxy is required in MVP or if the modular monolith container is sufficient. | **Unresolved** |
+| 1 | **JWT versus session authentication** | Stateless JWT bearer tokens vs. stateful session cookies for API consumers. | **Unresolved** |
+| 2 | **Role-to-permission mapping** | Granular action permissions vs. coarse role checks (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
+| 3 | **Reservation TTL configuration and default duration** | Default TTL duration for `PENDING` order reservations (e.g., 15 min vs. 30 min vs. configurable). | **Unresolved** |
+| 4 | **Deadlock retry and backoff policy** | Exact retry limits, exponential backoff formula, and jitter parameters for PostgreSQL deadlock recovery. | **Unresolved** |
+| 5 | **Inter-module communication strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service interfaces. | **Unresolved** |
+| 6 | **Handling an HTTP timeout while an idempotency transaction is executing** | Recovery and reconciliation when a client disconnects during active in-flight processing. | **Unresolved** |
+
+### Future Implementation Considerations
+
+The following system design details will be finalized during downstream implementation:
+- **Monitoring and Observability Approach:** Metrics (Micrometer/Prometheus), distributed tracing (OpenTelemetry), and structured JSON logging configuration.
+- **API Gateway Needs:** Reverse proxy and rate limiting requirements in front of the modular monolith.

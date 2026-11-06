@@ -27,7 +27,7 @@ Every ledger entry explicitly captures two independent, signed deltas:
 - **`on_hand_delta`**: Signed physical stock modification (+ for stock receipt/opening balance, - for shipment/fulfillment, 0 for pure reservations).
 - **`reserved_delta`**: Signed logical commitment modification (+ for reservation creation, - for fulfillment/release/expiration, 0 for pure physical adjustments).
 
-Post-mutation snapshots (`on_hand_after` and `reserved_after`) are also recorded for instantaneous point-in-time auditing.
+Current authoritative balance positions (`on_hand` and `reserved`) are maintained directly on `inventory_balances`, while `inventory_ledger_entries` records pure signed deltas grouped by transaction.
 
 ### 2. Opening Balance as a Ledger Transaction
 When a product is first stocked at a warehouse, its initial quantity is established via an explicit `OPENING_BALANCE` transaction and ledger entry. No balance record may ever exist without an originating ledger entry.

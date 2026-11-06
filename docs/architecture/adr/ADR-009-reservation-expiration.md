@@ -25,17 +25,29 @@ PostgreSQL's `FOR UPDATE SKIP LOCKED` allows workers to lock batches of expired 
 Use a **Spring Boot background worker** (scheduled task) for reservation expiration:
 
 - The worker runs on a configurable schedule (e.g., every 30 seconds).
-- It queries for expired **`ACTIVE`** reservations belonging strictly to **`PENDING`** orders past their expiration time using `SELECT ... FOR UPDATE SKIP LOCKED`:
+- It queries for expired **`ACTIVE`** reservations belonging strictly to **`PENDING`** orders past their expiration time using the canonical lock hierarchy (`orders` before `reservations` before `inventory_balances`) with `FOR UPDATE SKIP LOCKED`:
   ```sql
-  SELECT r.id AS reservation_id, r.order_id
-  FROM reservations r
-  JOIN orders o ON r.order_id = o.id
-  WHERE r.status = 'ACTIVE'
-    AND o.status = 'PENDING'
-    AND r.expires_at < NOW()
-  ORDER BY r.expires_at ASC
+  -- 1. Lock pending candidate orders first to avoid lock-order reversal deadlocks:
+  SELECT o.id AS order_id, o.organization_id
+  FROM orders o
+  WHERE o.status = 'PENDING'
+    AND EXISTS (
+      SELECT 1 FROM reservations r
+      WHERE r.order_id = o.id
+        AND r.organization_id = o.organization_id
+        AND r.status = 'ACTIVE'
+        AND r.expires_at <= NOW()
+    )
+  ORDER BY o.id ASC
   LIMIT :batch_size
-  FOR UPDATE OF r, o SKIP LOCKED;
+  FOR UPDATE OF o SKIP LOCKED;
+
+  -- 2. Lock associated active reservation and re-verify post-lock status:
+  SELECT id AS reservation_id, status, expires_at
+  FROM reservations
+  WHERE order_id = :order_id
+    AND organization_id = :org_id
+  FOR UPDATE;
   ```
 - **Confirmed Order Exclusion:** Reservations for orders in `CONFIRMED`, `FULFILLING`, or `FULFILLED` status do **not** expire.
 - For each locked reservation:

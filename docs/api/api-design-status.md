@@ -121,24 +121,28 @@
 | `403 Forbidden` | Authenticated but lacking permission for operation |
 | `404 Not Found` | Resource does not exist within the organization |
 | `409 Conflict` | State conflict (e.g., idempotency payload mismatch, terminal reservation mutation) |
-| `422 Unprocessable Entity` | Business invariant violation (e.g., partial reservation failure) |
+| `422 Unprocessable Entity` | Business invariant violation (e.g., partial reservation failure, downward stock adjustment driving `on_hand < reserved`) |
 | `429 Too Many Requests` | Rate limit exceeded |
 | `500 Internal Server Error` | Unexpected server failure |
 
 ---
 
-## Unresolved API Questions
+## Unresolved API Decisions
 
 > [!WARNING]
 > The following API decisions remain genuinely **unresolved** and must not be pre-empted without explicit direction:
 
 | # | Question | Context | Status |
 |---|---|---|---|
-| 1 | **Authentication token/session strategy** | Stateless JWT bearer tokens vs. session cookies. Token refresh strategy. | **Unresolved** |
-| 2 | **Exact role-permission matrix** | Role-based access control (RBAC) mapping per endpoint (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
-| 3 | **Reservation duration before confirmation** | Default TTL duration for pending order's active reservation before background worker expiration. | **Unresolved** |
-| 4 | **Deadlock retry and backoff configuration** | Whether API gateway / controller layer transparently retries deadlocks before responding. | **Unresolved** |
-| 5 | **Negative stock adjustment behavior** | Whether adjustment API allows or rejects operations where `on_hand - delta < reserved`. | **Unresolved** |
-| 6 | **Inter-module event strategy** | Webhook emission or domain event publication upon order fulfillment or stock depletion. | **Unresolved** |
-| 7 | **Pagination standard** | Cursor-based vs. offset/page-based pagination across list endpoints. | **Unresolved** |
-| 8 | **API versioning strategy** | URL path prefixing (`/api/v1/...`) vs. custom header (`Accept: application/vnd.stockguard.v1+json`). | **Unresolved** |
+| 1 | **JWT versus session authentication** | Stateless JWT bearer tokens vs. session cookies. Token refresh strategy. | **Unresolved** |
+| 2 | **Role-to-permission mapping** | Role-based access control (RBAC) mapping per endpoint (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
+| 3 | **Reservation TTL configuration and default duration** | Default TTL duration for pending order's active reservation before background worker expiration. | **Unresolved** |
+| 4 | **Deadlock retry and backoff policy** | Whether API gateway / controller layer transparently retries deadlocks before responding. | **Unresolved** |
+| 5 | **Inter-module communication strategy** | Webhook emission or domain event publication upon order fulfillment or stock depletion vs. synchronous calls. | **Unresolved** |
+| 6 | **Handling an HTTP timeout while an idempotency transaction is executing** | Client retry handling and recovery when an HTTP client times out while server transaction is in-flight. | **Unresolved** |
+
+### Future Implementation Considerations
+
+The following operational API design details will be finalized in later milestones:
+- **Pagination Standard:** Cursor-based vs. offset/page-based pagination across list endpoints.
+- **API Versioning Strategy:** URL path prefixing (`/api/v1/...`) vs. custom header (`Accept: application/vnd.stockguard.v1+json`).

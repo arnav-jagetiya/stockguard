@@ -32,7 +32,7 @@ Use **explicit row-level pessimistic locking** (`SELECT ... FOR UPDATE`) for all
   1. `product_id ASC`
   2. `warehouse_id ASC`
 - **Decoupling from Allocation Policy:** Business allocation priority (warehouse priority rank, complete line preference, code tie-breaker) determines *which* warehouses contribute stock, but database row locks are acquired strictly in canonical lock order (`product_id ASC, warehouse_id ASC`).
-- The reservation expiration worker uses **`FOR UPDATE SKIP LOCKED`** on expired `ACTIVE` reservations belonging to `PENDING` orders to avoid blocking other workers or user-facing operations (see [ADR-009](ADR-009-reservation-expiration.md)).
+- **Lock Hierarchy Across Entities & Expiration Worker Alignment:** Transactions spanning multiple entities follow a strict lock hierarchy: `orders` before `reservations` before `inventory_balances` across confirmation, cancellation, fulfillment, and expiration. To eliminate lock-order reversal deadlocks with concurrent confirmations or cancellations, the background reservation expiration worker selects eligible `PENDING` orders first using `SELECT ... FROM orders o WHERE o.status = 'PENDING' AND EXISTS (...) FOR UPDATE OF o SKIP LOCKED`, then locks and revalidates the associated reservation (`SELECT ... FROM reservations ... FOR UPDATE`), and finally locks affected `inventory_balances` in canonical order (`product_id ASC, warehouse_id ASC`).
 
 ## Consequences
 
@@ -42,7 +42,7 @@ Use **explicit row-level pessimistic locking** (`SELECT ... FOR UPDATE`) for all
 - **Prevents negative balances** — the lock ensures the balance check and update are atomic.
 - **Serializes contending operations at the row level** — non-contending operations on different product/warehouse combinations proceed in parallel.
 - **`FOR UPDATE SKIP LOCKED`** — enables concurrent expiration processing without blocking.
-- **Deadlock elimination** — canonical lock ordering eliminates circular wait conditions across multi-item, multi-warehouse transactions.
+- **Deadlock risk reduction** — canonical lock ordering eliminates circular wait conditions among inventory balance rows across multi-item, multi-warehouse transactions. Transactions involving multiple tables (such as orders and reservations) can still encounter deadlocks under external contention, requiring application deadlock retry handling.
 
 ### Risks and Trade-offs
 

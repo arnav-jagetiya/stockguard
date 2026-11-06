@@ -15,6 +15,7 @@
 | Stock receiving and adjustments | Stock receiving into warehouses and manual stock adjustments referencing `product_id`. | **Accepted** |
 | Opening balance tracking | Initial stock for a product at a warehouse recorded as an explicit `OPENING_BALANCE` ledger transaction. | **Accepted** |
 | Real-time inventory balances | Per-product, per-warehouse records of `on_hand` and `reserved` (`available = on_hand - reserved`). | **Accepted** |
+| Negative stock adjustment enforcement | Downward adjustments driving `on_hand < reserved` are strictly rejected at the database check level and application row-lock validation; zero balance or ledger entries commit on rejection. | **Accepted** |
 | Append-only inventory ledger | `inventory_ledger_entries` grouped by `inventory_transactions`, capturing `on_hand_delta` and `reserved_delta`. | **Accepted** |
 | Mathematical reconciliation | Automated verification that $\sum \text{on\_hand\_delta} = \text{on\_hand}$ and $\sum \text{reserved\_delta} = \text{reserved}$. | **Accepted** |
 
@@ -106,11 +107,15 @@ The following are **deliberately out of scope** for the MVP:
 
 | # | Question | Notes | Status |
 |---|---|---|---|
-| 1 | **Authentication token/session strategy** | Stateless JWT bearer tokens vs. stateful session cookies vs. OAuth2 provider. | **Unresolved** |
-| 2 | **Exact role-permission matrix** | Explicit permission mappings for roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
-| 3 | **Reservation duration before confirmation** | Default TTL duration for unconfirmed active reservations on pending orders (e.g., 15 min vs. 30 min vs. configurable). | **Unresolved** |
-| 4 | **Deadlock retry and backoff configuration** | Exact retry limits, jitter formula, and exponential backoff parameters for PostgreSQL deadlock recovery. | **Unresolved** |
-| 5 | **Negative stock adjustment behavior** | Whether an adjustment driving `on_hand < reserved` is rejected with an error or permitted with an audit alert. | **Unresolved** |
-| 6 | **Inter-module event strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service calls. | **Unresolved** |
-| 7 | **Reconciliation schedule and scope** | Scheduled nightly cron vs. on-demand batch runs vs. continuous rolling checks. | **Unresolved** |
-| 8 | **Operations dashboard metrics specification** | Exact widget layouts, KPI definitions, and aggregation intervals for the frontend dashboard. | **Unresolved** |
+| 1 | **JWT versus session authentication** | Stateless JWT bearer tokens vs. stateful session cookies for API consumers. | **Unresolved** |
+| 2 | **Role-to-permission mapping** | Granular action permissions vs. coarse role checks (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
+| 3 | **Reservation TTL configuration and default duration** | Default TTL duration for unconfirmed active reservations on pending orders (e.g., 15 min vs. 30 min vs. configurable). | **Unresolved** |
+| 4 | **Deadlock retry and backoff policy** | Exact retry limits, exponential backoff formula, and jitter parameters for PostgreSQL deadlock recovery. | **Unresolved** |
+| 5 | **Inter-module communication strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service interfaces. | **Unresolved** |
+| 6 | **Handling an HTTP timeout while an idempotency transaction is executing** | Recovery and reconciliation when a client disconnects during active in-flight processing. | **Unresolved** |
+
+### Future Implementation Considerations
+
+The following operational and configuration details will be determined during downstream implementation milestones:
+- **Reconciliation Schedule & Scope:** Scheduled nightly cron vs. on-demand batch runs vs. continuous rolling reconciliation checks.
+- **Operations Dashboard Metrics Specification:** Exact widget layouts, KPI definitions, and aggregation intervals for the administrative frontend dashboard.

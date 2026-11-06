@@ -107,19 +107,23 @@ flowchart TD
 
 ---
 
-## Unresolved Engineering Questions
+## Unresolved Engineering Decisions
 
 > [!WARNING]
 > The following decisions remain genuinely **unresolved** and must not be pre-empted without explicit direction:
 
 | # | Question | Notes | Status |
 |---|---|---|---|
-| 1 | **Authentication token/session strategy** | Stateless JWT bearer tokens vs. stateful session cookies vs. OAuth2 provider. | **Unresolved** |
-| 2 | **Exact role-permission matrix** | Fine-grained endpoint and action mappings for roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
-| 3 | **Reservation duration before confirmation** | Default TTL duration for unconfirmed active reservations on `PENDING` orders (e.g., 15 min, 30 min, or configurable). | **Unresolved** |
-| 4 | **Deadlock retry and backoff configuration** | Exact retry counts, jitter formula, and exponential backoff parameters for PostgreSQL deadlock recovery. | **Unresolved** |
-| 5 | **Negative stock adjustment behavior** | Whether an adjustment reducing `on_hand` below `reserved` is rejected with an error or permitted with an audit alert. | **Unresolved** |
-| 6 | **Inter-module event strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service calls. | **Unresolved** |
-| 7 | **Caching strategy** | Whether a read-through cache should eventually be introduced for non-authoritative product data or dashboard metrics. | **Unresolved** |
-| 8 | **API versioning approach** | URL path prefixing (`/api/v1/...`) vs. header-based content negotiation. | **Unresolved** |
-| 9 | **Database connection pool tuning** | HikariCP pool sizing relative to expected worker threads and concurrent API transactions. | **Unresolved** |
+| 1 | **JWT versus session authentication** | Stateless JWT bearer tokens vs. stateful session cookies for API consumers. | **Unresolved** |
+| 2 | **Role-to-permission mapping** | Fine-grained endpoint and action mappings for roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). | **Unresolved** |
+| 3 | **Reservation TTL configuration and default duration** | Default TTL duration for unconfirmed active reservations on `PENDING` orders (e.g., 15 min, 30 min, or configurable). | **Unresolved** |
+| 4 | **Deadlock retry and backoff policy** | Exact retry counts, exponential backoff formula, and jitter parameters for PostgreSQL deadlock recovery. | **Unresolved** |
+| 5 | **Inter-module communication strategy** | In-memory Spring `ApplicationEventPublisher` vs. transactional outbox pattern vs. synchronous domain service interfaces. | **Unresolved** |
+| 6 | **Handling an HTTP timeout while an idempotency transaction is executing** | Recovery and reconciliation when a client disconnects during active in-flight processing. | **Unresolved** |
+
+### Future Implementation Considerations
+
+The following technical calibrations will be addressed during subsequent implementation phases:
+- **Caching Strategy:** Whether a read-through cache should eventually be introduced for non-authoritative product data or dashboard metrics.
+- **API Versioning Approach:** URL path prefixing (`/api/v1/...`) vs. header-based content negotiation.
+- **Database Connection Pool Tuning:** HikariCP pool sizing relative to expected worker threads and concurrent API transactions.
