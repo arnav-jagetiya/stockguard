@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Validates that Flyway executes V1 and V2 migrations against PostgreSQL 16,
+ * Validates that Flyway executes V1, V2, and V3 migrations against PostgreSQL 16,
  * that Hibernate validates the resulting schema with ddl-auto: validate,
  * and that append-only immutability triggers strictly reject UPDATE, DELETE, and TRUNCATE.
  */
@@ -46,7 +46,9 @@ class FlywayMigrationAndSchemaValidationTest {
             "transfers",
             "transfer_items",
             "idempotency_records",
-            "audit_logs"
+            "audit_logs",
+            "auth_sessions",
+            "refresh_tokens"
     );
 
     private static final Set<String> DEFERRED_TABLES = Set.of(
@@ -74,27 +76,30 @@ class FlywayMigrationAndSchemaValidationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("Flyway reports successful V1 and V2 migration execution")
+    @DisplayName("Flyway reports successful V1, V2, and V3 migration execution")
     void flywayReportsSuccessfulMigrations() {
         assertThat(flyway).isNotNull();
         MigrationInfo current = flyway.info().current();
         assertThat(current).isNotNull();
-        assertThat(current.getVersion().getVersion()).isEqualTo("2");
-        assertThat(current.getDescription()).isEqualTo("enforce append only ledgers");
+        assertThat(current.getVersion().getVersion()).isEqualTo("3");
+        assertThat(current.getDescription()).isEqualTo("create auth and session tables");
         assertThat(current.getState().isApplied()).isTrue();
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertThat(applied).hasSize(2);
+        assertThat(applied).hasSize(3);
         assertThat(applied[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(applied[0].getDescription()).isEqualTo("create initial schema");
         assertThat(applied[0].getState().isApplied()).isTrue();
         assertThat(applied[1].getVersion().getVersion()).isEqualTo("2");
         assertThat(applied[1].getDescription()).isEqualTo("enforce append only ledgers");
         assertThat(applied[1].getState().isApplied()).isTrue();
+        assertThat(applied[2].getVersion().getVersion()).isEqualTo("3");
+        assertThat(applied[2].getDescription()).isEqualTo("create auth and session tables");
+        assertThat(applied[2].getState().isApplied()).isTrue();
     }
 
     @Test
-    @DisplayName("All 16 MVP tables exist in public schema and no deferred tables are created")
+    @DisplayName("All 18 tables exist (16 MVP tables + auth_sessions + refresh_tokens) in public schema and no deferred tables are created")
     void allSixteenMvpTablesExist() {
         assertThat(jdbcTemplate).isNotNull();
 
@@ -122,15 +127,16 @@ class FlywayMigrationAndSchemaValidationTest {
     void keyConstraintsAndIndexesExist() {
         assertThat(jdbcTemplate).isNotNull();
 
-        // 1. Verify partial unique indexes
+        // 1. Verify partial unique indexes (including V3 active refresh token uniqueness)
         List<String> partialIndexes = jdbcTemplate.queryForList(
-                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname IN ('idx_ledger_transfer_out', 'idx_ledger_transfer_in', 'idx_reservations_active_expires')",
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname IN ('idx_ledger_transfer_out', 'idx_ledger_transfer_in', 'idx_reservations_active_expires', 'uq_refresh_tokens_one_active_per_session')",
                 String.class
         );
         assertThat(partialIndexes).containsExactlyInAnyOrder(
                 "idx_ledger_transfer_out",
                 "idx_ledger_transfer_in",
-                "idx_reservations_active_expires"
+                "idx_reservations_active_expires",
+                "uq_refresh_tokens_one_active_per_session"
         );
 
         // 2. Verify inventory balance check constraints
