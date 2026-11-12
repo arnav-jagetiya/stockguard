@@ -38,6 +38,30 @@ public class SecurityProperties {
     @NotNull
     private Cors cors = new Cors();
 
+    @Valid
+    @NotNull
+    private Bootstrap bootstrap = new Bootstrap();
+
+    @Min(4)
+    @Max(31)
+    private int passwordEncoderCost = 12;
+
+    public Bootstrap getBootstrap() {
+        return bootstrap;
+    }
+
+    public void setBootstrap(Bootstrap bootstrap) {
+        this.bootstrap = bootstrap;
+    }
+
+    public int getPasswordEncoderCost() {
+        return passwordEncoderCost;
+    }
+
+    public void setPasswordEncoderCost(int passwordEncoderCost) {
+        this.passwordEncoderCost = passwordEncoderCost;
+    }
+
     public Jwt getJwt() {
         return jwt;
     }
@@ -250,6 +274,59 @@ public class SecurityProperties {
 
         public void setAllowedOrigins(List<String> allowedOrigins) {
             this.allowedOrigins = allowedOrigins;
+        }
+    }
+
+    public static class Bootstrap {
+
+        private boolean enabled = false;
+
+        private String adminEmail;
+
+        private String adminPassword;
+
+        private String adminFullName;
+
+        private String orgName = "Primary Organization";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getAdminEmail() {
+            return adminEmail;
+        }
+
+        public void setAdminEmail(String adminEmail) {
+            this.adminEmail = adminEmail;
+        }
+
+        public String getAdminPassword() {
+            return adminPassword;
+        }
+
+        public void setAdminPassword(String adminPassword) {
+            this.adminPassword = adminPassword;
+        }
+
+        public String getAdminFullName() {
+            return adminFullName;
+        }
+
+        public void setAdminFullName(String adminFullName) {
+            this.adminFullName = adminFullName;
+        }
+
+        public String getOrgName() {
+            return orgName;
+        }
+
+        public void setOrgName(String orgName) {
+            this.orgName = orgName;
         }
     }
 }

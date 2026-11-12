@@ -76,3 +76,9 @@ stockguard:
     cors:
       allowed-origins:
         - "http://localhost:5173"
+    bootstrap:
+      enabled: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:false}
+      admin-email: ${STOCKGUARD_BOOTSTRAP_ADMIN_EMAIL:}
+      admin-password: ${STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD:}
+      admin-full-name: ${STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME:}
+      org-name: ${STOCKGUARD_BOOTSTRAP_ORG_NAME:Primary Organization}
