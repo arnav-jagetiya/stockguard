@@ -1,20 +1,45 @@
 # Local development profile (active by default when no profile is explicitly specified)
 #
 # LOCAL DEVELOPMENT ONLY:
-# Fallback defaults (localhost:5432, database 'stockguard', user 'stockguard', password 'stockguard')
-# are strictly confined to this development profile. Production environments must supply
-# explicit environment variables and will fail fast if credentials are omitted.
+# Uses isolated development roles (stockguard_app / stockguard_owner)
+# matching docker-compose / init scripts.
 spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:stockguard}}
-    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:stockguard}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:stockguard}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_APP_USER:stockguard_app}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_APP_PASSWORD:test_app_pass}}
+
+  flyway:
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USER:${FLYWAY_USERNAME:${DB_MIGRATION_USER:stockguard_owner}}}
+    password: ${FLYWAY_PASSWORD:${DB_MIGRATION_PASSWORD:test_owner_pass}}
 
   jpa:
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+
+stockguard:
+  security:
+    jwt:
+      active-key:
+        id: "sg-2026-v1"
+        # 32-byte (256-bit) cryptographically secure Base64 secret for local dev:
+        secret: ${STOCKGUARD_JWT_ACTIVE_SECRET:vWvE+H3M7P+T0GfQx4zL+cK9p9V5hW8J2eT4rY6uI0A=}
+      retiring-keys: {}
+      access-token-expiration-minutes: 15
+      issuer: "stockguard-platform"
+      audience: "stockguard-api"
+    cookie:
+      name: "stockguard_refresh"
+      path: "/api/auth"
+      secure: false
+      http-only: true
+      same-site: "Lax"
+    cors:
+      allowed-origins:
+        - "http://localhost:5173"
 
 logging:
   level:

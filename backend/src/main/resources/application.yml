@@ -5,6 +5,7 @@ spring:
     default: dev
 
   datasource:
+    # Runtime Application Connection Pool (Role: stockguard_app)
     # In production, explicit environment variables (SPRING_DATASOURCE_URL,
     # SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD) must be provided.
     # Fallback development values are strictly defined in the 'dev' profile (application-dev.yml).
@@ -34,6 +35,11 @@ spring:
   flyway:
     enabled: ${FLYWAY_ENABLED:true}
     locations: classpath:db/migration
+    # Migration Engine Connection (Role: stockguard_owner)
+    # In production, explicit FLYWAY_USER and FLYWAY_PASSWORD must be provided.
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USER:${FLYWAY_USERNAME:}}
+    password: ${FLYWAY_PASSWORD:}
 
 server:
   port: ${PORT:8080}
@@ -47,3 +53,26 @@ management:
   endpoint:
     health:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when-authorized}
+
+stockguard:
+  security:
+    jwt:
+      active-key:
+        id: ${STOCKGUARD_JWT_ACTIVE_KEY_ID:sg-2026-v1}
+        secret: ${STOCKGUARD_JWT_ACTIVE_SECRET:}
+      retiring-keys: {}
+      access-token-expiration-minutes: 15
+      issuer: ${STOCKGUARD_JWT_ISSUER:stockguard-platform}
+      audience: ${STOCKGUARD_JWT_AUDIENCE:stockguard-api}
+    cookie:
+      name: ${STOCKGUARD_COOKIE_NAME:__Secure-stockguard_refresh}
+      path: "/api/auth"
+      secure: ${STOCKGUARD_COOKIE_SECURE:true}
+      http-only: true
+      same-site: ${STOCKGUARD_COOKIE_SAME_SITE:Strict}
+    rate-limit:
+      login-permits-per-minute: 5
+      refresh-permits-per-minute: 20
+    cors:
+      allowed-origins:
+        - "http://localhost:5173"

@@ -24,6 +24,26 @@ spring:
 server:
   shutdown: immediate
 
+stockguard:
+  security:
+    jwt:
+      active-key:
+        id: "sg-test-active"
+        secret: "dGVzdC1zZWNyZXQtMzItYnl0ZXMtY3J5cHRvLWtleS0yMDI2IQ=="
+      retiring-keys: {}
+      access-token-expiration-minutes: 15
+      issuer: "stockguard-platform"
+      audience: "stockguard-api"
+    cookie:
+      name: "stockguard_test_refresh"
+      path: "/api/auth"
+      secure: false
+      http-only: true
+      same-site: "Lax"
+    cors:
+      allowed-origins:
+        - "http://localhost:5173"
+
 logging:
   level:
     com.stockguard: DEBUG

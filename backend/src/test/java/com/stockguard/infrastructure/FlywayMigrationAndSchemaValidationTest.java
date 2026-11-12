@@ -28,6 +28,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("dev")
+@org.springframework.test.context.TestPropertySource(properties = {
+        "spring.datasource.username=stockguard_owner",
+        "spring.datasource.password=test_owner_pass"
+})
 class FlywayMigrationAndSchemaValidationTest {
 
     private static final Set<String> EXPECTED_MVP_TABLES = Set.of(

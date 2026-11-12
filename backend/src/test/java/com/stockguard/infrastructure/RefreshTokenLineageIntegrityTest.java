@@ -79,18 +79,12 @@ class RefreshTokenLineageIntegrityTest {
             GRANT SELECT, INSERT, UPDATE, DELETE ON refresh_tokens, auth_sessions, users TO stockguard_test_privileged;
         """);
 
-        DataSource appDataSource = DataSourceBuilder.create()
-                .url(postgres.getJdbcUrl())
-                .username("stockguard_app")
-                .password("test_app_pass")
-                .build();
+        DataSource appDataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                postgres.getJdbcUrl(), "stockguard_app", "test_app_pass");
         this.appJdbcTemplate = new JdbcTemplate(appDataSource);
 
-        DataSource privDataSource = DataSourceBuilder.create()
-                .url(postgres.getJdbcUrl())
-                .username("stockguard_test_privileged")
-                .password("test_priv_pass")
-                .build();
+        DataSource privDataSource = new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                postgres.getJdbcUrl(), "stockguard_test_privileged", "test_priv_pass");
         this.privilegedJdbcTemplate = new JdbcTemplate(privDataSource);
     }
 
@@ -416,14 +410,14 @@ class RefreshTokenLineageIntegrityTest {
             assertThat(authSessionsOwner)
                     .isNotEqualTo("stockguard_app")
                     .isNotEqualTo("stockguard_test_privileged")
-                    .isEqualTo("test_user");
+                    .isIn("stockguard_owner", "test_user");
 
             String refreshTokensOwner = jdbcTemplate.queryForObject(
                     "SELECT tableowner FROM pg_tables WHERE schemaname = 'public' AND tablename = 'refresh_tokens'", String.class);
             assertThat(refreshTokensOwner)
                     .isNotEqualTo("stockguard_app")
                     .isNotEqualTo("stockguard_test_privileged")
-                    .isEqualTo("test_user");
+                    .isIn("stockguard_owner", "test_user");
         }
 
         @Test
