@@ -29,6 +29,8 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 | **Milestone 4 — Phase 2** | Session Lifecycle, Refresh Rotation, Replay Detection & Revocation | ✅ Complete |
 | **Milestone 4 — Phase 3** | Auth REST APIs, CSRF Defense, CORS, Rate Limiting, 23-Permission RBAC | ✅ Complete |
 | **Milestone 4 — Phase 4A** | Security Hardening, Production Config, Probes, Global Error Handling | ✅ Complete |
+| **Milestone 4 — Phase 4B** | Final Regression, Release Readiness & Baseline Audit | ✅ Complete |
+| **Milestone 5A** | Product Catalog, Warehouse Management & Core Inventory Engine | ✅ Complete |
 
 ---
 
@@ -210,6 +212,58 @@ To prevent organizations from becoming permanently orphaned, demoting or deactiv
 
 ---
 
+## Core Inventory Engine & Domain APIs (Milestone 5A)
+
+### 1. Product Catalog & Warehouse Management
+
+* **Product Management (`/api/products`)**:
+  * `POST /api/products`: Create a product (`sku`, `name`, `description`). SKU is automatically normalized (`upper(trim(sku))`). Unique normalized SKU per tenant (`uq_products_org_sku`).
+  * `GET /api/products`: Search and list products with tenant isolation (`q`, `activeOnly` query parameters).
+  * `GET /api/products/{id}`: Retrieve product details by ID within the current tenant.
+  * `PUT /api/products/{id}`: Update mutable details (`name`, `description`). SKU is immutable.
+  * `DELETE /api/products/{id}`: Soft deactivation (`active = false`). Preserves referential integrity for historical ledgers.
+  * *Required permissions*: `product:manage` (mutations), `product:view` (read).
+
+* **Warehouse Management (`/api/warehouses`)**:
+  * `POST /api/warehouses`: Create a facility (`code`, `name`, `location`, `priority`). Code is normalized (`upper(trim(code))`). Unique normalized code per tenant (`uq_warehouses_org_code`).
+  * `GET /api/warehouses`: List active warehouses ordered by priority ascending (`priority ASC, name ASC`).
+  * `GET /api/warehouses/{id}`: Retrieve warehouse details by ID within the current tenant.
+  * `PUT /api/warehouses/{id}`: Update warehouse metadata (`name`, `location`, `priority`). Code is immutable.
+  * `DELETE /api/warehouses/{id}`: Soft deactivation (`active = false`).
+  * *Required permissions*: `warehouse:manage` (mutations), `warehouse:view` (read).
+
+### 2. Transactional Inventory Engine & Dual-Delta Ledger
+
+STOCKGUARD's inventory balances represent materialized views that are strictly derived from and reconcilable with the append-only ledger:
+
+$$\text{Available} = \text{On Hand} - \text{Reserved}$$
+
+* **Atomic Stock Operations**:
+  * `POST /api/inventory/opening-balances`: Sets initial on-hand stock for a product in a warehouse. Creates an `OPENING_BALANCE` transaction and ledger entry. Rejected if an opening balance has already been recorded historically for the given product and warehouse, even if current on-hand stock has subsequently returned to zero.
+  * `POST /api/inventory/receipts`: Ingests inbound stock receipts. Increments `on_hand` and inserts an immutable `RECEIPT` ledger entry.
+  * `POST /api/inventory/adjustments`: Records cycle count corrections and manual shrinkage adjustments. Supports positive or negative deltas with mandatory textual reason and actor attribution. Fails closed (`409 Conflict`) if an adjustment would cause $\text{on\_hand} < 0$ or $\text{on\_hand} < \text{reserved}$.
+  * `GET /api/inventory/balances`: Lists live balances across all facilities.
+  * `GET /api/inventory/balances/{productId}/{warehouseId}`: Fetches specific balance.
+  * `GET /api/inventory/transactions`: Lists recent inventory transactions and their associated ledger lines.
+  * `GET /api/inventory/transactions/{id}`: Retrieves specific transaction and its ledger entries.
+  * `GET /api/inventory/reconciliation`: Read-only mathematical reconciliation comparing current balance snapshots against `SUM(on_hand_delta)` and `SUM(reserved_delta)` across the entire historical ledger. Detects `DELTA_MISMATCH`, `MISSING_BALANCE_ROW`, and `ORPHAN_BALANCE_ROW`.
+  * *Required permissions*: `inventory:receive`, `inventory:adjust`, `inventory:view`, `inventory:reconcile`.
+
+### 3. Concurrency, Locking & Idempotency Guarantees
+
+* **Canonical Lock Ordering (ADR-003)**:
+  * Multi-item or multi-facility inventory mutations sort locks strictly by:
+    $$\text{product\_id ASC}, \text{warehouse\_id ASC}$$
+  * Row locks are acquired via `SELECT ... FOR UPDATE` using Spring JDBC before any ledger insertions or balance modifications occur.
+  * *Concurrency Scope & Deadlock Semantics*: Canonical ordering reduces deadlocks among inventory balance row locks. It does not eliminate cross-table deadlocks (e.g. between parent tables and inventory balances) or every possible database deadlock. Transactional deadlock retry behavior remains a separate concern if not implemented at the application edge.
+* **Database Ledger Immutability (ADR-002)**:
+  * Triggers defined in `V2__enforce_append_only_ledgers.sql` reject all `UPDATE`, `DELETE`, and `TRUNCATE` operations on `inventory_ledger_entries`. Ledger history is append-only and cryptographically auditable.
+* **Distributed Idempotency (ADR-007)**:
+  * Critical write APIs support the `Idempotency-Key` HTTP header.
+  * Uses `idempotency_records` table with row-level locks and SHA-256 payload hashing to prevent duplicate mutations, detect in-flight concurrent execution, and safely replay prior responses for identical retries.
+
+---
+
 ## Testing & Verification
 
 The test suite exercises all layers of the security, persistence, and authorization architecture using JUnit 5, Mockito, Spring MVC Test, and Testcontainers (PostgreSQL 16):
@@ -237,14 +291,18 @@ stockguard/
 │   │   │   ├── java/com/stockguard/
 │   │   │   │   ├── audit/            # Security and operational audit logging
 │   │   │   │   ├── common/           # Shared identifiers and entities
+│   │   │   │   ├── inventory/        # Balances, ledger entries, transactions, reconciliation
 │   │   │   │   ├── organization/     # Tenants, memberships, last-admin protection
-│   │   │   │   └── security/         # JWT, sessions, filters, RBAC, exception handlers
+│   │   │   │   ├── product/          # Product catalog and normalized SKU management
+│   │   │   │   ├── security/         # JWT, sessions, filters, RBAC, exception handlers
+│   │   │   │   ├── shared/           # Common exceptions and distributed idempotency engine
+│   │   │   │   └── warehouse/        # Facility management, priority routing, codes
 │   │   │   └── resources/
 │   │   │       ├── db/migration/     # Flyway immutable migrations (V1, V2, V3)
 │   │   │       ├── application.yml   # Base application configuration
 │   │   │       ├── application-dev.yml # Local development overrides
 │   │   │       └── application-prod.yml # Hardened production configuration
-│   │   └── test/                     # 185+ unit, integration, and security tests
+│   │   └── test/                     # 205+ unit, integration, and security tests
 │   ├── docker-compose.yml            # Local PostgreSQL 16 container definition
 │   └── pom.xml                       # Maven build descriptor
 ├── docs/                             # Architecture Decision Records (ADR 001-011) & specs

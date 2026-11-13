@@ -129,6 +129,7 @@ public class SecurityConfig {
                 "Content-Type",
                 "X-Organization-Id",
                 "X-StockGuard-CSRF",
+                "Idempotency-Key",
                 "Origin",
                 "Accept"
         ));
