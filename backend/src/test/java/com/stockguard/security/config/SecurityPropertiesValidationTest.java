@@ -7,6 +7,7 @@ import org.springframework.mock.env.MockEnvironment;
 
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -131,12 +132,79 @@ class SecurityPropertiesValidationTest {
     }
 
     @Test
+    @DisplayName("Cookie with __Secure- prefix requires secure=true")
+    void secureCookiePrefixRequiresSecureTrue() {
+        properties.getCookie().setName("__Secure-refresh-token");
+        properties.getCookie().setSecure(false);
+        SecurityKeyValidator validator = new SecurityKeyValidator(properties, environment);
+
+        assertThatThrownBy(validator::validateSecurityConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("uses '__Secure-' prefix but secure flag is false");
+
+        assertThat(properties.getCookie().isSecurePrefixValid()).isFalse();
+
+        properties.getCookie().setSecure(true);
+        assertThatCode(validator::validateSecurityConfiguration).doesNotThrowAnyException();
+        assertThat(properties.getCookie().isSecurePrefixValid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Cookie with __Host- prefix requires secure=true, path='/' and no domain")
+    void hostCookiePrefixValidation() {
+        properties.getCookie().setName("__Host-refresh-token");
+        properties.getCookie().setSecure(false);
+        properties.getCookie().setPath("/");
+        properties.getCookie().setDomain(null);
+        SecurityKeyValidator validator = new SecurityKeyValidator(properties, environment);
+
+        // Fails when secure is false
+        assertThatThrownBy(validator::validateSecurityConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("uses '__Host-' prefix but secure flag is false");
+        assertThat(properties.getCookie().isHostPrefixValid()).isFalse();
+
+        // Fails when path is not "/"
+        properties.getCookie().setSecure(true);
+        properties.getCookie().setPath("/api/auth");
+        assertThatThrownBy(validator::validateSecurityConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("uses '__Host-' prefix but path is not '/'");
+        assertThat(properties.getCookie().isHostPrefixValid()).isFalse();
+
+        // Fails when domain is present
+        properties.getCookie().setPath("/");
+        properties.getCookie().setDomain("stockguard.com");
+        assertThatThrownBy(validator::validateSecurityConfiguration)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("uses '__Host-' prefix but domain must not be set");
+        assertThat(properties.getCookie().isHostPrefixValid()).isFalse();
+
+        // Succeeds when all __Host- invariants are met
+        properties.getCookie().setDomain(null);
+        assertThatCode(validator::validateSecurityConfiguration).doesNotThrowAnyException();
+        assertThat(properties.getCookie().isHostPrefixValid()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Standard cookie without prefixes passes validation without prefix constraints")
+    void standardCookiePassesWithoutPrefixConstraints() {
+        properties.getCookie().setName("stockguard_refresh");
+        properties.getCookie().setSecure(false);
+        properties.getCookie().setPath("/api/auth");
+        SecurityKeyValidator validator = new SecurityKeyValidator(properties, environment);
+
+        assertThatCode(validator::validateSecurityConfiguration).doesNotThrowAnyException();
+        assertThat(properties.getCookie().isSecurePrefixValid()).isTrue();
+        assertThat(properties.getCookie().isHostPrefixValid()).isTrue();
+    }
+
+    @Test
     @DisplayName("Invalid JWT key configuration halts Spring Boot application startup")
     void invalidConfigurationHaltsStartup() {
         org.springframework.boot.test.context.runner.ApplicationContextRunner contextRunner =
                 new org.springframework.boot.test.context.runner.ApplicationContextRunner()
-                        .withConfiguration(org.springframework.boot.autoconfigure.AutoConfigurations.of(InterimSecurityConfig.class))
-                        .withUserConfiguration(SecurityKeyValidator.class)
+                        .withUserConfiguration(TestSecurityPropertiesConfig.class, SecurityKeyValidator.class)
                         .withPropertyValues(
                                 "stockguard.security.jwt.active-key.id=sg-test",
                                 "stockguard.security.jwt.active-key.secret=c2hvcnQ=", // 5 bytes
@@ -151,4 +219,8 @@ class SecurityPropertiesValidationTest {
                     .hasRootCauseMessage("JWT secret for active key [sg-test] contains 5 bytes. HS256 requires at least 32 bytes (256 bits) of entropy.");
         });
     }
+
+    @org.springframework.context.annotation.Configuration
+    @org.springframework.boot.context.properties.EnableConfigurationProperties(SecurityProperties.class)
+    static class TestSecurityPropertiesConfig {}
 }

@@ -197,6 +197,35 @@ public class SecurityProperties {
         @NotBlank
         private String sameSite = "Strict";
 
+        private String domain;
+
+        @jakarta.validation.constraints.AssertTrue(message = "Cookie names starting with '__Secure-' require secure=true")
+        public boolean isSecurePrefixValid() {
+            if (name != null && name.startsWith("__Secure-")) {
+                return secure;
+            }
+            return true;
+        }
+
+        @jakarta.validation.constraints.AssertTrue(message = "Cookie names starting with '__Host-' require secure=true, path='/', and no domain")
+        public boolean isHostPrefixValid() {
+            if (name != null && name.startsWith("__Host-")) {
+                boolean isSecure = secure;
+                boolean isRootPath = "/".equals(path);
+                boolean hasNoDomain = (domain == null || domain.isBlank());
+                return isSecure && isRootPath && hasNoDomain;
+            }
+            return true;
+        }
+
+        public String getDomain() {
+            return domain;
+        }
+
+        public void setDomain(String domain) {
+            this.domain = domain;
+        }
+
         public String getName() {
             return name;
         }
@@ -245,6 +274,20 @@ public class SecurityProperties {
 
         @Min(1)
         private int refreshPermitsPerMinute = 20;
+
+        /**
+         * Optional list of trusted upstream proxy IP addresses (e.g. reverse proxy / load balancer).
+         * If empty, X-Forwarded-For headers are never trusted and request.getRemoteAddr() is used.
+         */
+        private List<String> trustedProxies = new java.util.ArrayList<>();
+
+        public List<String> getTrustedProxies() {
+            return trustedProxies;
+        }
+
+        public void setTrustedProxies(List<String> trustedProxies) {
+            this.trustedProxies = trustedProxies;
+        }
 
         public int getLoginPermitsPerMinute() {
             return loginPermitsPerMinute;

@@ -105,9 +105,42 @@ public class SecurityKeyValidator implements ApplicationRunner, InitializingBean
             }
         }
 
+        // 4. Validate Cookie Security Configuration
+        validateCookieConfiguration();
+
         int retiringCount = (retiringKeys != null) ? retiringKeys.size() : 0;
         log.info("JWT cryptographic configuration successfully validated. ActiveKeyId: '{}', RetiringKeys: {}",
                 activeKeyId, retiringCount);
+    }
+
+    public void validateCookieConfiguration() {
+        SecurityProperties.Cookie cookie = securityProperties.getCookie();
+        if (cookie == null) {
+            return;
+        }
+
+        String name = cookie.getName();
+        if (name == null || name.isBlank()) {
+            throw new IllegalStateException("Cookie name (stockguard.security.cookie.name) must not be blank.");
+        }
+
+        if (name.startsWith("__Secure-")) {
+            if (!cookie.isSecure()) {
+                throw new IllegalStateException("Cookie [" + name + "] uses '__Secure-' prefix but secure flag is false.");
+            }
+        }
+
+        if (name.startsWith("__Host-")) {
+            if (!cookie.isSecure()) {
+                throw new IllegalStateException("Cookie [" + name + "] uses '__Host-' prefix but secure flag is false.");
+            }
+            if (!"/".equals(cookie.getPath())) {
+                throw new IllegalStateException("Cookie [" + name + "] uses '__Host-' prefix but path is not '/'. Current path: " + cookie.getPath());
+            }
+            if (cookie.getDomain() != null && !cookie.getDomain().isBlank()) {
+                throw new IllegalStateException("Cookie [" + name + "] uses '__Host-' prefix but domain must not be set. Current domain: " + cookie.getDomain());
+            }
+        }
     }
 
     private byte[] validateBase64Secret(String secret, String keyDescription) {

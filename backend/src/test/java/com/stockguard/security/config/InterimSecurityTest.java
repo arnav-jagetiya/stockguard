@@ -14,6 +14,7 @@ import org.springframework.web.context.WebApplicationContext;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -41,17 +42,19 @@ class InterimSecurityTest {
     }
 
     @Test
-    @DisplayName("Application routes reject access with 403 and DO NOT expose HTTP Basic challenge (WWW-Authenticate)")
+    @DisplayName("Application routes reject unauthenticated access with 401 JSON and DO NOT expose HTTP Basic challenge")
     void protectedRoutesRejectWithoutHttpBasicChallenge() throws Exception {
         mockMvc.perform(get("/api/products"))
-                .andExpect(status().isForbidden())
-                .andExpect(header().doesNotExist("WWW-Authenticate"));
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.status").value(401));
     }
 
     @Test
     @DisplayName("Application routes DO NOT expose default Spring HTML form login")
     void protectedRoutesDoNotReturnHtmlFormLogin() throws Exception {
         mockMvc.perform(get("/login").accept(MediaType.TEXT_HTML))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }
