@@ -1,0 +1,71 @@
+# Production profile for STOCKGUARD
+#
+# MANDATORY PRODUCTION REQUIREMENTS:
+# 1. Database runtime credentials MUST be provided via environment variables:
+#    - SPRING_DATASOURCE_URL
+#    - SPRING_DATASOURCE_USERNAME (runtime role: stockguard_app)
+#    - SPRING_DATASOURCE_PASSWORD
+# 2. Flyway migration credentials MUST be provided via environment variables:
+#    - FLYWAY_URL
+#    - FLYWAY_USER (migration owner role: stockguard_owner)
+#    - FLYWAY_PASSWORD
+# 3. JWT active signing key MUST be provided via environment variable:
+#    - STOCKGUARD_JWT_ACTIVE_SECRET (cryptographically random 256-bit Base64 string)
+# 4. CORS allowed origins MUST be explicitly configured (no wildcards):
+#    - STOCKGUARD_CORS_ALLOWED_ORIGINS
+# 5. Upstream reverse proxy / load balancer IP or CIDR block MUST be configured in trusted-proxies:
+#    - STOCKGUARD_TRUSTED_PROXIES
+
+spring:
+  datasource:
+    hikari:
+      pool-name: StockGuardProdHikariPool
+      minimum-idle: ${DB_POOL_MIN_IDLE:10}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:30}
+      connection-timeout: ${DB_POOL_TIMEOUT_MS:30000}
+      idle-timeout: ${DB_POOL_IDLE_TIMEOUT_MS:600000}
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:1800000}
+
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+server:
+  shutdown: graceful
+
+management:
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:never}
+
+stockguard:
+  security:
+    jwt:
+      active-key:
+        id: ${STOCKGUARD_JWT_ACTIVE_KEY_ID:sg-prod-v1}
+        secret: ${STOCKGUARD_JWT_ACTIVE_SECRET}
+      access-token-expiration-minutes: ${STOCKGUARD_ACCESS_TOKEN_EXPIRATION_MINUTES:15}
+      issuer: ${STOCKGUARD_JWT_ISSUER:stockguard-platform}
+      audience: ${STOCKGUARD_JWT_AUDIENCE:stockguard-api}
+    cookie:
+      name: ${STOCKGUARD_COOKIE_NAME:__Secure-stockguard_refresh}
+      path: "/api/auth"
+      secure: true
+      http-only: true
+      same-site: "Strict"
+    cors:
+      allowed-origins: ${STOCKGUARD_CORS_ALLOWED_ORIGINS:https://app.stockguard.com}
+    rate-limit:
+      login-permits-per-minute: ${STOCKGUARD_RATE_LIMIT_LOGIN:5}
+      refresh-permits-per-minute: ${STOCKGUARD_RATE_LIMIT_REFRESH:20}
+      trusted-proxies: ${STOCKGUARD_TRUSTED_PROXIES:}
+
+logging:
+  level:
+    root: INFO
+    com.stockguard: INFO
+    org.springframework.web: WARN
+    org.springframework.security: INFO
+    org.hibernate: WARN

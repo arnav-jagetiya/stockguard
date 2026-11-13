@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -137,7 +138,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             return remoteAddr;
         }
 
-        if (!trustedProxies.contains(remoteAddr.trim())) {
+        if (!isTrustedProxy(remoteAddr, trustedProxies)) {
             return remoteAddr;
         }
 
@@ -152,6 +153,68 @@ public class RateLimitingFilter extends OncePerRequestFilter {
         }
 
         return remoteAddr;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr, List<String> trustedProxies) {
+        String trimmedAddr = remoteAddr.trim();
+        for (String proxyEntry : trustedProxies) {
+            if (proxyEntry == null || proxyEntry.isBlank()) {
+                continue;
+            }
+            String entry = proxyEntry.trim();
+            if (entry.equalsIgnoreCase(trimmedAddr)) {
+                return true;
+            }
+            if (entry.contains("/") && matchesCidr(trimmedAddr, entry)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean matchesCidr(String ipStr, String cidrStr) {
+        try {
+            int slashIdx = cidrStr.indexOf('/');
+            if (slashIdx == -1) {
+                return false;
+            }
+            String baseIp = cidrStr.substring(0, slashIdx).trim();
+            int prefixLen = Integer.parseInt(cidrStr.substring(slashIdx + 1).trim());
+
+            InetAddress clientAddr = InetAddress.getByName(ipStr);
+            InetAddress subnetAddr = InetAddress.getByName(baseIp);
+
+            byte[] clientBytes = clientAddr.getAddress();
+            byte[] subnetBytes = subnetAddr.getAddress();
+
+            if (clientBytes.length != subnetBytes.length) {
+                return false;
+            }
+
+            int maxPrefix = clientBytes.length * 8;
+            if (prefixLen < 0 || prefixLen > maxPrefix) {
+                return false;
+            }
+
+            int fullBytes = prefixLen / 8;
+            for (int i = 0; i < fullBytes; i++) {
+                if (clientBytes[i] != subnetBytes[i]) {
+                    return false;
+                }
+            }
+
+            int remainderBits = prefixLen % 8;
+            if (remainderBits > 0) {
+                int mask = (0xFF << (8 - remainderBits)) & 0xFF;
+                if ((clientBytes[fullBytes] & mask) != (subnetBytes[fullBytes] & mask)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private boolean isValidIp(String ip) {

@@ -129,4 +129,30 @@ class RateLimitingFilterTest {
         String resolved = filter.resolveClientIp(request);
         assertThat(resolved).isEqualTo("10.0.0.1");
     }
+
+    @Test
+    @DisplayName("Trusted proxy matching CIDR subnet allows client IP resolution from X-Forwarded-For")
+    void trustedProxyCidrSubnetAllowsClientIpResolution() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("10.0.0.0/8", "172.16.0.0/12"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("10.254.1.50"); // In 10.0.0.0/8 subnet
+        request.addHeader("X-Forwarded-For", "203.0.113.195, 10.254.1.50");
+
+        String resolved = filter.resolveClientIp(request);
+        assertThat(resolved).isEqualTo("203.0.113.195");
+    }
+
+    @Test
+    @DisplayName("Remote address outside trusted proxy CIDR subnet fails closed and ignores X-Forwarded-For")
+    void remoteAddressOutsideCidrSubnetFailsClosed() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("10.0.0.0/8"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("192.168.1.1"); // NOT in 10.0.0.0/8
+        request.addHeader("X-Forwarded-For", "203.0.113.195, 192.168.1.1");
+
+        String resolved = filter.resolveClientIp(request);
+        assertThat(resolved).isEqualTo("192.168.1.1");
+    }
 }
