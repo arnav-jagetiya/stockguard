@@ -31,6 +31,7 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 | **Milestone 4 — Phase 4A** | Security Hardening, Production Config, Probes, Global Error Handling | ✅ Complete |
 | **Milestone 4 — Phase 4B** | Final Regression, Release Readiness & Baseline Audit | ✅ Complete |
 | **Milestone 5A** | Product Catalog, Warehouse Management & Core Inventory Engine | ✅ Complete |
+| **Milestone 5B** | Advanced Inventory Operations (Multi-Item Inter-Warehouse Transfers) | ✅ Complete |
 
 ---
 
@@ -255,12 +256,44 @@ $$\text{Available} = \text{On Hand} - \text{Reserved}$$
   * Multi-item or multi-facility inventory mutations sort locks strictly by:
     $$\text{product\_id ASC}, \text{warehouse\_id ASC}$$
   * Row locks are acquired via `SELECT ... FOR UPDATE` using Spring JDBC before any ledger insertions or balance modifications occur.
-  * *Concurrency Scope & Deadlock Semantics*: Canonical ordering reduces deadlocks among inventory balance row locks. It does not eliminate cross-table deadlocks (e.g. between parent tables and inventory balances) or every possible database deadlock. Transactional deadlock retry behavior remains a separate concern if not implemented at the application edge.
+  * *Concurrency Scope & Deadlock Semantics*: Canonical locking establishes deterministic acquisition order for the specified warehouse, product and inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not guarantee system-wide deadlock freedom. Eligible transient database failures are handled through fresh-transaction retries.
 * **Database Ledger Immutability (ADR-002)**:
   * Triggers defined in `V2__enforce_append_only_ledgers.sql` reject all `UPDATE`, `DELETE`, and `TRUNCATE` operations on `inventory_ledger_entries`. Ledger history is append-only and cryptographically auditable.
 * **Distributed Idempotency (ADR-007)**:
   * Critical write APIs support the `Idempotency-Key` HTTP header.
   * Uses `idempotency_records` table with row-level locks and SHA-256 payload hashing to prevent duplicate mutations, detect in-flight concurrent execution, and safely replay prior responses for identical retries.
+
+### 4. Advanced Inventory Operations: Warehouse Transfers (Milestone 5B)
+
+STOCKGUARD supports immediate, atomic multi-item inter-warehouse inventory transfers without intermediate staging states or phantom stock drift:
+
+* **Transfer REST APIs (`/api/transfers`)**:
+  * `POST /api/transfers`: Executes an atomic multi-item transfer between two distinct warehouses within the current tenant organization. Accepts `sourceWarehouseId`, `destinationWarehouseId`, `notes`, and a non-empty list of items (`productId`, `quantity`).
+  * `GET /api/transfers`: Lists recent transfers within the current tenant organization (supports optional `warehouseId` filter and `limit` parameter, default 50, max 200).
+  * `GET /api/transfers/{transferId}`: Retrieves specific transfer details, line items, and associated inventory transaction reference.
+  * *Required permissions*: `transfer:execute` (`ADMIN`, `MANAGER`, `OPERATOR`), `transfer:view` (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`).
+
+* **Transfer Transaction & Integrity Invariants**:
+  1. **Facility Validation**: Rejects transfers if source or destination warehouse is not found or is inactive.
+  2. **Distinct Facilities**: Source and destination warehouses must be different (`chk_transfers_distinct_warehouses`).
+  3. **Product Validation**: All products in transfer lines must exist, belong to the tenant, and be active.
+  4. **Strict Positivity & Uniqueness**: Item quantities must be strictly positive (`quantity > 0`), and duplicate product IDs within a single transfer request are rejected.
+  5. **Destination Row Pre-Creation**: Balance rows at the destination warehouse are idempotently pre-created (`ensureBalanceRowExists` via `INSERT ... ON CONFLICT DO NOTHING`) prior to locking, ensuring transfers succeed even for products stocked at a facility for the first time.
+  6. **Canonical Balance Locking (ADR-003)**: Row-level locks (`SELECT ... FOR UPDATE`) are acquired across all source and destination balances in global canonical order:
+     $$\text{product\_id ASC}, \text{warehouse\_id ASC}$$
+  7. **Reserved Stock Protection**: Transfers strictly verify available stock:
+     $$\text{Available} = \text{On Hand} - \text{Reserved} \ge \text{Quantity}$$
+     Reserved stock allocated to customer orders is never consumed by transfers.
+  8. **Physical Stock Conservation**: Source balance is debited (`on_hand -= quantity`) and destination balance is credited (`on_hand += quantity`) atomically; net physical stock across facilities is strictly conserved ($\Delta \text{OnHand} = 0$).
+  9. **Header & Item Persistence**: Creates one `transfers` header and $N$ `transfer_items` rows.
+  10. **Inventory Transaction Linking**: Creates one `inventory_transactions` header with `transaction_type = 'TRANSFER'`, `reference_type = 'TRANSFER'`, and `reference_id = transfer.id`.
+  11. **Deterministic Dual-Delta Ledger Entries**: Creates exactly $2N$ sequential ledger entries:
+      * Line $j$ OUT: `entry_number = 2j - 1`, $\Delta \text{on\_hand} = -\text{qty}$, $\Delta \text{reserved} = 0$, `transfer_direction = 'OUT'`.
+      * Line $j$ IN: `entry_number = 2j`, $\Delta \text{on\_hand} = +\text{qty}$, $\Delta \text{reserved} = 0$, `transfer_direction = 'IN'`.
+      * All transfer ledger entries enforce $\Delta \text{reserved} = 0$.
+  12. **Pre-Commit Integrity Verification**: Verifies pair completeness ($1 \text{ OUT} + 1 \text{ IN}$ per item), matching warehouses, correct products, opposite deltas, and zero net delta before transaction commit.
+  13. **Distributed Idempotency & Concurrency Retries**: Integrates with `IdempotencyService`. Concurrent identical requests wait for in-flight execution and replay the committed response; payload mismatches return HTTP 409 Conflict. If transient PostgreSQL deadlocks or serialization failures occur (`40P01`, `40001`, `55P03`), the service automatically retries in a fresh transaction with jittered backoff.
+  14. **Deadlock Limitations Notice**: Canonical locking establishes deterministic acquisition order for the specified warehouse, product and inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not guarantee system-wide deadlock freedom. Eligible transient database failures are handled through fresh-transaction retries.
 
 ---
 
@@ -296,13 +329,14 @@ stockguard/
 │   │   │   │   ├── product/          # Product catalog and normalized SKU management
 │   │   │   │   ├── security/         # JWT, sessions, filters, RBAC, exception handlers
 │   │   │   │   ├── shared/           # Common exceptions and distributed idempotency engine
+│   │   │   │   ├── transfer/         # Multi-item inter-warehouse transfers, DTOs, service, controller
 │   │   │   │   └── warehouse/        # Facility management, priority routing, codes
 │   │   │   └── resources/
 │   │   │       ├── db/migration/     # Flyway immutable migrations (V1, V2, V3)
 │   │   │       ├── application.yml   # Base application configuration
 │   │   │       ├── application-dev.yml # Local development overrides
 │   │   │       └── application-prod.yml # Hardened production configuration
-│   │   └── test/                     # 205+ unit, integration, and security tests
+│   │   └── test/                     # 245+ unit, integration, and security tests
 │   ├── docker-compose.yml            # Local PostgreSQL 16 container definition
 │   └── pom.xml                       # Maven build descriptor
 ├── docs/                             # Architecture Decision Records (ADR 001-011) & specs

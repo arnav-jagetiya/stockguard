@@ -62,8 +62,10 @@ public class IdempotencyService {
         return mapper;
     }
 
+    public record IdempotentResponse<T>(int statusCode, T body) {}
+
     /**
-     * Executes the supplied action idempotently.
+     * Executes the supplied action idempotently with an intended response HTTP status code.
      *
      * @param organizationId   Current tenant organization UUID
      * @param principalId      Authenticated user UUID
@@ -71,23 +73,25 @@ public class IdempotencyService {
      * @param idempotencyKey   Client-provided header key (can be null/empty, in which case logic runs normally)
      * @param requestPayload   Object representing the request to compute the SHA-256 hash
      * @param responseType     Class of the expected response object
+     * @param intendedStatus   HTTP status code to persist and return on replay (e.g. 200 or 201)
      * @param action           The business logic to execute if this is the first execution
      * @param <T>              Type of the response payload
-     * @return Execution response (either freshly computed or replayed from stored record)
+     * @return Execution response with status code (either freshly computed or replayed from stored record)
      */
     @Transactional
-    public <T> T execute(
+    public <T> IdempotentResponse<T> executeWithStatus(
             UUID organizationId,
             UUID principalId,
             String operationScope,
             String idempotencyKey,
             Object requestPayload,
             Class<T> responseType,
+            int intendedStatus,
             Supplier<T> action
     ) {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             // No idempotency key supplied: execute normally without idempotency record
-            return action.get();
+            return new IdempotentResponse<>(intendedStatus, action.get());
         }
 
         String trimmedKey = idempotencyKey.trim();
@@ -127,8 +131,8 @@ public class IdempotencyService {
         if (insertedId != null) {
             // First execution: execute business logic
             T response = action.get();
-            persistResponse(insertedId, organizationId, 200, response);
-            return response;
+            persistResponse(insertedId, organizationId, intendedStatus, response);
+            return new IdempotentResponse<>(intendedStatus, response);
         }
 
         // 2. Conflict encountered: lock and inspect the existing record
@@ -157,8 +161,8 @@ public class IdempotencyService {
                                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, NOW(), NOW() + INTERVAL '7 days')
                                 """,
                                 fallbackId, organizationId, PRINCIPAL_TYPE_USER, principalId,
-                                operationScope, trimmedKey, requestHash, 200, toJson(fresh));
-                        return fresh;
+                                operationScope, trimmedKey, requestHash, intendedStatus, toJson(fresh));
+                        return new IdempotentResponse<>(intendedStatus, fresh);
                     }
 
                     String existingHash = rs.getString("request_hash");
@@ -176,8 +180,8 @@ public class IdempotencyService {
                     }
 
                     String responseBodyJson = rs.getString("response_body");
-                    log.info("Replaying idempotently recorded response for key '{}', scope '{}'", trimmedKey, operationScope);
-                    return fromJson(responseBodyJson, responseType);
+                    log.info("Replaying idempotently recorded response for key '{}', scope '{}', status {}", trimmedKey, operationScope, status);
+                    return new IdempotentResponse<>(status, fromJson(responseBodyJson, responseType));
                 },
                 organizationId,
                 PRINCIPAL_TYPE_USER,
@@ -185,6 +189,50 @@ public class IdempotencyService {
                 operationScope,
                 trimmedKey
         );
+    }
+
+    /**
+     * Executes the supplied action idempotently with an intended response HTTP status code.
+     *
+     * @param organizationId   Current tenant organization UUID
+     * @param principalId      Authenticated user UUID
+     * @param operationScope   Action/endpoint identifier (e.g. "INVENTORY_RECEIPT")
+     * @param idempotencyKey   Client-provided header key (can be null/empty, in which case logic runs normally)
+     * @param requestPayload   Object representing the request to compute the SHA-256 hash
+     * @param responseType     Class of the expected response object
+     * @param intendedStatus   HTTP status code to persist and return on replay (e.g. 200 or 201)
+     * @param action           The business logic to execute if this is the first execution
+     * @param <T>              Type of the response payload
+     * @return Execution response (either freshly computed or replayed from stored record)
+     */
+    @Transactional
+    public <T> T execute(
+            UUID organizationId,
+            UUID principalId,
+            String operationScope,
+            String idempotencyKey,
+            Object requestPayload,
+            Class<T> responseType,
+            int intendedStatus,
+            Supplier<T> action
+    ) {
+        return executeWithStatus(organizationId, principalId, operationScope, idempotencyKey, requestPayload, responseType, intendedStatus, action).body();
+    }
+
+    /**
+     * Executes the supplied action idempotently (defaults to HTTP 200).
+     */
+    @Transactional
+    public <T> T execute(
+            UUID organizationId,
+            UUID principalId,
+            String operationScope,
+            String idempotencyKey,
+            Object requestPayload,
+            Class<T> responseType,
+            Supplier<T> action
+    ) {
+        return execute(organizationId, principalId, operationScope, idempotencyKey, requestPayload, responseType, 200, action);
     }
 
     private void persistResponse(UUID recordId, UUID organizationId, int status, Object response) {

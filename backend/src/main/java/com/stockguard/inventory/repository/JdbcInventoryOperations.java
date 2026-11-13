@@ -2,6 +2,8 @@ package com.stockguard.inventory.repository;
 
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.dto.*;
+import com.stockguard.transfer.dto.TransferItemResponse;
+import com.stockguard.transfer.dto.TransferResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Profile;
@@ -79,8 +81,11 @@ public class JdbcInventoryOperations {
     }
 
     /**
-     * Locks multiple balance rows in strictly canonical order: product_id ASC, warehouse_id ASC
-     * per ADR-003 to eliminate circular-wait deadlocks.
+     * Locks multiple balance rows in strictly canonical order: product_id ASC, warehouse_id ASC per ADR-003.
+     * Canonical locking establishes deterministic acquisition order for the specified warehouse, product and
+     * inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not
+     * guarantee system-wide deadlock freedom. Eligible transient database failures are handled through
+     * fresh-transaction retries.
      */
     public List<InventoryBalance> lockAndGetBalances(UUID organizationId, List<ProductWarehouseKey> keys) {
         if (keys == null || keys.isEmpty()) {
@@ -332,6 +337,283 @@ public class JdbcInventoryOperations {
                 discrepancies,
                 Instant.now()
         );
+    }
+
+    /**
+     * Inserts an inter-warehouse transfer header row.
+     */
+    public void insertTransfer(
+            UUID id,
+            UUID organizationId,
+            UUID sourceWarehouseId,
+            UUID destinationWarehouseId,
+            String notes,
+            UUID actorUserId
+    ) {
+        String sql = """
+                INSERT INTO transfers (
+                    id, organization_id, source_warehouse_id, destination_warehouse_id, notes, actor_user_id, completed_at, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, NOW(), NOW()
+                );
+                """;
+        jdbcTemplate.update(sql, id, organizationId, sourceWarehouseId, destinationWarehouseId, notes, actorUserId);
+    }
+
+    /**
+     * Inserts a transfer item line row.
+     */
+    public void insertTransferItem(
+            UUID id,
+            UUID organizationId,
+            UUID transferId,
+            UUID productId,
+            long quantity
+    ) {
+        String sql = """
+                INSERT INTO transfer_items (
+                    id, organization_id, transfer_id, product_id, quantity, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, NOW()
+                );
+                """;
+        jdbcTemplate.update(sql, id, organizationId, transferId, productId, quantity);
+    }
+
+    /**
+     * Inserts a transfer-specific append-only ledger entry with transfer_item_id and transfer_direction ('OUT' or 'IN').
+     */
+    public void insertTransferLedgerEntry(
+            UUID entryId,
+            UUID organizationId,
+            UUID transactionId,
+            int entryNumber,
+            UUID productId,
+            UUID warehouseId,
+            long onHandDelta,
+            long reservedDelta,
+            UUID transferItemId,
+            String transferDirection
+    ) {
+        String sql = """
+                INSERT INTO inventory_ledger_entries (
+                    id, organization_id, transaction_id, entry_number, product_id, warehouse_id,
+                    on_hand_delta, reserved_delta, transfer_item_id, transfer_direction, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?, NOW()
+                );
+                """;
+        jdbcTemplate.update(
+                sql,
+                entryId,
+                organizationId,
+                transactionId,
+                entryNumber,
+                productId,
+                warehouseId,
+                onHandDelta,
+                reservedDelta,
+                transferItemId,
+                transferDirection
+        );
+    }
+
+    /**
+     * Finds a transfer by ID, including its associated items and the related TRANSFER transaction ID.
+     */
+    public Optional<TransferResponse> findTransferById(UUID organizationId, UUID transferId) {
+        String sql = """
+                SELECT t.id, t.organization_id, t.source_warehouse_id, t.destination_warehouse_id,
+                       t.notes, t.actor_user_id, t.created_at, t.completed_at,
+                       tx.id AS transaction_id
+                FROM transfers t
+                LEFT JOIN inventory_transactions tx
+                  ON t.organization_id = tx.organization_id
+                 AND tx.reference_type = 'TRANSFER'
+                 AND tx.reference_id = t.id
+                WHERE t.organization_id = ? AND t.id = ?;
+                """;
+
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+                List<TransferItemResponse> items = getTransferItems(organizationId, transferId);
+                return new TransferResponse(
+                        UUID.fromString(rs.getString("id")),
+                        UUID.fromString(rs.getString("organization_id")),
+                        UUID.fromString(rs.getString("source_warehouse_id")),
+                        UUID.fromString(rs.getString("destination_warehouse_id")),
+                        rs.getString("notes"),
+                        rs.getString("actor_user_id") != null ? UUID.fromString(rs.getString("actor_user_id")) : null,
+                        rs.getTimestamp("created_at").toInstant(),
+                        rs.getTimestamp("completed_at").toInstant(),
+                        rs.getString("transaction_id") != null ? UUID.fromString(rs.getString("transaction_id")) : null,
+                        items
+                );
+            }, organizationId, transferId));
+        } catch (EmptyResultDataAccessException ex) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Retrieves all items belonging to a specific transfer.
+     */
+    public List<TransferItemResponse> getTransferItems(UUID organizationId, UUID transferId) {
+        String sql = """
+                SELECT id, product_id, quantity, created_at
+                FROM transfer_items
+                WHERE organization_id = ? AND transfer_id = ?
+                ORDER BY created_at ASC, id ASC;
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new TransferItemResponse(
+                UUID.fromString(rs.getString("id")),
+                UUID.fromString(rs.getString("product_id")),
+                rs.getLong("quantity"),
+                rs.getTimestamp("created_at").toInstant()
+        ), organizationId, transferId);
+    }
+
+    /**
+     * Lists recent transfers for an organization, optionally filtered by warehouse.
+     */
+    public List<TransferResponse> listRecentTransfers(UUID organizationId, UUID warehouseId, int limit) {
+        String sql;
+        List<Object> params = new ArrayList<>();
+        params.add(organizationId);
+
+        if (warehouseId != null) {
+            sql = """
+                    SELECT t.id, t.organization_id, t.source_warehouse_id, t.destination_warehouse_id,
+                           t.notes, t.actor_user_id, t.created_at, t.completed_at,
+                           tx.id AS transaction_id
+                    FROM transfers t
+                    LEFT JOIN inventory_transactions tx
+                      ON t.organization_id = tx.organization_id
+                     AND tx.reference_type = 'TRANSFER'
+                     AND tx.reference_id = t.id
+                    WHERE t.organization_id = ?
+                      AND (t.source_warehouse_id = ? OR t.destination_warehouse_id = ?)
+                    ORDER BY t.created_at DESC
+                    LIMIT ?;
+                    """;
+            params.add(warehouseId);
+            params.add(warehouseId);
+            params.add(limit);
+        } else {
+            sql = """
+                    SELECT t.id, t.organization_id, t.source_warehouse_id, t.destination_warehouse_id,
+                           t.notes, t.actor_user_id, t.created_at, t.completed_at,
+                           tx.id AS transaction_id
+                    FROM transfers t
+                    LEFT JOIN inventory_transactions tx
+                      ON t.organization_id = tx.organization_id
+                     AND tx.reference_type = 'TRANSFER'
+                     AND tx.reference_id = t.id
+                    WHERE t.organization_id = ?
+                    ORDER BY t.created_at DESC
+                    LIMIT ?;
+                    """;
+            params.add(limit);
+        }
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            UUID xferId = UUID.fromString(rs.getString("id"));
+            List<TransferItemResponse> items = getTransferItems(organizationId, xferId);
+            return new TransferResponse(
+                    xferId,
+                    UUID.fromString(rs.getString("organization_id")),
+                    UUID.fromString(rs.getString("source_warehouse_id")),
+                    UUID.fromString(rs.getString("destination_warehouse_id")),
+                    rs.getString("notes"),
+                    rs.getString("actor_user_id") != null ? UUID.fromString(rs.getString("actor_user_id")) : null,
+                    rs.getTimestamp("created_at").toInstant(),
+                    rs.getTimestamp("completed_at").toInstant(),
+                    rs.getString("transaction_id") != null ? UUID.fromString(rs.getString("transaction_id")) : null,
+                    items
+            );
+        }, params.toArray());
+    }
+
+    public record DetailedLedgerEntry(
+            UUID id,
+            int entryNumber,
+            UUID productId,
+            UUID warehouseId,
+            long onHandDelta,
+            long reservedDelta,
+            UUID transferItemId,
+            String transferDirection,
+            Instant createdAt
+    ) {}
+
+    public List<DetailedLedgerEntry> getDetailedLedgerEntriesForTransaction(UUID organizationId, UUID transactionId) {
+        String sql = """
+                SELECT id, entry_number, product_id, warehouse_id, on_hand_delta, reserved_delta,
+                       transfer_item_id, transfer_direction, created_at
+                FROM inventory_ledger_entries
+                WHERE organization_id = ? AND transaction_id = ?
+                ORDER BY entry_number ASC;
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new DetailedLedgerEntry(
+                UUID.fromString(rs.getString("id")),
+                rs.getInt("entry_number"),
+                UUID.fromString(rs.getString("product_id")),
+                UUID.fromString(rs.getString("warehouse_id")),
+                rs.getLong("on_hand_delta"),
+                rs.getLong("reserved_delta"),
+                rs.getString("transfer_item_id") != null ? UUID.fromString(rs.getString("transfer_item_id")) : null,
+                rs.getString("transfer_direction"),
+                rs.getTimestamp("created_at").toInstant()
+        ), organizationId, transactionId);
+    }
+
+    public record LockedWarehouseInfo(UUID id, String code, boolean active) {}
+    public record LockedProductInfo(UUID id, String sku, boolean active) {}
+
+    /**
+     * Acquires shared locks (FOR SHARE) on warehouses in strictly canonical ascending ID order.
+     * Prevents concurrent deactivations from proceeding while permitting other transfers.
+     */
+    public List<LockedWarehouseInfo> lockAndGetWarehouses(UUID organizationId, UUID warehouseId1, UUID warehouseId2) {
+        List<UUID> sorted = new ArrayList<>(List.of(warehouseId1, warehouseId2));
+        Collections.sort(sorted);
+        String sql = """
+                SELECT id, code, active
+                FROM warehouses
+                WHERE organization_id = ? AND id IN (?, ?)
+                ORDER BY id ASC
+                FOR SHARE;
+                """;
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new LockedWarehouseInfo(
+                UUID.fromString(rs.getString("id")),
+                rs.getString("code"),
+                rs.getBoolean("active")
+        ), organizationId, sorted.get(0), sorted.get(1));
+    }
+
+    /**
+     * Acquires shared locks (FOR SHARE) on products in strictly canonical ascending ID order.
+     * Prevents concurrent deactivations from proceeding while permitting other transfers.
+     */
+    public List<LockedProductInfo> lockAndGetProducts(UUID organizationId, List<UUID> productIds) {
+        if (productIds == null || productIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<UUID> sorted = new ArrayList<>(new HashSet<>(productIds));
+        Collections.sort(sorted);
+        String inSql = String.join(",", Collections.nCopies(sorted.size(), "?"));
+        String sql = "SELECT id, sku, active FROM products WHERE organization_id = ? AND id IN (" + inSql + ") ORDER BY id ASC FOR SHARE";
+
+        List<Object> params = new ArrayList<>();
+        params.add(organizationId);
+        params.addAll(sorted);
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> new LockedProductInfo(
+                UUID.fromString(rs.getString("id")),
+                rs.getString("sku"),
+                rs.getBoolean("active")
+        ), params.toArray());
     }
 
     private static class InventoryBalanceRowMapper implements RowMapper<InventoryBalance> {
