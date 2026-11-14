@@ -1,5 +1,6 @@
 package com.stockguard.inventory.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.domain.ReferenceType;
 import com.stockguard.inventory.domain.TransactionType;
@@ -14,12 +15,14 @@ import com.stockguard.shared.exception.ResourceNotFoundException;
 import com.stockguard.shared.idempotency.IdempotencyService;
 import com.stockguard.warehouse.domain.Warehouse;
 import com.stockguard.warehouse.repository.WarehouseRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -32,19 +35,23 @@ public class InventoryService {
     private final ProductRepository productRepository;
     private final WarehouseRepository warehouseRepository;
     private final IdempotencyService idempotencyService;
+    private final AuditLogService auditLogService;
 
+    @Autowired
     public InventoryService(
             JdbcInventoryOperations jdbcInventoryOperations,
             InventoryBalanceRepository balanceRepository,
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
-            IdempotencyService idempotencyService
+            IdempotencyService idempotencyService,
+            AuditLogService auditLogService
     ) {
-        this.jdbcInventoryOperations = jdbcInventoryOperations;
-        this.balanceRepository = balanceRepository;
-        this.productRepository = productRepository;
-        this.warehouseRepository = warehouseRepository;
-        this.idempotencyService = idempotencyService;
+        this.jdbcInventoryOperations = Objects.requireNonNull(jdbcInventoryOperations, "jdbcInventoryOperations must not be null");
+        this.balanceRepository = Objects.requireNonNull(balanceRepository, "balanceRepository must not be null");
+        this.productRepository = Objects.requireNonNull(productRepository, "productRepository must not be null");
+        this.warehouseRepository = Objects.requireNonNull(warehouseRepository, "warehouseRepository must not be null");
+        this.idempotencyService = Objects.requireNonNull(idempotencyService, "idempotencyService must not be null");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     @Transactional(readOnly = true)
@@ -142,6 +149,18 @@ public class InventoryService {
                             0L
                     );
 
+                    auditLogService.logOpeningBalance(
+                            organizationId,
+                            actorUserId,
+                            request.productId(),
+                            request.warehouseId(),
+                            balance.getOnHand(),
+                            balance.getReserved(),
+                            request.quantity(),
+                            request.notes(),
+                            txId
+                    );
+
                     LedgerEntryDto entryDto = new LedgerEntryDto(
                             entryId,
                             1,
@@ -214,6 +233,19 @@ public class InventoryService {
                             request.warehouseId(),
                             request.quantity(),
                             0L
+                    );
+
+                    auditLogService.logStockReceipt(
+                            organizationId,
+                            actorUserId,
+                            request.productId(),
+                            request.warehouseId(),
+                            balance.getOnHand(),
+                            balance.getReserved(),
+                            request.quantity(),
+                            request.referenceId() != null ? request.referenceId().toString() : null,
+                            request.notes(),
+                            txId
                     );
 
                     LedgerEntryDto entryDto = new LedgerEntryDto(
@@ -302,6 +334,18 @@ public class InventoryService {
                             request.warehouseId(),
                             request.delta(),
                             0L
+                    );
+
+                    auditLogService.logInventoryAdjustment(
+                            organizationId,
+                            actorUserId,
+                            request.productId(),
+                            request.warehouseId(),
+                            balance.getOnHand(),
+                            balance.getReserved(),
+                            request.delta(),
+                            request.reason(),
+                            txId
                     );
 
                     LedgerEntryDto entryDto = new LedgerEntryDto(

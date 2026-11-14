@@ -1,5 +1,6 @@
 package com.stockguard.organization.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.organization.domain.Organization;
 import com.stockguard.organization.domain.OrganizationMembership;
 import com.stockguard.organization.domain.Role;
@@ -7,6 +8,9 @@ import com.stockguard.organization.dto.OrganizationMemberResponse;
 import com.stockguard.organization.exception.CannotDemoteLastAdminException;
 import com.stockguard.organization.repository.OrganizationMembershipRepository;
 import com.stockguard.organization.repository.OrganizationRepository;
+import com.stockguard.security.context.OrganizationContext;
+import com.stockguard.security.context.OrganizationContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +26,7 @@ import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 
 class OrganizationMembershipServiceTest {
 
@@ -32,6 +37,7 @@ class OrganizationMembershipServiceTest {
 
     private StubOrganizationRepository orgRepo;
     private StubOrganizationMembershipRepository membershipRepo;
+    private AuditLogService auditLogService;
     private OrganizationMembershipService service;
 
     @BeforeEach
@@ -46,7 +52,17 @@ class OrganizationMembershipServiceTest {
 
         orgRepo.existingOrgIds.add(orgId);
 
-        service = new OrganizationMembershipService(orgRepo, membershipRepo);
+        auditLogService = mock(AuditLogService.class);
+        service = new OrganizationMembershipService(orgRepo, membershipRepo, auditLogService);
+
+        OrganizationContextHolder.setContext(new OrganizationContext(
+                orgId, adminUserId, Role.ADMIN, Set.of("membership:manage")
+        ));
+    }
+
+    @AfterEach
+    void tearDown() {
+        OrganizationContextHolder.clearContext();
     }
 
     @Test
@@ -176,6 +192,61 @@ class OrganizationMembershipServiceTest {
         Optional<OrganizationMembership> updated = membershipRepo.findByOrganizationIdAndUserId(orgId, operatorUserId);
         assertThat(updated).isPresent();
         assertThat(updated.get().isActive()).isFalse();
+    }
+
+    @Test
+    @DisplayName("addMember throws NullPointerException when actorUserId is null")
+    void addMemberRejectsNullActor() {
+        UUID newUserId = UUID.randomUUID();
+        assertThatThrownBy(() -> service.addMember(orgId, null, newUserId, Role.MANAGER))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("actorUserId must not be null");
+
+        assertThat(membershipRepo.findByOrganizationIdAndUserId(orgId, newUserId)).isEmpty();
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("updateMemberRole throws NullPointerException when actorUserId is null")
+    void updateMemberRoleRejectsNullActor() {
+        OrganizationMembership m = OrganizationMembership.create(orgId, operatorUserId, Role.OPERATOR);
+        membershipRepo.save(m);
+
+        assertThatThrownBy(() -> service.updateMemberRole(orgId, null, operatorUserId, Role.MANAGER))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("actorUserId must not be null");
+
+        OrganizationMembership saved = membershipRepo.findByOrganizationIdAndUserId(orgId, operatorUserId).orElseThrow();
+        assertThat(saved.getRole()).isEqualTo(Role.OPERATOR);
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("deactivateMember throws NullPointerException when actorUserId is null")
+    void deactivateMemberRejectsNullActor() {
+        OrganizationMembership m = OrganizationMembership.create(orgId, operatorUserId, Role.OPERATOR);
+        membershipRepo.save(m);
+
+        assertThatThrownBy(() -> service.deactivateMember(orgId, null, operatorUserId))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("actorUserId must not be null");
+
+        OrganizationMembership saved = membershipRepo.findByOrganizationIdAndUserId(orgId, operatorUserId).orElseThrow();
+        assertThat(saved.isActive()).isTrue();
+        verifyNoInteractions(auditLogService);
+    }
+
+    @Test
+    @DisplayName("addMember via 3-arg overload throws IllegalStateException when context is missing")
+    void addMemberFailsWhenContextMissing() {
+        OrganizationContextHolder.clearContext();
+        UUID newUserId = UUID.randomUUID();
+        assertThatThrownBy(() -> service.addMember(orgId, newUserId, Role.MANAGER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Authenticated actor user ID is required");
+
+        assertThat(membershipRepo.findByOrganizationIdAndUserId(orgId, newUserId)).isEmpty();
+        verifyNoInteractions(auditLogService);
     }
 
     // --- Lightweight Repository Stubs ---

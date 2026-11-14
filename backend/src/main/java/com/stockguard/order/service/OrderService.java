@@ -1,5 +1,6 @@
 package com.stockguard.order.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.repository.JdbcInventoryOperations.ProductWarehouseKey;
 import com.stockguard.order.domain.*;
@@ -46,6 +47,7 @@ public class OrderService {
     private final JdbcReservationOperations jdbcReservationOperations;
     private final IdempotencyService idempotencyService;
     private final PlatformTransactionManager transactionManager;
+    private final AuditLogService auditLogService;
 
     @Autowired
     public OrderService(
@@ -54,7 +56,8 @@ public class OrderService {
             JdbcOrderOperations jdbcOrderOperations,
             JdbcReservationOperations jdbcReservationOperations,
             IdempotencyService idempotencyService,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            AuditLogService auditLogService
     ) {
         this.orderRepository = Objects.requireNonNull(orderRepository, "orderRepository must not be null");
         this.orderItemRepository = Objects.requireNonNull(orderItemRepository, "orderItemRepository must not be null");
@@ -62,6 +65,7 @@ public class OrderService {
         this.jdbcReservationOperations = jdbcReservationOperations;
         this.idempotencyService = Objects.requireNonNull(idempotencyService, "idempotencyService must not be null");
         this.transactionManager = Objects.requireNonNull(transactionManager, "transactionManager must not be null");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     public OrderService(
@@ -69,9 +73,10 @@ public class OrderService {
             OrderItemRepository orderItemRepository,
             JdbcOrderOperations jdbcOrderOperations,
             IdempotencyService idempotencyService,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            AuditLogService auditLogService
     ) {
-        this(orderRepository, orderItemRepository, jdbcOrderOperations, null, idempotencyService, transactionManager);
+        this(orderRepository, orderItemRepository, jdbcOrderOperations, null, idempotencyService, transactionManager, auditLogService);
     }
 
     /**
@@ -192,6 +197,18 @@ public class OrderService {
                     validatedPrice
             );
         }
+
+        auditLogService.logOrderCreated(
+                organizationId,
+                actorUserId,
+                orderId,
+                finalOrderNumber,
+                currency,
+                totalAmount,
+                request.items().size(),
+                request.customerReference(),
+                request.externalOrderReference()
+        );
 
         Instant now = Instant.now();
         return new OrderResponse(
@@ -349,6 +366,14 @@ public class OrderService {
         Order updated = orderRepository.findByIdAndOrganizationId(orderId, organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
 
+        auditLogService.logOrderConfirmed(
+                organizationId,
+                actorUserId,
+                orderId,
+                updated.getOrderNumber(),
+                reservation.id()
+        );
+
         return OrderResponse.fromDomain(updated, itemCount);
     }
 
@@ -429,6 +454,7 @@ public class OrderService {
         // 2. Lock reservation FOR UPDATE
         Optional<LockedReservationInfo> resOpt = jdbcReservationOperations.lockReservationForOrder(organizationId, orderId);
 
+        UUID releaseTxId = null;
         if (resOpt.isPresent()) {
             LockedReservationInfo res = resOpt.get();
             if (!"ACTIVE".equals(res.status())) {
@@ -459,6 +485,7 @@ public class OrderService {
 
                 // Insert inventory transaction header
                 UUID txId = UUID.randomUUID();
+                releaseTxId = txId;
                 jdbcReservationOperations.insertInventoryTransaction(
                         txId, organizationId, "RELEASE", "ORDER", orderId, "Order cancelled: " + orderId, actorUserId
                 );
@@ -496,6 +523,26 @@ public class OrderService {
         int itemCount = orderItemRepository.countByOrganizationIdAndOrderId(organizationId, orderId);
         Order updated = orderRepository.findByIdAndOrganizationId(orderId, organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+        auditLogService.logOrderCancelled(
+                organizationId,
+                actorUserId,
+                orderId,
+                updated.getOrderNumber(),
+                order.status().name(),
+                "Order cancelled",
+                resOpt.isPresent()
+        );
+        if (resOpt.isPresent()) {
+            auditLogService.logReservationReleased(
+                    organizationId,
+                    actorUserId,
+                    resOpt.get().id(),
+                    orderId,
+                    "Order cancelled",
+                    releaseTxId
+            );
+        }
 
         return OrderResponse.fromDomain(updated, itemCount);
     }
@@ -656,6 +703,22 @@ public class OrderService {
         int itemCount = orderItemRepository.countByOrganizationIdAndOrderId(organizationId, orderId);
         Order updated = orderRepository.findByIdAndOrganizationId(orderId, organizationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found: " + orderId));
+
+        auditLogService.logOrderFulfilled(
+                organizationId,
+                actorUserId,
+                orderId,
+                updated.getOrderNumber(),
+                res.id(),
+                txId
+        );
+        auditLogService.logReservationConsumed(
+                organizationId,
+                actorUserId,
+                res.id(),
+                orderId,
+                txId
+        );
 
         return OrderResponse.fromDomain(updated, itemCount);
     }

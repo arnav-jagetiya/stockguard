@@ -16,8 +16,8 @@ public record CreateTransferRequest(
         UUID destinationWarehouseId,
 
         @NotEmpty(message = "Transfer items list cannot be empty")
-        @Valid
-        List<TransferItemRequest> items,
+        @Size(max = 100, message = "Transfer items list must not exceed 100 items")
+        List<@Valid TransferItemRequest> items,
 
         @Size(max = 1000, message = "Notes cannot exceed 1000 characters")
         String notes

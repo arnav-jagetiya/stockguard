@@ -1,7 +1,9 @@
 package com.stockguard.security.handler;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.order.exception.InvalidOrderStateException;
 import com.stockguard.organization.exception.CannotDemoteLastAdminException;
+import com.stockguard.security.context.OrganizationContextHolder;
 import com.stockguard.security.exception.AuthenticationFailedException;
 import com.stockguard.shared.exception.DuplicateResourceException;
 import com.stockguard.shared.exception.InsufficientStockException;
@@ -11,6 +13,7 @@ import com.stockguard.shared.idempotency.IdempotencyConflictException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -33,6 +36,17 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public GlobalExceptionHandler(AuditLogService auditLogService) {
+        this.auditLogService = auditLogService;
+    }
+
+    public GlobalExceptionHandler() {
+        this(null);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(
@@ -109,6 +123,22 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("Access denied for URI {}: {}", request.getRequestURI(), ex.getMessage());
+
+        OrganizationContextHolder.getContext().ifPresent(ctx -> {
+            try {
+                if (auditLogService != null) {
+                    auditLogService.logAccessDenied(
+                            ctx.organizationId(),
+                            ctx.userId(),
+                            request.getMethod() + " " + request.getRequestURI(),
+                            ex.getMessage()
+                    );
+                }
+            } catch (Exception auditEx) {
+                log.warn("Failed to record access denied audit event: {}", auditEx.getMessage());
+            }
+        });
+
         return buildErrorResponse(
                 HttpStatus.FORBIDDEN,
                 "Forbidden",

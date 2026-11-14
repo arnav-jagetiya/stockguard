@@ -1,5 +1,6 @@
 package com.stockguard.transfer.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.domain.ReferenceType;
 import com.stockguard.inventory.domain.TransactionType;
@@ -15,6 +16,7 @@ import com.stockguard.warehouse.domain.Warehouse;
 import com.stockguard.warehouse.repository.WarehouseRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -42,19 +44,23 @@ public class TransferService {
     private final WarehouseRepository warehouseRepository;
     private final IdempotencyService idempotencyService;
     private final PlatformTransactionManager transactionManager;
+    private final AuditLogService auditLogService;
 
+    @Autowired
     public TransferService(
             JdbcInventoryOperations jdbcInventoryOperations,
             ProductRepository productRepository,
             WarehouseRepository warehouseRepository,
             IdempotencyService idempotencyService,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            AuditLogService auditLogService
     ) {
         this.jdbcInventoryOperations = Objects.requireNonNull(jdbcInventoryOperations, "jdbcInventoryOperations must not be null");
         this.productRepository = Objects.requireNonNull(productRepository, "productRepository must not be null");
         this.warehouseRepository = Objects.requireNonNull(warehouseRepository, "warehouseRepository must not be null");
         this.idempotencyService = Objects.requireNonNull(idempotencyService, "idempotencyService must not be null");
         this.transactionManager = Objects.requireNonNull(transactionManager, "transactionManager must not be null");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     public TransferResponse getTransfer(UUID organizationId, UUID transferId) {
@@ -316,6 +322,22 @@ public class TransferService {
                 request.destinationWarehouseId(),
                 createdItemsInfo,
                 createdLedgers
+        );
+
+        // 10. Audit logging within the same physical transaction
+        List<Map<String, Object>> itemSummaries = new ArrayList<>(sortedItems.size());
+        for (TransferItemRequest item : sortedItems) {
+            itemSummaries.add(Map.of("productId", item.productId().toString(), "quantity", item.quantity()));
+        }
+        auditLogService.logTransferExecuted(
+                organizationId,
+                actorUserId,
+                transferId,
+                request.sourceWarehouseId(),
+                request.destinationWarehouseId(),
+                sortedItems.size(),
+                transactionId,
+                itemSummaries
         );
 
         return new TransferResponse(

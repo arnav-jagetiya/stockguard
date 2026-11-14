@@ -1,5 +1,6 @@
 package com.stockguard.reservation.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.repository.JdbcInventoryOperations.ProductWarehouseKey;
 import com.stockguard.order.domain.OrderItem;
@@ -61,6 +62,7 @@ public class ReservationService {
     private final IdempotencyService idempotencyService;
     private final PlatformTransactionManager transactionManager;
     private final long defaultTtlMinutes;
+    private final AuditLogService auditLogService;
 
     @Autowired
     public ReservationService(
@@ -70,7 +72,8 @@ public class ReservationService {
             OrderItemRepository orderItemRepository,
             IdempotencyService idempotencyService,
             PlatformTransactionManager transactionManager,
-            ReservationProperties reservationProperties
+            ReservationProperties reservationProperties,
+            AuditLogService auditLogService
     ) {
         this.jdbcReservationOperations = Objects.requireNonNull(jdbcReservationOperations, "jdbcReservationOperations must not be null");
         this.reservationRepository = Objects.requireNonNull(reservationRepository, "reservationRepository must not be null");
@@ -83,6 +86,7 @@ public class ReservationService {
             throw new IllegalArgumentException("stockguard.reservation.default-ttl-minutes must be strictly greater than zero");
         }
         this.defaultTtlMinutes = reservationProperties.getDefaultTtlMinutes();
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     public ReservationService(
@@ -92,7 +96,8 @@ public class ReservationService {
             OrderItemRepository orderItemRepository,
             IdempotencyService idempotencyService,
             PlatformTransactionManager transactionManager,
-            long defaultTtlMinutes
+            long defaultTtlMinutes,
+            AuditLogService auditLogService
     ) {
         this.jdbcReservationOperations = Objects.requireNonNull(jdbcReservationOperations, "jdbcReservationOperations must not be null");
         this.reservationRepository = Objects.requireNonNull(reservationRepository, "reservationRepository must not be null");
@@ -104,6 +109,7 @@ public class ReservationService {
             throw new IllegalArgumentException("stockguard.reservation.default-ttl-minutes must be strictly greater than zero");
         }
         this.defaultTtlMinutes = defaultTtlMinutes;
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     public ReservationResponse getReservation(UUID organizationId, UUID reservationId) {
@@ -383,6 +389,20 @@ public class ReservationService {
                     UUID.randomUUID(), organizationId, txId, entryNumber++, key.productId(), key.warehouseId(), 0L, reservedDelta
             );
         }
+
+        long totalReservedQty = plannedAllocations.stream()
+                .mapToLong(PlannedAllocation::quantity)
+                .sum();
+        auditLogService.logReservationCreated(
+                organizationId,
+                actorUserId,
+                reservationId,
+                orderId,
+                plannedAllocations.size(),
+                totalReservedQty,
+                dbExpiresAt,
+                txId
+        );
 
         return new ReservationResponse(
                 reservationId,

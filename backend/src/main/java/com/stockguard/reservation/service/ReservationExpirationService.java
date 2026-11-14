@@ -1,5 +1,6 @@
 package com.stockguard.reservation.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.inventory.domain.InventoryBalance;
 import com.stockguard.inventory.repository.JdbcInventoryOperations.ProductWarehouseKey;
 import com.stockguard.order.domain.OrderStatus;
@@ -43,18 +44,21 @@ public class ReservationExpirationService {
     private final JdbcOrderOperations jdbcOrderOperations;
     private final ReservationProperties reservationProperties;
     private final PlatformTransactionManager transactionManager;
+    private final AuditLogService auditLogService;
 
     @Autowired
     public ReservationExpirationService(
             JdbcReservationOperations jdbcReservationOperations,
             JdbcOrderOperations jdbcOrderOperations,
             ReservationProperties reservationProperties,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            AuditLogService auditLogService
     ) {
-        this.jdbcReservationOperations = jdbcReservationOperations;
-        this.jdbcOrderOperations = jdbcOrderOperations;
-        this.reservationProperties = reservationProperties;
-        this.transactionManager = transactionManager;
+        this.jdbcReservationOperations = Objects.requireNonNull(jdbcReservationOperations, "jdbcReservationOperations must not be null");
+        this.jdbcOrderOperations = Objects.requireNonNull(jdbcOrderOperations, "jdbcOrderOperations must not be null");
+        this.reservationProperties = Objects.requireNonNull(reservationProperties, "reservationProperties must not be null");
+        this.transactionManager = Objects.requireNonNull(transactionManager, "transactionManager must not be null");
+        this.auditLogService = Objects.requireNonNull(auditLogService, "auditLogService must not be null");
     }
 
     public enum CandidateResultType {
@@ -243,6 +247,7 @@ public class ReservationExpirationService {
         List<LockedAllocationInfo> allocations =
                 jdbcReservationOperations.getReservationAllocations(organizationId, res.id());
 
+        UUID releaseTxId = null;
         if (!allocations.isEmpty()) {
             // Aggregate quantities by product-warehouse
             Map<ProductWarehouseKey, Long> totalReservedByPw = new LinkedHashMap<>();
@@ -279,6 +284,7 @@ public class ReservationExpirationService {
 
             // 6. Insert inventory transaction header (RELEASE)
             UUID txId = UUID.randomUUID();
+            releaseTxId = txId;
             jdbcReservationOperations.insertInventoryTransaction(
                     txId, organizationId, "RELEASE", "ORDER", orderId, "Reservation expired for order " + orderId, null
             );
@@ -304,6 +310,9 @@ public class ReservationExpirationService {
 
         // 9. Mark order EXPIRED
         jdbcOrderOperations.updateOrderStatus(organizationId, orderId, OrderStatus.EXPIRED);
+
+        // 10. Audit logging using system actor semantics (actor is null for background worker)
+        auditLogService.logReservationExpired(organizationId, res.id(), orderId, releaseTxId);
 
         log.debug("Successfully expired order {} and reservation {}", orderId, res.id());
         return CandidateExecutionResult.success(orderId);

@@ -104,6 +104,9 @@ class OrderCoreIntegrationTest {
     @Autowired
     private OrderItemRepository orderItemRepository;
 
+    @Autowired
+    private com.stockguard.audit.service.AuditLogService auditLogService;
+
     private UUID orgId;
     private UUID actorUserId;
     private Product product1;
@@ -312,7 +315,8 @@ class OrderCoreIntegrationTest {
                 orderItemRepository,
                 collisionJdbcOps,
                 idempotencyService,
-                transactionManager
+                transactionManager,
+                auditLogService
         );
 
         String idemKey = "test-collision-retry-" + UUID.randomUUID();

@@ -51,6 +51,7 @@ public class OrganizationMembershipController {
         OrganizationContext context = OrganizationContextHolder.requireContext();
         OrganizationMemberResponse member = membershipService.addMember(
                 context.organizationId(),
+                context.userId(),
                 request.userId(),
                 request.role()
         );
@@ -66,6 +67,7 @@ public class OrganizationMembershipController {
         OrganizationContext context = OrganizationContextHolder.requireContext();
         OrganizationMemberResponse updated = membershipService.updateMemberRole(
                 context.organizationId(),
+                context.userId(),
                 targetUserId,
                 request.role()
         );
@@ -76,7 +78,7 @@ public class OrganizationMembershipController {
     @PreAuthorize("hasAuthority('membership:manage')")
     public ResponseEntity<?> deactivateMember(@PathVariable UUID targetUserId) {
         OrganizationContext context = OrganizationContextHolder.requireContext();
-        membershipService.deactivateMember(context.organizationId(), targetUserId);
+        membershipService.deactivateMember(context.organizationId(), context.userId(), targetUserId);
         return ResponseEntity.ok(Map.of("message", "Member successfully deactivated"));
     }
 

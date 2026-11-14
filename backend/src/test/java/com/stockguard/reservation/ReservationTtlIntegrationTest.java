@@ -117,6 +117,9 @@ class ReservationTtlIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private com.stockguard.audit.service.AuditLogService auditLogService;
+
     private UUID orgId;
     private UUID actorUserId;
     private Warehouse warehouse;
@@ -216,13 +219,13 @@ class ReservationTtlIntegrationTest {
         // 1. Programmatic validation in ReservationService constructor
         assertThatThrownBy(() -> new ReservationService(
                 jdbcReservationOperations, reservationRepository, allocationRepository,
-                orderItemRepository, idempotencyService, transactionManager, 0L
+                orderItemRepository, idempotencyService, transactionManager, 0L, auditLogService
         )).isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("strictly greater than zero");
 
         assertThatThrownBy(() -> new ReservationService(
                 jdbcReservationOperations, reservationRepository, allocationRepository,
-                orderItemRepository, idempotencyService, transactionManager, -10L
+                orderItemRepository, idempotencyService, transactionManager, -10L, auditLogService
         )).isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("strictly greater than zero");
 

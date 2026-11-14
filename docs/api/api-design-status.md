@@ -90,6 +90,11 @@
 | `GET` | `/api/settings` | Query operational settings (deferred to post-MVP; MVP uses application configuration) |
 | `PUT` | `/api/settings/{key}` | Update organization-specific setting (deferred to post-MVP) |
 
+### 9. Audit Logs & Security Compliance (Milestone 6)
+| Method | Endpoint | Required Permission | Allowed Roles | Description |
+|---|---|---|---|---|
+| `GET` | `/api/audit-logs` | `audit:view` | `ADMIN`, `MANAGER` | Retrieve paginated, deterministic tenant audit logs with filtering by action, entityType, entityId, actorUserId, date range. Sorted newest-first (`ORDER BY created_at DESC, id DESC`). |
+
 ---
 
 ## API Conventions

@@ -1,5 +1,6 @@
 package com.stockguard.security.service;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.organization.domain.Organization;
 import com.stockguard.organization.domain.OrganizationMembership;
 import com.stockguard.organization.domain.Role;
@@ -10,6 +11,9 @@ import com.stockguard.security.domain.User;
 import com.stockguard.security.dto.*;
 import com.stockguard.security.exception.AuthenticationFailedException;
 import com.stockguard.security.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -26,18 +30,32 @@ import java.util.*;
 @Transactional(readOnly = true)
 public class UserContextQueryService {
 
+    private static final Logger log = LoggerFactory.getLogger(UserContextQueryService.class);
+
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
     private final OrganizationMembershipRepository membershipRepository;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public UserContextQueryService(
+            UserRepository userRepository,
+            OrganizationRepository organizationRepository,
+            OrganizationMembershipRepository membershipRepository,
+            AuditLogService auditLogService
+    ) {
+        this.userRepository = userRepository;
+        this.organizationRepository = organizationRepository;
+        this.membershipRepository = membershipRepository;
+        this.auditLogService = auditLogService;
+    }
 
     public UserContextQueryService(
             UserRepository userRepository,
             OrganizationRepository organizationRepository,
             OrganizationMembershipRepository membershipRepository
     ) {
-        this.userRepository = userRepository;
-        this.organizationRepository = organizationRepository;
-        this.membershipRepository = membershipRepository;
+        this(userRepository, organizationRepository, membershipRepository, null);
     }
 
     /**
@@ -140,6 +158,15 @@ public class UserContextQueryService {
 
         Role role = membership.getRole();
         Set<String> permissions = RolePermissions.getPermissionAuthoritiesForRole(role);
+
+        if (auditLogService != null) {
+            try {
+                auditLogService.logOrganizationSwitched(targetOrgId, userId, role.name());
+            } catch (Exception e) {
+                log.warn("Failed to audit organization switch for user {} and targetOrg {}: {}",
+                        userId, targetOrgId, e.getMessage());
+            }
+        }
 
         return new SwitchOrgResponse(
                 organization.getId(),

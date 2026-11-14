@@ -7,9 +7,12 @@ import com.stockguard.organization.dto.OrganizationMemberResponse;
 import com.stockguard.organization.exception.CannotDemoteLastAdminException;
 import com.stockguard.organization.repository.OrganizationMembershipRepository;
 import com.stockguard.organization.repository.OrganizationRepository;
+import com.stockguard.security.context.OrganizationContext;
+import com.stockguard.security.context.OrganizationContextHolder;
 import com.stockguard.security.domain.User;
 import com.stockguard.security.repository.UserRepository;
 import com.stockguard.security.service.TenantMembershipValidator;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,6 +27,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,6 +93,15 @@ class OrganizationRbacAndLastAdminIntegrationTest {
         membershipRepository.save(OrganizationMembership.create(testOrg.getId(), admin1.getId(), Role.ADMIN));
         membershipRepository.save(OrganizationMembership.create(testOrg.getId(), admin2.getId(), Role.ADMIN));
         membershipRepository.save(OrganizationMembership.create(testOrg.getId(), operator1.getId(), Role.OPERATOR));
+
+        OrganizationContextHolder.setContext(new OrganizationContext(
+                testOrg.getId(), admin1.getId(), Role.ADMIN, Set.of("membership:manage")
+        ));
+    }
+
+    @AfterEach
+    void tearDown() {
+        OrganizationContextHolder.clearContext();
     }
 
     private User createUser(String email) {
@@ -148,6 +161,9 @@ class OrganizationRbacAndLastAdminIntegrationTest {
 
         // Thread 1 attempts to demote admin1 to OPERATOR
         Future<?> f1 = executor.submit(() -> {
+            OrganizationContextHolder.setContext(new OrganizationContext(
+                    testOrg.getId(), admin1.getId(), Role.ADMIN, Set.of("membership:manage")
+            ));
             readyLatch.countDown();
             try {
                 startLatch.await();
@@ -157,11 +173,16 @@ class OrganizationRbacAndLastAdminIntegrationTest {
                 failureCount.incrementAndGet();
             } catch (Exception ex) {
                 // Ignore unexpected
+            } finally {
+                OrganizationContextHolder.clearContext();
             }
         });
 
         // Thread 2 attempts to demote admin2 to OPERATOR
         Future<?> f2 = executor.submit(() -> {
+            OrganizationContextHolder.setContext(new OrganizationContext(
+                    testOrg.getId(), admin2.getId(), Role.ADMIN, Set.of("membership:manage")
+            ));
             readyLatch.countDown();
             try {
                 startLatch.await();
@@ -171,6 +192,8 @@ class OrganizationRbacAndLastAdminIntegrationTest {
                 failureCount.incrementAndGet();
             } catch (Exception ex) {
                 // Ignore unexpected
+            } finally {
+                OrganizationContextHolder.clearContext();
             }
         });
 

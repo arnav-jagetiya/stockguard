@@ -1,5 +1,6 @@
 package com.stockguard.security.controller;
 
+import com.stockguard.audit.service.AuditLogService;
 import com.stockguard.security.dto.*;
 import com.stockguard.security.exception.*;
 import com.stockguard.security.model.LoginCommand;
@@ -7,6 +8,7 @@ import com.stockguard.security.model.LoginResult;
 import com.stockguard.security.model.RefreshResult;
 import com.stockguard.security.model.StockGuardPrincipal;
 import com.stockguard.security.service.AuthenticationService;
+import com.stockguard.security.service.TenantMembershipValidator;
 import com.stockguard.security.service.UserContextQueryService;
 import com.stockguard.security.util.RefreshTokenCookieHelper;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,6 +16,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -27,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * REST controller exposing owner-approved authentication lifecycle endpoints per ADR-010.
@@ -37,19 +41,35 @@ import java.util.Optional;
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+    private static final Logger securityAuditLog = LoggerFactory.getLogger("com.stockguard.security.audit");
 
     private final AuthenticationService authenticationService;
     private final UserContextQueryService userContextQueryService;
     private final RefreshTokenCookieHelper cookieHelper;
+    private final AuditLogService auditLogService;
+    private final TenantMembershipValidator membershipValidator;
+
+    @Autowired
+    public AuthController(
+            AuthenticationService authenticationService,
+            UserContextQueryService userContextQueryService,
+            RefreshTokenCookieHelper cookieHelper,
+            AuditLogService auditLogService,
+            TenantMembershipValidator membershipValidator
+    ) {
+        this.authenticationService = authenticationService;
+        this.userContextQueryService = userContextQueryService;
+        this.cookieHelper = cookieHelper;
+        this.auditLogService = auditLogService;
+        this.membershipValidator = membershipValidator;
+    }
 
     public AuthController(
             AuthenticationService authenticationService,
             UserContextQueryService userContextQueryService,
             RefreshTokenCookieHelper cookieHelper
     ) {
-        this.authenticationService = authenticationService;
-        this.userContextQueryService = userContextQueryService;
-        this.cookieHelper = cookieHelper;
+        this(authenticationService, userContextQueryService, cookieHelper, null, null);
     }
 
     /**
@@ -70,6 +90,8 @@ public class AuthController {
                     new LoginCommand(request.email(), request.password(), clientIp, userAgent)
             );
         } catch (AuthenticationFailedException ex) {
+            securityAuditLog.warn("Authentication failed for email: {} from IP: {} - reason: {}",
+                    request.email(), clientIp, ex.getMessage());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized", "message", ex.getMessage()));
         }
@@ -115,6 +137,7 @@ public class AuthController {
     public ResponseEntity<?> refresh(HttpServletRequest servletRequest) {
         Optional<String> rawTokenOpt = cookieHelper.extractRefreshToken(servletRequest);
         if (rawTokenOpt.isEmpty()) {
+            securityAuditLog.warn("Refresh failed: missing or empty cookie from IP: {}", servletRequest.getRemoteAddr());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized", "message", "Refresh token cookie is missing or empty"));
         }
@@ -124,12 +147,14 @@ public class AuthController {
         try {
             result = authenticationService.refresh(rawToken);
         } catch (TokenReuseException ex) {
+            securityAuditLog.warn("Refresh token replay detected from IP: {}", servletRequest.getRemoteAddr());
             log.warn("Refresh token replay detected: {}", ex.getMessage());
             ResponseCookie clearCookie = cookieHelper.buildClearRefreshCookie();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
                     .body(Map.of("error", "Unauthorized", "message", "Refresh token replay detected. Session family has been revoked."));
         } catch (SessionRevokedException | SessionExpiredException | TokenExpiredException | InvalidTokenException | AuthenticationFailedException ex) {
+            securityAuditLog.warn("Refresh failed from IP: {} - reason: {}", servletRequest.getRemoteAddr(), ex.getMessage());
             log.warn("Refresh failed: {}", ex.getMessage());
             ResponseCookie clearCookie = cookieHelper.buildClearRefreshCookie();
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -177,6 +202,21 @@ public class AuthController {
         // Also revoke session if principal is authenticated
         if (principal != null) {
             authenticationService.revokeSession(principal.sessionId(), "LOGOUT");
+
+            String orgHeader = servletRequest.getHeader("X-Organization-Id");
+            if (orgHeader != null && !orgHeader.isBlank()) {
+                try {
+                    UUID orgId = UUID.fromString(orgHeader.trim());
+                    if (membershipValidator != null && auditLogService != null) {
+                        var membershipOpt = membershipValidator.validateMembership(principal.userId(), orgId);
+                        if (membershipOpt.isPresent() && membershipOpt.get().active()) {
+                            auditLogService.logSessionRevoked(orgId, principal.userId(), principal.sessionId(), "LOGOUT");
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to audit session revocation for user {}: {}", principal.userId(), e.getMessage());
+                }
+            }
         }
 
         ResponseCookie clearCookie = cookieHelper.buildClearRefreshCookie();

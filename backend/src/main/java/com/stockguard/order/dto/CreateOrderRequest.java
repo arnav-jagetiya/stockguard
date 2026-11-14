@@ -16,5 +16,6 @@ public record CreateOrderRequest(
         String currency,
 
         @NotEmpty(message = "Order must contain at least one item")
+        @Size(max = 100, message = "Order items list must not exceed 100 items")
         List<@Valid OrderItemRequest> items
 ) {}
