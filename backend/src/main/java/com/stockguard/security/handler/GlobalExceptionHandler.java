@@ -1,5 +1,6 @@
 package com.stockguard.security.handler;
 
+import com.stockguard.order.exception.InvalidOrderStateException;
 import com.stockguard.organization.exception.CannotDemoteLastAdminException;
 import com.stockguard.security.exception.AuthenticationFailedException;
 import com.stockguard.shared.exception.DuplicateResourceException;
@@ -178,6 +179,20 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         log.warn("Insufficient stock for URI {}: {}", request.getRequestURI(), ex.getMessage());
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    @ExceptionHandler(InvalidOrderStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOrderState(
+            InvalidOrderStateException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("Invalid order state transition for URI {}: {}", request.getRequestURI(), ex.getMessage());
         return buildErrorResponse(
                 HttpStatus.CONFLICT,
                 "Conflict",

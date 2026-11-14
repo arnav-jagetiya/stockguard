@@ -1,7 +1,13 @@
 package com.stockguard.testconfig;
 
 import com.stockguard.inventory.repository.JdbcInventoryOperations;
+import com.stockguard.order.repository.JdbcOrderOperations;
+import com.stockguard.order.repository.OrderItemRepository;
+import com.stockguard.order.repository.OrderRepository;
 import com.stockguard.product.repository.ProductRepository;
+import com.stockguard.reservation.repository.JdbcReservationOperations;
+import com.stockguard.reservation.repository.ReservationAllocationRepository;
+import com.stockguard.reservation.repository.ReservationRepository;
 import com.stockguard.shared.idempotency.IdempotencyService;
 import com.stockguard.warehouse.repository.WarehouseRepository;
 import org.mockito.Mockito;
@@ -31,6 +37,21 @@ public class TestProfileConfiguration {
     }
 
     @Bean
+    public JdbcOrderOperations jdbcOrderOperations() {
+        return Mockito.mock(JdbcOrderOperations.class);
+    }
+
+    @Bean
+    public OrderRepository orderRepository() {
+        return Mockito.mock(OrderRepository.class);
+    }
+
+    @Bean
+    public OrderItemRepository orderItemRepository() {
+        return Mockito.mock(OrderItemRepository.class);
+    }
+
+    @Bean
     public ProductRepository productRepository() {
         return Mockito.mock(ProductRepository.class);
     }
@@ -38,6 +59,21 @@ public class TestProfileConfiguration {
     @Bean
     public WarehouseRepository warehouseRepository() {
         return Mockito.mock(WarehouseRepository.class);
+    }
+
+    @Bean
+    public JdbcReservationOperations jdbcReservationOperations() {
+        return Mockito.mock(JdbcReservationOperations.class);
+    }
+
+    @Bean
+    public ReservationRepository reservationRepository() {
+        return Mockito.mock(ReservationRepository.class);
+    }
+
+    @Bean
+    public ReservationAllocationRepository reservationAllocationRepository() {
+        return Mockito.mock(ReservationAllocationRepository.class);
     }
 
     @Bean

@@ -89,3 +89,10 @@ stockguard:
       admin-password: ${STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD:}
       admin-full-name: ${STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME:}
       org-name: ${STOCKGUARD_BOOTSTRAP_ORG_NAME:Primary Organization}
+  reservation:
+    default-ttl-minutes: ${STOCKGUARD_RESERVATION_DEFAULT_TTL_MINUTES:15}
+    expiration:
+      enabled: ${STOCKGUARD_RESERVATION_EXPIRATION_ENABLED:true}
+      fixed-delay-ms: ${STOCKGUARD_RESERVATION_EXPIRATION_FIXED_DELAY_MS:30000}
+      initial-delay-ms: ${STOCKGUARD_RESERVATION_EXPIRATION_INITIAL_DELAY_MS:10000}
+      batch-size: ${STOCKGUARD_RESERVATION_EXPIRATION_BATCH_SIZE:50}
