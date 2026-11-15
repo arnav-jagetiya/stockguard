@@ -1,0 +1,70 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '../../components/common/Button';
+import { WarehouseVisualizer } from '../../components/3d/WarehouseVisualizer';
+import { ArrowRight, Terminal, CheckCircle2 } from 'lucide-react';
+
+export const HeroSection: React.FC = () => {
+  return (
+    <section className="relative pt-32 pb-20 px-6 max-w-7xl mx-auto overflow-hidden">
+      {/* Background Radial Glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-gradient-to-b from-cyan-500/10 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
+
+      <div className="text-center space-y-6 max-w-3xl mx-auto">
+        {/* Release Pill */}
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300 shadow-inner">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <span className="font-mono text-cyan-300">STOCKGUARD KERNEL v6.2 ACCEPTED</span>
+          <span className="text-slate-500">|</span>
+          <span className="text-slate-400">PostgreSQL ACID Truth</span>
+        </div>
+
+        {/* Editorial Headline */}
+        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
+          Enterprise inventory with{' '}
+          <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
+            mathematical integrity
+          </span>{' '}
+          and zero drift.
+        </h1>
+
+        {/* Value Proposition */}
+        <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          The single-source-of-truth inventory platform designed for multi-warehouse operations. Built on PostgreSQL REPEATABLE READ snapshot isolation, serialized reservations, and automated continuous reconciliation.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <Link to="/login">
+            <Button size="lg" icon={<ArrowRight className="w-4 h-4" />}>
+              Launch Operations Console
+            </Button>
+          </Link>
+          <a href="#demo">
+            <Button variant="secondary" size="lg" icon={<Terminal className="w-4 h-4 text-cyan-400" />}>
+              Explore Interactive Lab
+            </Button>
+          </a>
+        </div>
+
+        {/* Trust Badges */}
+        <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-mono">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Zero Phantom Stock
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-cyan-400" /> MVCC Snapshot Isolation
+          </span>
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-indigo-400" /> Immutable Append-Only Ledger
+          </span>
+        </div>
+      </div>
+
+      {/* 3D Interactive Warehouse Visualizer Showcase */}
+      <div className="mt-14 max-w-5xl mx-auto">
+        <WarehouseVisualizer />
+      </div>
+    </section>
+  );
+};
