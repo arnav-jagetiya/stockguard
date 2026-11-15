@@ -29,8 +29,8 @@ export async function updateWarehouseApi(warehouseId: string, data: UpdateWareho
   });
 }
 
-export async function deactivateWarehouseApi(warehouseId: string): Promise<{ message: string }> {
-  return apiClient<{ message: string }>(`/api/warehouses/${warehouseId}`, {
+export async function deactivateWarehouseApi(warehouseId: string): Promise<Warehouse> {
+  return apiClient<Warehouse>(`/api/warehouses/${warehouseId}`, {
     method: 'DELETE',
   });
 }

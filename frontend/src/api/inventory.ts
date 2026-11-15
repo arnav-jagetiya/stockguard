@@ -23,21 +23,21 @@ export async function getTransactionsApi(limit: number = 50): Promise<InventoryT
 export const listTransactionsApi = getTransactionsApi;
 
 export async function receiveStockApi(data: ReceiveStockRequest): Promise<InventoryTransaction> {
-  return apiClient<InventoryTransaction>('/api/inventory/receive', {
+  return apiClient<InventoryTransaction>('/api/inventory/receipts', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
 export async function adjustStockApi(data: AdjustStockRequest): Promise<InventoryTransaction> {
-  return apiClient<InventoryTransaction>('/api/inventory/adjust', {
+  return apiClient<InventoryTransaction>('/api/inventory/adjustments', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export async function initializeOpeningBalanceApi(data: OpeningBalanceRequest): Promise<InventoryBalance> {
-  return apiClient<InventoryBalance>('/api/inventory/opening-balance', {
+export async function initializeOpeningBalanceApi(data: OpeningBalanceRequest): Promise<InventoryTransaction> {
+  return apiClient<InventoryTransaction>('/api/inventory/opening-balances', {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -46,7 +46,7 @@ export async function initializeOpeningBalanceApi(data: OpeningBalanceRequest): 
 export const recordOpeningBalanceApi = initializeOpeningBalanceApi;
 
 export async function triggerReconciliationSweepApi(): Promise<ReconciliationReport> {
-  return apiClient<ReconciliationReport>('/api/inventory/reconcile', {
+  return apiClient<ReconciliationReport>('/api/inventory/reconciliation/trigger', {
     method: 'POST',
   });
 }

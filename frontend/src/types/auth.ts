@@ -30,9 +30,11 @@ export interface UserMeResponse {
 export interface AuthTokenResponse {
   accessToken: string;
   tokenType: string;
-  expiresInSeconds: number;
+  expiresIn?: number;
+  expiresInSeconds?: number;
   user: UserSummary;
-  organizations: OrganizationSummary[];
+  availableOrganizations?: OrganizationSummary[];
+  organizations?: OrganizationSummary[];
 }
 
 export interface SwitchOrgResponse {

@@ -21,8 +21,9 @@ export async function logoutApi(): Promise<{ message: string }> {
 }
 
 export async function switchOrgApi(organizationId: string): Promise<SwitchOrgResponse> {
-  return apiClient<SwitchOrgResponse>(`/api/auth/switch-org/${organizationId}`, {
+  return apiClient<SwitchOrgResponse>('/api/auth/switch-org', {
     method: 'POST',
+    body: JSON.stringify({ targetOrganizationId: organizationId }),
   });
 }
 

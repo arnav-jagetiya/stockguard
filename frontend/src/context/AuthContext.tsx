@@ -54,12 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const handleSilentRefresh = useCallback(async (): Promise<boolean> => {
     try {
       const res = await refreshApi();
+      const orgs = res.availableOrganizations || res.organizations || [];
       setAuthToken(res.accessToken);
       setUser(res.user);
-      setOrganizations(res.organizations);
+      setOrganizations(orgs);
 
       const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
-      const targetOrg = res.organizations.find((o) => o.id === savedOrgId) || res.organizations[0];
+      const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0];
 
       if (targetOrg) {
         await applyOrganization(targetOrg);
@@ -95,12 +96,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     try {
       const res = await loginApi(email, pass);
+      const orgs = res.availableOrganizations || res.organizations || [];
       setAuthToken(res.accessToken);
       setUser(res.user);
-      setOrganizations(res.organizations);
+      setOrganizations(orgs);
 
       const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
-      const targetOrg = res.organizations.find((o) => o.id === savedOrgId) || res.organizations[0];
+      const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0];
 
       if (targetOrg) {
         await applyOrganization(targetOrg);

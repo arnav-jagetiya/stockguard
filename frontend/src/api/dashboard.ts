@@ -6,5 +6,5 @@ export async function getDashboardSummaryApi(): Promise<DashboardSummaryResponse
 }
 
 export async function getWarehouseDashboardApi(warehouseId: string): Promise<WarehouseDashboardResponse> {
-  return apiClient<WarehouseDashboardResponse>(`/api/dashboard/warehouse/${warehouseId}`);
+  return apiClient<WarehouseDashboardResponse>(`/api/dashboard/warehouses/${warehouseId}`);
 }

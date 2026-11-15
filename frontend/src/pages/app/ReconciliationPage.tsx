@@ -70,8 +70,8 @@ export const ReconciliationPage: React.FC = () => {
         listWarehousesApi(undefined, true),
         getMembershipsApi().catch(() => []),
       ]);
-      setDiscrepancies(discPage.content);
-      setTotalElements(discPage.totalElements);
+      setDiscrepancies(discPage.items || discPage.content || []);
+      setTotalElements(discPage.totalCount !== undefined ? discPage.totalCount : (discPage.totalElements || 0));
       setProducts(prodList);
       setWarehouses(whList);
       setMembers(memList);

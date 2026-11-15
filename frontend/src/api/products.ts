@@ -29,8 +29,8 @@ export async function updateProductApi(productId: string, data: UpdateProductReq
   });
 }
 
-export async function deactivateProductApi(productId: string): Promise<{ message: string }> {
-  return apiClient<{ message: string }>(`/api/products/${productId}`, {
+export async function deactivateProductApi(productId: string): Promise<Product> {
+  return apiClient<Product>(`/api/products/${productId}`, {
     method: 'DELETE',
   });
 }

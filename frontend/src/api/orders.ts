@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type { CreateOrderRequest, Order, OrderDetail, OrderStatus } from '../types/order';
+import type { Reservation } from '../types/reservation';
 
 export async function getOrdersApi(status?: OrderStatus, limit: number = 50): Promise<Order[]> {
   const q = new URLSearchParams();
@@ -24,8 +25,8 @@ export async function createOrderApi(data: CreateOrderRequest): Promise<Order> {
   });
 }
 
-export async function reserveOrderApi(orderId: string): Promise<Order> {
-  return apiClient<Order>(`/api/orders/${orderId}/reserve`, {
+export async function reserveOrderApi(orderId: string): Promise<Reservation> {
+  return apiClient<Reservation>(`/api/orders/${orderId}/reserve`, {
     method: 'POST',
   });
 }

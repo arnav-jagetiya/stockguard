@@ -28,10 +28,12 @@ export interface Discrepancy {
 }
 
 export interface DiscrepancyPageResponse {
-  content: Discrepancy[];
-  totalElements: number;
+  items: Discrepancy[];
+  totalCount: number;
   limit: number;
   offset: number;
+  content?: Discrepancy[];
+  totalElements?: number;
 }
 
 export interface UpdateDiscrepancyRequest {

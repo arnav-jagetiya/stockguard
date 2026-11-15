@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
-import { WarehouseVisualizer } from '../../components/3d/WarehouseVisualizer';
 import { ArrowRight, Terminal, CheckCircle2 } from 'lucide-react';
+
+const WarehouseVisualizer = lazy(() =>
+  import('../../components/3d/WarehouseVisualizer').then((m) => ({ default: m.WarehouseVisualizer }))
+);
 
 export const HeroSection: React.FC = () => {
   return (
@@ -63,7 +66,15 @@ export const HeroSection: React.FC = () => {
 
       {/* 3D Interactive Warehouse Visualizer Showcase */}
       <div className="mt-14 max-w-5xl mx-auto">
-        <WarehouseVisualizer />
+        <Suspense
+          fallback={
+            <div className="h-[440px] w-full rounded-2xl bg-[#0b101d] border border-slate-800/80 flex items-center justify-center text-slate-500 font-mono text-xs animate-pulse">
+              Initializing 3D Spatial Warehouse Visualization...
+            </div>
+          }
+        >
+          <WarehouseVisualizer />
+        </Suspense>
       </div>
     </section>
   );
