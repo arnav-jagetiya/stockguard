@@ -782,13 +782,15 @@ public class AuditLogService {
     }
 
     // =========================================================================
-    // 4. RECONCILIATION AUDIT METHOD (Propagation.REQUIRES_NEW)
+    // 4. RECONCILIATION AUDIT METHODS (Propagation.REQUIRED - Atomic with Tx2)
     // =========================================================================
 
     /**
-     * Records a scheduled reconciliation discrepancy audit event in an independent transaction.
+     * Records a scheduled reconciliation discrepancy audit event inside the active transaction.
+     * Uses Propagation.REQUIRED so that audit records commit or roll back atomically with discrepancy mutations.
      * Capped at {@value #MAX_DISCREPANCY_ITEMS} items to prevent storage bloat.
      */
+    @Transactional(propagation = Propagation.REQUIRED)
     public void logReconciliationDiscrepancy(
             UUID organizationId,
             int totalInspected,
@@ -814,13 +816,41 @@ public class AuditLogService {
             metadata.put("items", Collections.emptyList());
         }
 
-        // Executes in an independent transaction via Spring bean proxy
-        transactionDelegate.writeInNewTransaction(
+        // Executes within the caller's transaction (Propagation.REQUIRED) to ensure atomic commit with discrepancy sync
+        jdbcAuditLogOperations.insertAuditLog(
+                UUID.randomUUID(),
                 organizationId,
                 null, // System actor
                 AuditAction.RECONCILIATION_DISCREPANCY_DETECTED,
                 AuditEntityType.RECONCILIATION,
                 null,
+                null,
+                null,
+                metadata
+        );
+    }
+
+    /**
+     * Records an automatic resolution of an OPEN discrepancy when clean parity is verified.
+     * Executes within the caller's transaction (Propagation.REQUIRED).
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void logReconciliationCompleted(
+            UUID organizationId,
+            UUID discrepancyId,
+            String resolutionReason
+    ) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("resolutionSource", "SYSTEM");
+        metadata.put("reason", resolutionReason);
+
+        jdbcAuditLogOperations.insertAuditLog(
+                UUID.randomUUID(),
+                organizationId,
+                null, // System actor
+                AuditAction.RECONCILIATION_COMPLETED,
+                AuditEntityType.RECONCILIATION,
+                discrepancyId,
                 null,
                 null,
                 metadata

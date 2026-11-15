@@ -4,17 +4,19 @@ import com.stockguard.inventory.dto.ReconciliationReport;
 import com.stockguard.inventory.repository.JdbcInventoryOperations;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 /**
  * Service providing read-only mathematical reconciliation between stored inventory_balances
- * and append-only inventory_ledger_entries per ADR-004.
+ * and append-only inventory_ledger_entries per ADR-004 and ADR-012.
+ * Executes in Tx1 under Isolation.REPEATABLE_READ snapshot isolation.
  */
 @Service
 @Profile("!test")
-@Transactional(readOnly = true)
+@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class InventoryReconciliationService {
 
     private final JdbcInventoryOperations jdbcInventoryOperations;

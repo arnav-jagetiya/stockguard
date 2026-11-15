@@ -22,13 +22,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Validates that Flyway executes V1, V2, and V3 migrations against PostgreSQL 16,
+ * Validates that Flyway executes V1, V2, V3, and V4 migrations against PostgreSQL 16,
  * that Hibernate validates the resulting schema with ddl-auto: validate,
  * and that append-only immutability triggers strictly reject UPDATE, DELETE, and TRUNCATE.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("dev")
 @org.springframework.test.context.TestPropertySource(properties = {
+        "spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:stockguard}}",
         "spring.datasource.username=stockguard_owner",
         "spring.datasource.password=test_owner_pass"
 })
@@ -52,7 +53,8 @@ class FlywayMigrationAndSchemaValidationTest {
             "idempotency_records",
             "audit_logs",
             "auth_sessions",
-            "refresh_tokens"
+            "refresh_tokens",
+            "reconciliation_discrepancies"
     );
 
     private static final Set<String> DEFERRED_TABLES = Set.of(
@@ -80,17 +82,17 @@ class FlywayMigrationAndSchemaValidationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    @DisplayName("Flyway reports successful V1, V2, and V3 migration execution")
+    @DisplayName("Flyway reports successful V1, V2, V3, and V4 migration execution")
     void flywayReportsSuccessfulMigrations() {
         assertThat(flyway).isNotNull();
         MigrationInfo current = flyway.info().current();
         assertThat(current).isNotNull();
-        assertThat(current.getVersion().getVersion()).isEqualTo("3");
-        assertThat(current.getDescription()).isEqualTo("create auth and session tables");
+        assertThat(current.getVersion().getVersion()).isEqualTo("4");
+        assertThat(current.getDescription()).isEqualTo("create reconciliation discrepancies");
         assertThat(current.getState().isApplied()).isTrue();
 
         MigrationInfo[] applied = flyway.info().applied();
-        assertThat(applied).hasSize(3);
+        assertThat(applied).hasSize(4);
         assertThat(applied[0].getVersion().getVersion()).isEqualTo("1");
         assertThat(applied[0].getDescription()).isEqualTo("create initial schema");
         assertThat(applied[0].getState().isApplied()).isTrue();
@@ -100,10 +102,13 @@ class FlywayMigrationAndSchemaValidationTest {
         assertThat(applied[2].getVersion().getVersion()).isEqualTo("3");
         assertThat(applied[2].getDescription()).isEqualTo("create auth and session tables");
         assertThat(applied[2].getState().isApplied()).isTrue();
+        assertThat(applied[3].getVersion().getVersion()).isEqualTo("4");
+        assertThat(applied[3].getDescription()).isEqualTo("create reconciliation discrepancies");
+        assertThat(applied[3].getState().isApplied()).isTrue();
     }
 
     @Test
-    @DisplayName("All 18 tables exist (16 MVP tables + auth_sessions + refresh_tokens) in public schema and no deferred tables are created")
+    @DisplayName("All 19 tables exist (16 MVP tables + auth_sessions + refresh_tokens + reconciliation_discrepancies) in public schema and no deferred tables are created")
     void allSixteenMvpTablesExist() {
         assertThat(jdbcTemplate).isNotNull();
 
@@ -120,7 +125,7 @@ class FlywayMigrationAndSchemaValidationTest {
             assertThat(actualTables).doesNotContain(deferredTable);
         }
 
-        // Only 16 MVP tables + flyway_schema_history should be present in public schema
+        // Only 19 tables + flyway_schema_history should be present in public schema
         Set<String> expectedPlusFlyway = new java.util.HashSet<>(EXPECTED_MVP_TABLES);
         expectedPlusFlyway.add("flyway_schema_history");
         assertThat(actualTables).containsExactlyInAnyOrderElementsOf(expectedPlusFlyway);
@@ -131,16 +136,17 @@ class FlywayMigrationAndSchemaValidationTest {
     void keyConstraintsAndIndexesExist() {
         assertThat(jdbcTemplate).isNotNull();
 
-        // 1. Verify partial unique indexes (including V3 active refresh token uniqueness)
+        // 1. Verify partial unique indexes (including V3 active refresh token and V4 active discrepancy uniqueness)
         List<String> partialIndexes = jdbcTemplate.queryForList(
-                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname IN ('idx_ledger_transfer_out', 'idx_ledger_transfer_in', 'idx_reservations_active_expires', 'uq_refresh_tokens_one_active_per_session')",
+                "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND indexname IN ('idx_ledger_transfer_out', 'idx_ledger_transfer_in', 'idx_reservations_active_expires', 'uq_refresh_tokens_one_active_per_session', 'uq_active_discrepancy_position')",
                 String.class
         );
         assertThat(partialIndexes).containsExactlyInAnyOrder(
                 "idx_ledger_transfer_out",
                 "idx_ledger_transfer_in",
                 "idx_reservations_active_expires",
-                "uq_refresh_tokens_one_active_per_session"
+                "uq_refresh_tokens_one_active_per_session",
+                "uq_active_discrepancy_position"
         );
 
         // 2. Verify inventory balance check constraints

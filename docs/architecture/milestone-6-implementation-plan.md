@@ -1,9 +1,9 @@
 # STOCKGUARD — Milestone 6 Implementation Plan: System Auditing, Automated Operations & Observability
 
-> **Document Status:** ACCEPTED IMPLEMENTATION PLAN (PHASE 0 FINAL ALIGNMENT)
+> **Document Status:** PHASE 1 ACCEPTED & CHECKPOINTED (`1491cd9`) / PHASE 2 SPECIFICATION COMPLETE
 > **Target Release:** Milestone 6
-> **Repository Checkpoint:** `f8385a0` (Milestone 5C committed and pushed to main)
-> **Authoritative References:** [ADR-004](adr/ADR-004-inventory-ledger.md), [ADR-007](adr/ADR-007-idempotency.md), [ADR-008](adr/ADR-008-persistence-strategy.md), [ADR-009](adr/ADR-009-reservation-expiration.md), [ADR-010](adr/ADR-010-authentication-and-session-management.md), [ADR-011](adr/ADR-011-authorization-and-organization-access-control.md), [Database Schema Specification](../database/DATABASE_SCHEMA_SPECIFICATION.md)
+> **Repository Checkpoints:** `f8385a0` (Milestone 5C), `1491cd9` (Milestone 6 Phase 1 Consolidated Commit)
+> **Authoritative References:** [ADR-004](adr/ADR-004-inventory-ledger.md), [ADR-007](adr/ADR-007-idempotency.md), [ADR-008](adr/ADR-008-persistence-strategy.md), [ADR-009](adr/ADR-009-reservation-expiration.md), [ADR-010](adr/ADR-010-authentication-and-session-management.md), [ADR-011](adr/ADR-011-authorization-and-organization-access-control.md), [ADR-012](adr/ADR-012-periodic-inventory-reconciliation-and-discrepancy-management.md), [ADR-013](adr/ADR-013-operational-dashboard-aggregation-architecture.md), [ADR-014](adr/ADR-014-observability-prometheus-metrics-and-security.md), [Phase 2 Specification](milestone-6-phase-2-specification.md), [Database Schema Specification](../database/DATABASE_SCHEMA_SPECIFICATION.md)
 
 ---
 
@@ -483,11 +483,22 @@ The following schema indexes are identified as **potentially supporting** these 
 
 ---
 
-## 5. Phase 1 Readiness & Acceptance Checklist
+## 5. Phase 1 Completion & Phase 2 Transition Checklist
 
-Before Phase 1 implementation begins, verify:
-- [x] Repository clean on `main` at `f8385a0` (0 uncommitted files).
-- [x] All 325 tests passing against PostgreSQL 16 Testcontainers.
-- [x] Phase 0 architectural alignment, configuration corrections, and transaction boundary specifications finalized.
-- [x] Audit logging schema, triggers, and runtime permissions verified.
-- [ ] Phase 1 Implementation Authorization (awaiting explicit user approval).
+### Phase 1 Completion Record:
+- [x] Repository clean on `main` at `f8385a0` before Phase 1.
+- [x] Audit domain, JPA entity, and `JdbcAuditLogOperations` implemented.
+- [x] Business mutations audited under `REQUIRED` transaction propagation.
+- [x] Security events audited under `REQUIRES_NEW` transaction propagation.
+- [x] Audit retrieval API (`GET /api/audit-logs`) with deterministic sorting, filtering, and pagination.
+- [x] All 385 tests passing against PostgreSQL 16 Testcontainers.
+- [x] Consolidated Phase 1 commit `1491cd9` committed and pushed to `origin/main`.
+
+### Phase 2 Architecture Alignment:
+- [x] Phase 2 Requirements & Architecture Specification finalized in [milestone-6-phase-2-specification.md](milestone-6-phase-2-specification.md).
+- [x] ADR-012: Periodic Read-Only Inventory Reconciliation & Discrepancy Lifecycle Management.
+- [x] ADR-013: Operational Dashboard Multi-Query Aggregation Architecture.
+- [x] ADR-014: Observability, Prometheus Metrics & Security Isolation.
+- [x] Database Schema V4 proposal drafted.
+- [x] API contracts and test batch sequencing defined.
+- [ ] Phase 2 Batch 2A Implementation Authorization (awaiting explicit user approval).

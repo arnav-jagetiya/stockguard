@@ -46,6 +46,9 @@ stockguard:
   reservation:
     expiration:
       enabled: false
+  reconciliation:
+    scheduled:
+      enabled: false
 
 logging:
   level:

@@ -16,6 +16,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.*;
 
 /**
@@ -264,10 +265,15 @@ public class JdbcInventoryOperations {
     /**
      * Executes read-only mathematical reconciliation comparing inventory_balances against
      * the sum of append-only ledger entries per ADR-004.
+     * Obtains the authoritative observation timestamp directly from PostgreSQL within the
+     * same statement and snapshot to prevent clock skew vulnerabilities.
      */
     public ReconciliationReport reconcile(UUID organizationId) {
         String sql = """
-                WITH ledger_sums AS (
+                WITH snapshot_clock AS (
+                    SELECT CURRENT_TIMESTAMP AS snapshot_time
+                ),
+                ledger_sums AS (
                     SELECT
                         organization_id,
                         product_id,
@@ -277,37 +283,67 @@ public class JdbcInventoryOperations {
                     FROM inventory_ledger_entries
                     WHERE organization_id = ?
                     GROUP BY organization_id, product_id, warehouse_id
+                ),
+                reconciliation_items AS (
+                    SELECT
+                        COALESCE(b.product_id, l.product_id) AS product_id,
+                        COALESCE(b.warehouse_id, l.warehouse_id) AS warehouse_id,
+                        COALESCE(b.on_hand, 0) AS balance_on_hand,
+                        COALESCE(l.sum_on_hand, 0) AS ledger_on_hand,
+                        COALESCE(b.reserved, 0) AS balance_reserved,
+                        COALESCE(l.sum_reserved, 0) AS ledger_reserved,
+                        CASE
+                            WHEN b.id IS NULL THEN 'MISSING_BALANCE_ROW'
+                            WHEN l.product_id IS NULL THEN 'MISSING_LEDGER_ENTRIES'
+                            WHEN b.on_hand != l.sum_on_hand OR b.reserved != l.sum_reserved THEN 'DELTA_MISMATCH'
+                            ELSE 'MATCH'
+                        END AS discrepancy_status
+                    FROM inventory_balances b
+                    FULL OUTER JOIN ledger_sums l
+                      ON b.organization_id = l.organization_id
+                     AND b.product_id = l.product_id
+                     AND b.warehouse_id = l.warehouse_id
+                    WHERE COALESCE(b.organization_id, l.organization_id) = ?
                 )
                 SELECT
-                    COALESCE(b.product_id, l.product_id) AS product_id,
-                    COALESCE(b.warehouse_id, l.warehouse_id) AS warehouse_id,
-                    COALESCE(b.on_hand, 0) AS balance_on_hand,
-                    COALESCE(l.sum_on_hand, 0) AS ledger_on_hand,
-                    COALESCE(b.reserved, 0) AS balance_reserved,
-                    COALESCE(l.sum_reserved, 0) AS ledger_reserved,
-                    CASE
-                        WHEN b.id IS NULL THEN 'MISSING_BALANCE_ROW'
-                        WHEN l.product_id IS NULL THEN 'MISSING_LEDGER_ENTRIES'
-                        WHEN b.on_hand != l.sum_on_hand OR b.reserved != l.sum_reserved THEN 'DELTA_MISMATCH'
-                        ELSE 'MATCH'
-                    END AS discrepancy_status
-                FROM inventory_balances b
-                FULL OUTER JOIN ledger_sums l
-                  ON b.organization_id = l.organization_id
-                 AND b.product_id = l.product_id
-                 AND b.warehouse_id = l.warehouse_id
-                WHERE COALESCE(b.organization_id, l.organization_id) = ?;
+                    c.snapshot_time,
+                    r.product_id,
+                    r.warehouse_id,
+                    r.balance_on_hand,
+                    r.ledger_on_hand,
+                    r.balance_reserved,
+                    r.ledger_reserved,
+                    r.discrepancy_status
+                FROM snapshot_clock c
+                LEFT JOIN reconciliation_items r ON TRUE;
                 """;
 
         List<ReconciliationDiscrepancy> discrepancies = new ArrayList<>();
         int totalInspected = 0;
         int matchCount = 0;
+        Instant snapshotTime = null;
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, organizationId, organizationId);
         for (Map<String, Object> row : rows) {
+            if (snapshotTime == null) {
+                Object rawTs = row.get("snapshot_time");
+                if (rawTs instanceof Timestamp ts) {
+                    snapshotTime = ts.toInstant();
+                } else if (rawTs instanceof OffsetDateTime odt) {
+                    snapshotTime = odt.toInstant();
+                } else if (rawTs instanceof Instant inst) {
+                    snapshotTime = inst;
+                }
+            }
+
+            UUID productId = (UUID) row.get("product_id");
+            if (productId == null) {
+                // Organization has zero inventory balances or ledger records
+                continue;
+            }
+
             totalInspected++;
             String status = (String) row.get("discrepancy_status");
-            UUID productId = (UUID) row.get("product_id");
             UUID warehouseId = (UUID) row.get("warehouse_id");
             long balanceOnHand = ((Number) row.get("balance_on_hand")).longValue();
             long ledgerOnHand = ((Number) row.get("ledger_on_hand")).longValue();
@@ -329,13 +365,46 @@ public class JdbcInventoryOperations {
             }
         }
 
+        if (snapshotTime == null) {
+            snapshotTime = Instant.now();
+        }
+
+        String activeDiscrepanciesSql = """
+                SELECT id, product_id, warehouse_id, status, version, last_detected_at
+                FROM reconciliation_discrepancies
+                WHERE organization_id = ?
+                  AND status IN ('OPEN', 'ACKNOWLEDGED', 'INVESTIGATING');
+                """;
+        Map<String, ReconciliationReport.SnapshotActiveDiscrepancy> snapshotActiveDiscrepanciesByPosition = new HashMap<>();
+        Map<UUID, ReconciliationReport.SnapshotActiveDiscrepancy> snapshotActiveDiscrepanciesById = new HashMap<>();
+        Set<UUID> snapshotActiveDiscrepancyIds = new HashSet<>();
+        jdbcTemplate.query(activeDiscrepanciesSql, rs -> {
+            UUID discId = rs.getObject("id", UUID.class);
+            UUID prodId = rs.getObject("product_id", UUID.class);
+            UUID whId = rs.getObject("warehouse_id", UUID.class);
+            String status = rs.getString("status");
+            int version = rs.getInt("version");
+            Timestamp lastDetectedTs = rs.getTimestamp("last_detected_at");
+            Instant lastDetectedAt = lastDetectedTs != null ? lastDetectedTs.toInstant() : null;
+
+            ReconciliationReport.SnapshotActiveDiscrepancy snap = new ReconciliationReport.SnapshotActiveDiscrepancy(
+                    discId, prodId, whId, status, version, lastDetectedAt
+            );
+            snapshotActiveDiscrepancyIds.add(discId);
+            snapshotActiveDiscrepanciesById.put(discId, snap);
+            snapshotActiveDiscrepanciesByPosition.put(prodId + ":" + whId, snap);
+        }, organizationId);
+
         return new ReconciliationReport(
                 organizationId,
                 totalInspected,
                 matchCount,
                 discrepancies.size(),
                 discrepancies,
-                Instant.now()
+                snapshotTime,
+                snapshotActiveDiscrepanciesByPosition,
+                snapshotActiveDiscrepanciesById,
+                snapshotActiveDiscrepancyIds
         );
     }
 

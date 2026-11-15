@@ -153,4 +153,38 @@ class InventoryReconciliationIntegrationTest {
         InventoryBalance balanceAfterRecon = balanceRepository.findByOrganizationIdAndProductIdAndWarehouseId(orgId, productId, warehouseId).orElseThrow();
         assertThat(balanceAfterRecon.getOnHand()).isEqualTo(999L);
     }
+
+    @Test
+    @DisplayName("Reconciliation observation timestamp is obtained directly from PostgreSQL snapshot clock")
+    void reconciliationObservationTimestampOriginatesFromDatabaseSnapshot() {
+        // Sample DB clock before reconciliation
+        java.time.Instant dbTimeBefore = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP", java.sql.Timestamp.class).toInstant();
+
+        ReconciliationReport report = reconciliationService.reconcile(orgId);
+
+        // Sample DB clock after reconciliation
+        java.time.Instant dbTimeAfter = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP", java.sql.Timestamp.class).toInstant();
+
+        assertThat(report.reconciledAt()).isNotNull();
+        // The reconciliation observation timestamp must fall strictly within the database clock window
+        assertThat(report.reconciledAt()).isAfterOrEqualTo(dbTimeBefore);
+        assertThat(report.reconciledAt()).isBeforeOrEqualTo(dbTimeAfter);
+    }
+
+    @Test
+    @DisplayName("Empty organization returns database snapshot timestamp even with zero inventory positions")
+    void reconciliationReturnsDatabaseTimestampForEmptyOrganization() {
+        UUID emptyOrgId = organizationRepository.save(Organization.create("Empty Recon Org " + UUID.randomUUID())).getId();
+
+        java.time.Instant dbTimeBefore = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP", java.sql.Timestamp.class).toInstant();
+        ReconciliationReport report = reconciliationService.reconcile(emptyOrgId);
+        java.time.Instant dbTimeAfter = jdbcTemplate.queryForObject("SELECT CURRENT_TIMESTAMP", java.sql.Timestamp.class).toInstant();
+
+        assertThat(report.totalBalancesInspected()).isEqualTo(0);
+        assertThat(report.discrepantBalances()).isEqualTo(0);
+        assertThat(report.discrepancies()).isEmpty();
+        assertThat(report.reconciledAt()).isNotNull();
+        assertThat(report.reconciledAt()).isAfterOrEqualTo(dbTimeBefore);
+        assertThat(report.reconciledAt()).isBeforeOrEqualTo(dbTimeAfter);
+    }
 }
