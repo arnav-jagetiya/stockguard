@@ -1,5 +1,6 @@
 package com.stockguard.reservation.worker;
 
+import com.stockguard.infrastructure.metrics.StockGuardMetrics;
 import com.stockguard.reservation.config.ReservationProperties;
 import com.stockguard.reservation.dto.ExpirationBatchResult;
 import com.stockguard.reservation.service.ReservationExpirationService;
@@ -32,14 +33,24 @@ public class ReservationExpirationWorker {
 
     private final ReservationExpirationService expirationService;
     private final ReservationProperties properties;
+    private final StockGuardMetrics metrics;
 
-    @Autowired
     public ReservationExpirationWorker(
             ReservationExpirationService expirationService,
             ReservationProperties properties
     ) {
+        this(expirationService, properties, null);
+    }
+
+    @Autowired
+    public ReservationExpirationWorker(
+            ReservationExpirationService expirationService,
+            ReservationProperties properties,
+            @Autowired(required = false) StockGuardMetrics metrics
+    ) {
         this.expirationService = expirationService;
         this.properties = properties;
+        this.metrics = metrics;
     }
 
     @Scheduled(
@@ -55,10 +66,16 @@ public class ReservationExpirationWorker {
         try {
             log.debug("Starting scheduled reservation expiration sweep...");
             ExpirationBatchResult result = expirationService.sweepExpiredReservations();
+            if (metrics != null && result != null) {
+                metrics.recordReservationsExpired(result.successCount(), result.failureCount());
+            }
             log.debug("Scheduled reservation expiration sweep completed: {}", result);
             return result;
         } catch (Exception ex) {
             log.error("Unexpected error in reservation expiration sweep: {}", ex.getMessage(), ex);
+            if (metrics != null) {
+                metrics.recordReservationsExpired(0, 1);
+            }
             return new ExpirationBatchResult(0, 0, 0, 1, 0);
         }
     }

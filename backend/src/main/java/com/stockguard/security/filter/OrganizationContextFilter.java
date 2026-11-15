@@ -79,10 +79,22 @@ public class OrganizationContextFilter extends OncePerRequestFilter {
 
         // 3. For organization-scoped requests, assert user authentication
         Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
-        if (currentAuth == null || !currentAuth.isAuthenticated()
-                || !(currentAuth.getPrincipal() instanceof StockGuardPrincipal principal)) {
+        if (currentAuth == null || !currentAuth.isAuthenticated()) {
             // Let downstream security filters handle unauthenticated requests (401)
             filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (!(currentAuth.getPrincipal() instanceof StockGuardPrincipal principal)) {
+            // Authenticated non-business principal (e.g. Prometheus scraper service account) is forbidden from business APIs
+            log.warn("Non-business principal tried accessing organization-scoped route: {}", path);
+            SecurityErrorResponseUtils.writeJsonError(
+                    response,
+                    HttpServletResponse.SC_FORBIDDEN,
+                    "Forbidden",
+                    "Access denied: principal is not an organization user",
+                    path
+            );
             return;
         }
 

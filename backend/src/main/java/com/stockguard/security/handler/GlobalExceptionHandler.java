@@ -103,6 +103,20 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLockingFailure(
+            org.springframework.dao.OptimisticLockingFailureException ex,
+            HttpServletRequest request
+    ) {
+        log.warn("Optimistic locking conflict for URI {}: {}", request.getRequestURI(), ex.getMessage());
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Conflict",
+                "Resource was modified by another transaction. Please reload and retry.",
+                request.getRequestURI()
+        );
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalState(
             IllegalStateException ex,

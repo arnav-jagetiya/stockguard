@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-stockguard}
+      POSTGRES_USER: ${DB_USER:-stockguard}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockguard}
+    volumes:
+      - stockguard-postgres-data:/var/lib/postgresql/data
+      - ./backend/init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - stockguard-app-db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockguard} -d ${DB_NAME:-stockguard}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  stockguard-app:
+    image: stockguard/backend:latest
+    container_name: stockguard-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-stockguard}
+      SPRING_DATASOURCE_USERNAME: stockguard_app
+      SPRING_DATASOURCE_PASSWORD: ${APP_DB_PASSWORD}
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-stockguard}
+      FLYWAY_USER: stockguard_owner
+      FLYWAY_PASSWORD: ${OWNER_DB_PASSWORD}
+      STOCKGUARD_JWT_ACTIVE_SECRET: ${STOCKGUARD_JWT_ACTIVE_SECRET}
+      MANAGEMENT_PORT: 8081
+      STOCKGUARD_MONITORING_SCRAPER_USERNAME: ${STOCKGUARD_MONITORING_SCRAPER_USERNAME:-stockguard-prometheus}
+      STOCKGUARD_MONITORING_SCRAPER_PASSWORD: ${PROMETHEUS_SCRAPER_SECRET}
+    ports:
+      - "8080:8080"
+    expose:
+      - "8081"
+    networks:
+      - stockguard-public
+      - stockguard-app-db
+      - stockguard-monitoring
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health/liveness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: stockguard-prometheus
+    restart: unless-stopped
+    depends_on:
+      - stockguard-app
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - stockguard-prometheus-data:/prometheus
+    networks:
+      - stockguard-monitoring
+
+networks:
+  stockguard-public:
+    name: stockguard-public
+    driver: bridge
+  stockguard-app-db:
+    name: stockguard-app-db
+    driver: bridge
+    internal: true
+  stockguard-monitoring:
+    name: stockguard-monitoring
+    driver: bridge
+    internal: true
+
+volumes:
+  stockguard-postgres-data:
+    name: stockguard-postgres-data
+  stockguard-prometheus-data:
+    name: stockguard-prometheus-data

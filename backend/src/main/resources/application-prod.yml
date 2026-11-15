@@ -36,11 +36,25 @@ server:
   shutdown: graceful
 
 management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+    address: 0.0.0.0
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:never}
+      probes:
+        enabled: true
+    prometheus:
+      enabled: true
 
 stockguard:
+  monitoring:
+    scraper-username: ${STOCKGUARD_MONITORING_SCRAPER_USERNAME:stockguard-prometheus}
+    scraper-password: ${STOCKGUARD_MONITORING_SCRAPER_PASSWORD:${PROMETHEUS_SCRAPER_SECRET}}
   security:
     jwt:
       active-key:

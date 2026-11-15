@@ -1,5 +1,6 @@
 package com.stockguard.inventory.worker;
 
+import com.stockguard.infrastructure.metrics.StockGuardMetrics;
 import com.stockguard.inventory.config.ReconciliationProperties;
 import com.stockguard.inventory.dto.DiscrepancySyncResult;
 import com.stockguard.inventory.dto.ReconciliationReport;
@@ -9,6 +10,7 @@ import com.stockguard.inventory.service.InventoryReconciliationService;
 import com.stockguard.shared.lock.PostgresAdvisoryLockService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Profile;
@@ -51,6 +53,7 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
     private final DiscrepancyManagementService discrepancyManagementService;
     private final ReconciliationProperties properties;
     private final JdbcTemplate jdbcTemplate;
+    private final StockGuardMetrics metrics;
 
     private final AtomicBoolean isShuttingDown = new AtomicBoolean(false);
 
@@ -61,11 +64,24 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
             ReconciliationProperties properties,
             JdbcTemplate jdbcTemplate
     ) {
+        this(advisoryLockService, reconciliationService, discrepancyManagementService, properties, jdbcTemplate, null);
+    }
+
+    @Autowired
+    public ScheduledReconciliationWorker(
+            PostgresAdvisoryLockService advisoryLockService,
+            InventoryReconciliationService reconciliationService,
+            DiscrepancyManagementService discrepancyManagementService,
+            ReconciliationProperties properties,
+            JdbcTemplate jdbcTemplate,
+            @Autowired(required = false) StockGuardMetrics metrics
+    ) {
         this.advisoryLockService = Objects.requireNonNull(advisoryLockService, "PostgresAdvisoryLockService must not be null");
         this.reconciliationService = Objects.requireNonNull(reconciliationService, "InventoryReconciliationService must not be null");
         this.discrepancyManagementService = Objects.requireNonNull(discrepancyManagementService, "DiscrepancyManagementService must not be null");
         this.properties = Objects.requireNonNull(properties, "ReconciliationProperties must not be null");
         this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate, "JdbcTemplate must not be null");
+        this.metrics = metrics;
     }
 
     @Override
@@ -98,6 +114,7 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
             return new ReconciliationSweepResult(0, 0, 0, false, false);
         }
 
+        long sweepStart = System.currentTimeMillis();
         log.info("Attempting to acquire session advisory lock [{}] for scheduled reconciliation sweep...", RECONCILIATION_LOCK_KEY);
 
         Optional<ReconciliationSweepResult> result = advisoryLockService.executeWithLock(
@@ -107,10 +124,19 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
 
         if (result.isEmpty()) {
             log.info("Reconciliation sweep skipped: advisory lock [{}] is held by another cluster instance.", RECONCILIATION_LOCK_KEY);
+            if (metrics != null) {
+                metrics.recordReconciliationLockSkipped();
+            }
             return new ReconciliationSweepResult(0, 0, 0, false, false);
         }
 
         ReconciliationSweepResult sweepResult = result.get();
+        long duration = System.currentTimeMillis() - sweepStart;
+        if (metrics != null) {
+            boolean overallSuccess = sweepResult.completedFully() && sweepResult.organizationsFailed() == 0;
+            metrics.recordReconciliationSweep(overallSuccess, duration);
+        }
+
         log.info("Reconciliation sweep finished: attempted={}, succeeded={}, failed={}, completedFully={}",
                 sweepResult.organizationsAttempted(),
                 sweepResult.organizationsSucceeded(),
@@ -213,6 +239,9 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
                         report.totalBalancesInspected(),
                         syncResult != null ? syncResult.newDiscrepancies() : 0,
                         syncResult != null ? syncResult.autoResolved() : 0);
+                if (metrics != null) {
+                    metrics.recordReconciliationOrgExecution(true);
+                }
                 return true;
 
             } catch (Exception ex) {
@@ -222,6 +251,9 @@ public class ScheduledReconciliationWorker implements ApplicationListener<Contex
                 } else {
                     log.error("Reconciliation failed permanently for organization [{}] after {} attempt(s): {}",
                             organizationId, attempt, ex.getMessage(), ex);
+                    if (metrics != null) {
+                        metrics.recordReconciliationOrgExecution(false);
+                    }
                     return false;
                 }
             }

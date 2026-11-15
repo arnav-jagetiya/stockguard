@@ -13,6 +13,7 @@ public final class AuditEntityType {
     public static final String ORGANIZATION_MEMBERSHIP = "ORGANIZATION_MEMBERSHIP";
     public static final String AUTH_SESSION = "AUTH_SESSION";
     public static final String RECONCILIATION = "RECONCILIATION";
+    public static final String RECONCILIATION_DISCREPANCY = "RECONCILIATION_DISCREPANCY";
 
     private AuditEntityType() {
     }

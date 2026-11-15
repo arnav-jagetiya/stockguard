@@ -2,6 +2,8 @@ package com.stockguard.inventory.repository;
 
 import com.stockguard.inventory.domain.DiscrepancyStatus;
 import com.stockguard.inventory.domain.DiscrepancyType;
+import com.stockguard.inventory.domain.ResolutionSource;
+import com.stockguard.inventory.dto.DiscrepancyResponse;
 import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -294,6 +296,173 @@ public class JdbcDiscrepancyOperations {
 
     public boolean updateParityVerified(UUID id, int version) {
         return updateParityVerified(id, version, Instant.now());
+    }
+
+    /**
+     * Lists discrepancies matching filters with deterministic ordering and pagination.
+     */
+    public List<DiscrepancyResponse> findDiscrepancies(
+            UUID organizationId,
+            DiscrepancyStatus status,
+            UUID productId,
+            UUID warehouseId,
+            UUID assignedToUserId,
+            int limit,
+            int offset
+    ) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT rd.id, rd.organization_id, rd.product_id, rd.warehouse_id,
+                   rd.discrepancy_type, rd.status,
+                   rd.observed_balance_on_hand, rd.observed_ledger_on_hand,
+                   rd.observed_balance_reserved, rd.observed_ledger_reserved,
+                   rd.consecutive_detection_count,
+                   rd.first_detected_at, rd.last_detected_at, rd.last_verified_at,
+                   rd.assigned_to_user_id, om.active AS assigned_to_user_active,
+                   rd.investigation_notes, rd.resolution_source, rd.resolution_reason,
+                   rd.resolved_at, rd.resolved_by_user_id, rd.version
+            FROM reconciliation_discrepancies rd
+            LEFT JOIN organization_memberships om
+              ON rd.organization_id = om.organization_id AND rd.assigned_to_user_id = om.user_id
+            WHERE rd.organization_id = :organizationId
+            """);
+
+        MapSqlParameterSource params = new MapSqlParameterSource("organizationId", organizationId);
+
+        if (status != null) {
+            sql.append(" AND rd.status = :status");
+            params.addValue("status", status.name());
+        }
+        if (productId != null) {
+            sql.append(" AND rd.product_id = :productId");
+            params.addValue("productId", productId);
+        }
+        if (warehouseId != null) {
+            sql.append(" AND rd.warehouse_id = :warehouseId");
+            params.addValue("warehouseId", warehouseId);
+        }
+        if (assignedToUserId != null) {
+            sql.append(" AND rd.assigned_to_user_id = :assignedToUserId");
+            params.addValue("assignedToUserId", assignedToUserId);
+        }
+
+        sql.append(" ORDER BY rd.last_detected_at DESC, rd.id ASC LIMIT :limit OFFSET :offset");
+        params.addValue("limit", limit);
+        params.addValue("offset", offset);
+
+        return jdbcTemplate.query(sql.toString(), params, this::mapDiscrepancyResponse);
+    }
+
+    /**
+     * Counts total discrepancies matching the given filters for an organization.
+     */
+    public long countDiscrepancies(
+            UUID organizationId,
+            DiscrepancyStatus status,
+            UUID productId,
+            UUID warehouseId,
+            UUID assignedToUserId
+    ) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT COUNT(*)
+            FROM reconciliation_discrepancies rd
+            WHERE rd.organization_id = :organizationId
+            """);
+
+        MapSqlParameterSource params = new MapSqlParameterSource("organizationId", organizationId);
+
+        if (status != null) {
+            sql.append(" AND rd.status = :status");
+            params.addValue("status", status.name());
+        }
+        if (productId != null) {
+            sql.append(" AND rd.product_id = :productId");
+            params.addValue("productId", productId);
+        }
+        if (warehouseId != null) {
+            sql.append(" AND rd.warehouse_id = :warehouseId");
+            params.addValue("warehouseId", warehouseId);
+        }
+        if (assignedToUserId != null) {
+            sql.append(" AND rd.assigned_to_user_id = :assignedToUserId");
+            params.addValue("assignedToUserId", assignedToUserId);
+        }
+
+        Long count = jdbcTemplate.queryForObject(sql.toString(), params, Long.class);
+        return count != null ? count : 0L;
+    }
+
+    /**
+     * Counts active discrepancies across all organizations for a specific status.
+     * Used by Micrometer Gauge instrumentation per ADR-014.
+     */
+    public long countActiveByStatus(DiscrepancyStatus status) {
+        String sql = "SELECT COUNT(*) FROM reconciliation_discrepancies WHERE status = :status";
+        MapSqlParameterSource params = new MapSqlParameterSource("status", status.name());
+        Long count = jdbcTemplate.queryForObject(sql, params, Long.class);
+        return count != null ? count : 0L;
+    }
+
+    /**
+     * Finds a discrepancy by its tenant and ID, including assigned member active status.
+     */
+    public Optional<DiscrepancyResponse> findDiscrepancyById(UUID organizationId, UUID id) {
+        String sql = """
+            SELECT rd.id, rd.organization_id, rd.product_id, rd.warehouse_id,
+                   rd.discrepancy_type, rd.status,
+                   rd.observed_balance_on_hand, rd.observed_ledger_on_hand,
+                   rd.observed_balance_reserved, rd.observed_ledger_reserved,
+                   rd.consecutive_detection_count,
+                   rd.first_detected_at, rd.last_detected_at, rd.last_verified_at,
+                   rd.assigned_to_user_id, om.active AS assigned_to_user_active,
+                   rd.investigation_notes, rd.resolution_source, rd.resolution_reason,
+                   rd.resolved_at, rd.resolved_by_user_id, rd.version
+            FROM reconciliation_discrepancies rd
+            LEFT JOIN organization_memberships om
+              ON rd.organization_id = om.organization_id AND rd.assigned_to_user_id = om.user_id
+            WHERE rd.organization_id = :organizationId
+              AND rd.id = :id;
+            """;
+
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("organizationId", organizationId)
+                .addValue("id", id);
+
+        List<DiscrepancyResponse> rows = jdbcTemplate.query(sql, params, this::mapDiscrepancyResponse);
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    private DiscrepancyResponse mapDiscrepancyResponse(ResultSet rs, int rowNum) throws SQLException {
+        Timestamp firstDetectedTs = rs.getTimestamp("first_detected_at");
+        Timestamp lastDetectedTs = rs.getTimestamp("last_detected_at");
+        Timestamp lastVerifiedTs = rs.getTimestamp("last_verified_at");
+        Timestamp resolvedAtTs = rs.getTimestamp("resolved_at");
+        String resSourceStr = rs.getString("resolution_source");
+        Boolean activeObj = rs.getObject("assigned_to_user_active", Boolean.class);
+
+        return new DiscrepancyResponse(
+                rs.getObject("id", UUID.class),
+                rs.getObject("organization_id", UUID.class),
+                rs.getObject("product_id", UUID.class),
+                rs.getObject("warehouse_id", UUID.class),
+                DiscrepancyType.valueOf(rs.getString("discrepancy_type")),
+                DiscrepancyStatus.valueOf(rs.getString("status")),
+                rs.getLong("observed_balance_on_hand"),
+                rs.getLong("observed_ledger_on_hand"),
+                rs.getLong("observed_balance_reserved"),
+                rs.getLong("observed_ledger_reserved"),
+                rs.getInt("consecutive_detection_count"),
+                firstDetectedTs != null ? firstDetectedTs.toInstant() : null,
+                lastDetectedTs != null ? lastDetectedTs.toInstant() : null,
+                lastVerifiedTs != null ? lastVerifiedTs.toInstant() : null,
+                rs.getObject("assigned_to_user_id", UUID.class),
+                activeObj,
+                rs.getString("investigation_notes"),
+                resSourceStr != null ? ResolutionSource.valueOf(resSourceStr) : null,
+                rs.getString("resolution_reason"),
+                resolvedAtTs != null ? resolvedAtTs.toInstant() : null,
+                rs.getObject("resolved_by_user_id", UUID.class),
+                rs.getInt("version")
+        );
     }
 
     private ActiveDiscrepancyRow mapActiveRow(ResultSet rs, int rowNum) throws SQLException {

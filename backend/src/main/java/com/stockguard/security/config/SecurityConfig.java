@@ -1,5 +1,6 @@
 package com.stockguard.security.config;
 
+import com.stockguard.infrastructure.metrics.MonitoringProperties;
 import com.stockguard.security.filter.CsrfProtectionFilter;
 import com.stockguard.security.filter.JwtAuthenticationFilter;
 import com.stockguard.security.filter.OrganizationContextFilter;
@@ -17,8 +18,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -38,6 +41,7 @@ import java.util.List;
  *   <li>Origin and custom-header CSRF protection for cookie-bound endpoints</li>
  *   <li>Bearer JWT authentication filter and authoritative PostgreSQL session verification</li>
  *   <li>Authoritative PostgreSQL organization context and membership filter</li>
+ *   <li>HTTP Basic authentication for Prometheus metric scraper with {@code ROLE_MONITORING} per ADR-014</li>
  *   <li>Consistent JSON error responses for 401 Unauthorized and 403 Forbidden</li>
  *   <li>Method-level authorization via {@link EnableMethodSecurity}</li>
  * </ul>
@@ -45,10 +49,11 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, MonitoringProperties.class})
 public class SecurityConfig {
 
     private final SecurityProperties securityProperties;
+    private final MonitoringProperties monitoringProperties;
     private final JwtService jwtService;
     private final DatabaseSessionValidator databaseSessionValidator;
     private final TenantMembershipValidator tenantMembershipValidator;
@@ -57,6 +62,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             SecurityProperties securityProperties,
+            MonitoringProperties monitoringProperties,
             JwtService jwtService,
             DatabaseSessionValidator databaseSessionValidator,
             TenantMembershipValidator tenantMembershipValidator,
@@ -64,6 +70,7 @@ public class SecurityConfig {
             SecurityJsonAccessDeniedHandler accessDeniedHandler
     ) {
         this.securityProperties = securityProperties;
+        this.monitoringProperties = monitoringProperties;
         this.jwtService = jwtService;
         this.databaseSessionValidator = databaseSessionValidator;
         this.tenantMembershipValidator = tenantMembershipValidator;
@@ -85,7 +92,7 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(AbstractHttpConfigurer::disable)
+                .httpBasic(basic -> basic.authenticationEntryPoint(authenticationEntryPoint))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -94,8 +101,10 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Public operational endpoints
+                        // Public operational health and readiness endpoints
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+                        // Prometheus scrape endpoint requires machine-to-machine ROLE_MONITORING authority
+                        .requestMatchers("/actuator/prometheus").hasAuthority("ROLE_MONITORING")
                         // Public authentication endpoints
                         .requestMatchers("/api/auth/login", "/api/auth/refresh").permitAll()
                         // User-scoped authenticated endpoints
@@ -142,9 +151,22 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
+    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
+        String scraperUser = monitoringProperties.getScraperUsername();
+        String scraperPass = monitoringProperties.getScraperPassword();
+        String encodedPass = passwordEncoder.encode(scraperPass);
+
+        UserDetails monitoringUser = org.springframework.security.core.userdetails.User
+                .withUsername(scraperUser)
+                .password(encodedPass)
+                .authorities("ROLE_MONITORING")
+                .build();
+
         return username -> {
-            throw new UsernameNotFoundException("Direct UserDetailsService authentication is disabled in favor of JWT authentication");
+            if (scraperUser != null && scraperUser.equals(username)) {
+                return monitoringUser;
+            }
+            throw new UsernameNotFoundException("User not found: " + username);
         };
     }
 }

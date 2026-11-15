@@ -49,12 +49,14 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when-authorized}
       probes:
         enabled: true
+    prometheus:
+      enabled: true
   health:
     livenessstate:
       enabled: true
@@ -62,6 +64,9 @@ management:
       enabled: true
 
 stockguard:
+  monitoring:
+    scraper-username: ${STOCKGUARD_MONITORING_SCRAPER_USERNAME:stockguard-prometheus}
+    scraper-password: ${STOCKGUARD_MONITORING_SCRAPER_PASSWORD:dev-scrape-pass}
   security:
     jwt:
       active-key:

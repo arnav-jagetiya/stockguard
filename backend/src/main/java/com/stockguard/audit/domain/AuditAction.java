@@ -37,6 +37,11 @@ public final class AuditAction {
     // Operational Reconciliation Domain
     public static final String RECONCILIATION_DISCREPANCY_DETECTED = "RECONCILIATION_DISCREPANCY_DETECTED";
     public static final String RECONCILIATION_COMPLETED = "RECONCILIATION_COMPLETED";
+    public static final String DISCREPANCY_ACKNOWLEDGED = "DISCREPANCY_ACKNOWLEDGED";
+    public static final String DISCREPANCY_ASSIGNED = "DISCREPANCY_ASSIGNED";
+    public static final String DISCREPANCY_UNASSIGNED = "DISCREPANCY_UNASSIGNED";
+    public static final String DISCREPANCY_RESOLVED = "DISCREPANCY_RESOLVED";
+    public static final String DISCREPANCY_REJECTED = "DISCREPANCY_REJECTED";
 
     private AuditAction() {
     }

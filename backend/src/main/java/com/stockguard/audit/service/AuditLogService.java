@@ -857,6 +857,33 @@ public class AuditLogService {
         );
     }
 
+    /**
+     * Records a discrepancy lifecycle event (acknowledged, assigned, unassigned, resolved, rejected).
+     * Executes within the caller's transaction (Propagation.REQUIRED).
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public void logDiscrepancyLifecycleEvent(
+            UUID organizationId,
+            UUID actorUserId,
+            String action,
+            UUID discrepancyId,
+            Map<String, Object> beforeState,
+            Map<String, Object> afterState,
+            Map<String, Object> metadata
+    ) {
+        jdbcAuditLogOperations.insertAuditLog(
+                UUID.randomUUID(),
+                organizationId,
+                actorUserId,
+                action,
+                AuditEntityType.RECONCILIATION_DISCREPANCY,
+                discrepancyId,
+                beforeState,
+                afterState,
+                metadata
+        );
+    }
+
     // =========================================================================
     // 5. INDEPENDENT SECURITY AUDIT METHODS (Propagation.REQUIRES_NEW)
     // =========================================================================
