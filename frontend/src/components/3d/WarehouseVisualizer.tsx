@@ -193,6 +193,8 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = isDark ? 1.15 : 1.05;
     container.appendChild(renderer.domElement);
 
     // 2. Lighting System
@@ -318,7 +320,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
                   reserved: Math.floor(Math.random() * 25),
                   available: 0,
                   zone: `Zone A — Aisle 0${rowIndex + 1}`,
-                  status: ['AVAILABLE', 'RESERVED_ACTIVE', 'IN_TRANSIT', 'AUDIT_FLAGGED'][matIdx],
+                  status: ['AVAILABLE', 'RESERVED_ACTIVE', 'DUAL_LEDGER_TRANSFER', 'AUDIT_FLAGGED'][matIdx],
                 };
                 box.userData.available = box.userData.onHand - box.userData.reserved;
 
@@ -363,21 +365,31 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
       scene.add(p);
     }
 
-    // 6. Automated Guided Vehicle (AGV) with Transport Pallet
+    // 6. Automated Guided Vehicle (AGV) with Industrial Wheel Casters & Forks
     const agvGroup = new THREE.Group();
     agvGroup.position.set(0, 0.25, 0);
 
     const agvBodyGeo = new THREE.BoxGeometry(1.8, 0.35, 1.1);
     const agvBodyMat = new THREE.MeshStandardMaterial({
       color: isDark ? 0x1b2922 : 0x26362e,
-      metalness: 0.8,
+      metalness: 0.85,
       roughness: 0.2,
     });
     const agvBody = new THREE.Mesh(agvBodyGeo, agvBodyMat);
     agvBody.castShadow = true;
     agvGroup.add(agvBody);
 
-    // AGV Status Beacon
+    // AGV Wheel Casters
+    const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16);
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x18231d, roughness: 0.7 });
+    [[-0.6, -0.5], [0.6, -0.5], [-0.6, 0.5], [0.6, 0.5]].forEach(([wx, wz]) => {
+      const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wx, -0.12, wz);
+      agvGroup.add(wheel);
+    });
+
+    // AGV Status Warning Beacon
     const beaconGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.2, 16);
     const beaconMat = new THREE.MeshStandardMaterial({
       color: 0xc6f36b,
@@ -388,9 +400,13 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     beacon.position.set(0.7, 0.3, 0.4);
     agvGroup.add(beacon);
 
-    // Pallet transported by AGV
+    // Pallet transported by AGV with wooden base
+    const agvWood = new THREE.Mesh(palletWoodGeo, palletWoodMat);
+    agvWood.position.set(0, 0.24, 0);
+    agvGroup.add(agvWood);
+
     const agvCargo = new THREE.Mesh(boxGeo, statusMaterials[2]);
-    agvCargo.position.set(0, 0.55, 0);
+    agvCargo.position.set(0, 0.62, 0);
     agvCargo.castShadow = true;
     agvCargo.userData = {
       bay: 'AGV-UNIT-01 (ACTIVE RELOCATION)',
@@ -479,13 +495,18 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
       camera.lookAt(lookAtTargetRef.current);
 
       if (!prefersReducedMotion) {
-        // AGV Waypoint navigation across transit aisle
+        // AGV Smooth Continuous Waypoint Navigation & Heading
         if (agvRef.current) {
-          const t = elapsed * 0.7;
-          agvRef.current.position.x = Math.sin(t) * 7.0;
-          agvRef.current.position.z = Math.cos(t * 0.5) * 1.8;
-          // Rotate slightly based on velocity
-          agvRef.current.rotation.y = Math.cos(t) > 0 ? 0 : Math.PI;
+          const speed = 0.5;
+          const t = elapsed * speed;
+          const px = Math.sin(t) * 7.5;
+          const pz = Math.sin(t * 2) * 1.5;
+          const vx = Math.cos(t) * 7.5 * speed;
+          const vz = Math.cos(t * 2) * 3.0 * speed;
+          const targetHeading = Math.atan2(vz, vx);
+
+          agvRef.current.position.set(px, 0.25, pz);
+          agvRef.current.rotation.y = targetHeading;
         }
 
         // Gentle ambient orbit when in isometric mode

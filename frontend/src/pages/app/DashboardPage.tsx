@@ -8,7 +8,6 @@ import type { Warehouse as WarehouseType } from '../../types/warehouse';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
-import { EmptyState } from '../../components/common/EmptyState';
 import {
   Boxes,
   Package,
@@ -126,43 +125,182 @@ export const DashboardPage: React.FC = () => {
     summary.inventory.totalOnHand === 0;
 
   if (isEmptyOrg) {
+    const hasWarehouse = summary.catalog.activeWarehousesCount > 0;
+    const hasProduct = summary.catalog.activeProductsCount > 0;
+    const hasStock = summary.inventory.totalOnHand > 0;
+
     return (
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#D9E1D7] dark:border-[#26362E]">
+      <div className="space-y-8 max-w-6xl mx-auto">
+        {/* Onboarding Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#D9E1D7] dark:border-[#26362E]">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">
-              Operations Command Centre
-            </h1>
-            <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1 font-mono">
-              Tenant initialized · Waiting for operational catalog & facility provisioning
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">
+                Operations Command Centre
+              </h1>
+              <Badge variant="info">INITIAL ONBOARDING</Badge>
+            </div>
+            <p className="text-xs sm:text-sm text-[#657369] dark:text-[#9AA99E] mt-1 font-mono">
+              Organization provisioned under PostgreSQL REPEATABLE READ snapshot isolation
             </p>
           </div>
-          <Badge variant="info">INITIAL ONBOARDING</Badge>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-xs font-mono font-semibold text-amber-700 dark:text-amber-400">
+              Awaiting Initial Facility & SKU Provisioning
+            </span>
+          </div>
         </div>
 
-        <EmptyState
-          icon={<Boxes className="w-10 h-10 text-[#456B1F] dark:text-[#C6F36B]" />}
-          title="Fresh Organization Workspace"
-          description="Your enterprise organization is provisioned under strict PostgreSQL REPEATABLE READ snapshot isolation. Begin by establishing your storage facilities and catalog items to initiate active inventory tracking."
-          action={
-            <div className="flex flex-wrap items-center gap-3">
-              {canManageWarehouse && (
-                <Link to="/app/warehouses">
-                  <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
-                    Create First Warehouse
-                  </Button>
-                </Link>
-              )}
-              {canCreateProduct && (
-                <Link to="/app/products">
-                  <Button variant="secondary" icon={<Package className="w-4 h-4" />}>
-                    Add Product Catalog SKU
-                  </Button>
-                </Link>
+        {/* Welcome & Context Banner */}
+        <div className="rounded-2xl bg-gradient-to-br from-[#E9EEE6]/80 via-white to-white dark:from-[#16221E] dark:via-[#111A17] dark:to-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] p-6 sm:p-8 shadow-sm space-y-4">
+          <div className="max-w-3xl space-y-2">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-[#456B1F] dark:text-[#C6F36B]">
+              Tenant Workspace Ready
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">
+              Welcome to StockGuard. Let's configure your operational perimeter.
+            </h2>
+            <p className="text-xs sm:text-sm text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+              Your organization workspace has been created with dedicated multi-tenant isolation, append-only transaction logging, and atomic concurrency controls. Follow the structured setup steps below to establish your first storage facility, define catalog SKUs, and record initial physical stock.
+            </p>
+          </div>
+
+          {/* Setup Journey Milestones */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+            {/* Step 1: Warehouse */}
+            <div className="p-5 rounded-xl bg-white dark:bg-[#182621] border border-[#D9E1D7] dark:border-[#26362E] space-y-3 relative hover:border-[#456B1F]/40 dark:hover:border-[#C6F36B]/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-[#456B1F] dark:text-[#C6F36B] px-2 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#111A17]">
+                  STEP 01
+                </span>
+                {hasWarehouse ? (
+                  <Badge variant="success" dot>COMPLETED</Badge>
+                ) : (
+                  <Badge variant="warning">ACTION REQUIRED</Badge>
+                )}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA]">Provision Storage Facility</h3>
+                <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+                  Establish your physical warehouse, regional distribution hub, or cross-dock bay with capacity parameters.
+                </p>
+              </div>
+              {canManageWarehouse && !hasWarehouse && (
+                <div className="pt-2">
+                  <Link to="/app/warehouses">
+                    <Button size="sm" variant="primary" icon={<Plus className="w-3.5 h-3.5" />}>
+                      Create First Warehouse
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
-          }
-        />
+
+            {/* Step 2: Catalog SKU */}
+            <div className="p-5 rounded-xl bg-white dark:bg-[#182621] border border-[#D9E1D7] dark:border-[#26362E] space-y-3 relative hover:border-[#456B1F]/40 dark:hover:border-[#C6F36B]/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-[#456B1F] dark:text-[#C6F36B] px-2 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#111A17]">
+                  STEP 02
+                </span>
+                {hasProduct ? (
+                  <Badge variant="success" dot>COMPLETED</Badge>
+                ) : (
+                  <Badge variant="neutral">UPCOMING</Badge>
+                )}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA]">Define Product Catalog SKUs</h3>
+                <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+                  Register unique SKUs with pricing, dimensions, and unit metrics for trackable inventory allocation.
+                </p>
+              </div>
+              {canCreateProduct && (
+                <div className="pt-2">
+                  <Link to="/app/products">
+                    <Button size="sm" variant="secondary" icon={<Package className="w-3.5 h-3.5" />}>
+                      Add Catalog SKU
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Step 3: Initial Receipt */}
+            <div className="p-5 rounded-xl bg-white dark:bg-[#182621] border border-[#D9E1D7] dark:border-[#26362E] space-y-3 relative hover:border-[#456B1F]/40 dark:hover:border-[#C6F36B]/40 transition-all">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold uppercase text-[#456B1F] dark:text-[#C6F36B] px-2 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#111A17]">
+                  STEP 03
+                </span>
+                {hasStock ? (
+                  <Badge variant="success" dot>COMPLETED</Badge>
+                ) : (
+                  <Badge variant="neutral">UPCOMING</Badge>
+                )}
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA]">Record Opening Stock</h3>
+                <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+                  Ingest physical on-hand stock via an immutable (+Q, 0) debit transaction to establish baseline ledger integrity.
+                </p>
+              </div>
+              <div className="pt-2">
+                <Link to="/app/inventory">
+                  <Button size="sm" variant="outline" icon={<Boxes className="w-3.5 h-3.5" />}>
+                    Open Inventory Ledger
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Architectural Blueprint: How the First Balance is Established */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="rounded-2xl bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] p-6 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
+              <CheckCircle2 className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />
+              <h3 className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA]">How Initial Balances are Established</h3>
+            </div>
+            <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+              StockGuard rejects arbitrary counter updates. Initial inventory is established by executing a verified physical receipt transaction:
+            </p>
+            <div className="p-3 rounded-lg bg-[#F0F4EE] dark:bg-[#16221E] font-mono text-[11px] text-[#456B1F] dark:text-[#C6F36B] space-y-1 border border-[#D9E1D7] dark:border-[#26362E]">
+              <div>RECEIPT: (+Q on-hand, 0 reserved)</div>
+              <div className="text-[10px] text-[#657369] dark:text-[#9AA99E]">1. Inserts into append-only inventory_transactions</div>
+              <div className="text-[10px] text-[#657369] dark:text-[#9AA99E]">2. Updates inventory_balances (on_hand += Q)</div>
+              <div className="text-[10px] text-[#657369] dark:text-[#9AA99E]">3. Invariant: on_hand == available + reserved</div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] p-6 shadow-sm space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
+              <Activity className="w-4 h-4 text-[#147C68] dark:text-[#6CD8C0]" />
+              <h3 className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA]">What You Will See Once Configured</h3>
+            </div>
+            <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+              Upon establishing your catalog and opening stock, this Operations Command Centre transforms into a live operational control room:
+            </p>
+            <ul className="space-y-1.5 text-xs text-[#657369] dark:text-[#9AA99E]">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#456B1F] dark:bg-[#C6F36B]" />
+                <span>Real-time mathematical Available vs. Reserved split gauges</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#147C68] dark:bg-[#6CD8C0]" />
+                <span>Four-stage active order pipeline monitoring (Pending &rarr; Confirmed &rarr; Fulfilled)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span>Continuous MVCC reconciliation sweeps and discrepancy isolation</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                <span>Per-facility capacity, stockout counters, and audit trail stream</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     );
   }

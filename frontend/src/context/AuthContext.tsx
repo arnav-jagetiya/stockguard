@@ -13,7 +13,7 @@ import {
   setOnUnauthorized,
 } from '../api/client';
 
-interface AuthContextType {
+export interface AuthContextType {
   user: UserSummary | null;
   organizations: OrganizationSummary[];
   currentOrg: OrganizationSummary | null;
@@ -28,7 +28,7 @@ interface AuthContextType {
   hasPermission: (permission: string) => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ACTIVE_ORG_STORAGE_KEY = 'stockguard_active_org_id';
 let inFlightRefreshPromise: Promise<boolean> | null = null;

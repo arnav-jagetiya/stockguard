@@ -47,6 +47,9 @@ stockguard:
       admin-full-name: "StockGuard Administrator"
       org-name: "StockGuard Demo Organization"
       allow-password-reset: ${STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET:false}
+    rate-limit:
+      login-permits-per-minute: 60
+      refresh-permits-per-minute: 120
     registration:
       enabled: true
 

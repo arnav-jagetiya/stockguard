@@ -75,9 +75,20 @@
     transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  /* Precision Typography Scale & Negative Letter-Spacing */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.025em;
+  }
+
   /* Tabular numbers for numerical accuracy across ledger, SKU & metrics */
   .font-mono, td, [data-metric] {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessible Focus Rings */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--bg-canvas), 0 0 0 4px var(--signal-primary);
   }
 
   /* Precision scrollbar */

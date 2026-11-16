@@ -36,6 +36,8 @@ async function runMotionAcceptance() {
 
     // 2. Theme Tray Motion & Popover Animation
     console.log('2. Testing Theme Tray Popover Animation...');
+    await page.waitForSelector('button[data-testid="theme-tray-trigger"]');
+    await new Promise(r => setTimeout(r, 400));
     await page.screenshot({ path: path.join(MOTION_DIR, '01_theme_tray_closed.png') });
     await page.click('button[data-testid="theme-tray-trigger"]');
     await new Promise(r => setTimeout(r, 80)); // Mid-opening zoom-in-95
@@ -43,6 +45,7 @@ async function runMotionAcceptance() {
     await new Promise(r => setTimeout(r, 200)); // Fully opened
     await page.screenshot({ path: path.join(MOTION_DIR, '03_theme_tray_open.png') });
     // Switch to dark mode
+    await page.waitForSelector('button[data-theme-mode="dark"]');
     await page.click('button[data-theme-mode="dark"]');
     await new Promise(r => setTimeout(r, 300));
     await page.screenshot({ path: path.join(MOTION_DIR, '04_theme_transition_dark.png') });
@@ -50,7 +53,8 @@ async function runMotionAcceptance() {
     // 3. Modal / Dialog Motion (Reconciliation Sweep Modal)
     console.log('3. Testing Modal Backdrop & Zoom-in Motion...');
     await page.goto('http://localhost:5173/app/reconciliation', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('button[data-testid="trigger-sweep-btn"]');
+    await page.waitForSelector('button[data-testid="trigger-sweep-btn"]', { timeout: 10000 });
+    await new Promise(r => setTimeout(r, 300));
     await page.click('button[data-testid="trigger-sweep-btn"]');
     await new Promise(r => setTimeout(r, 80)); // Backdrop fade-in + dialog zoom-in-95
     await page.screenshot({ path: path.join(MOTION_DIR, '05_modal_animating_in.png') });

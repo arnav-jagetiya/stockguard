@@ -72,7 +72,7 @@ export const AppShell: React.FC = () => {
         </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-grid-pattern relative">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F4F5EF] dark:bg-[#0B100F] transition-colors relative">
           <Outlet />
         </main>
       </div>

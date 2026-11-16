@@ -45,7 +45,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <button
       disabled={disabled || activeLoading}
-      className={`inline-flex items-center justify-center transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 select-none active:scale-[0.98] active:brightness-95 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#456B1F] dark:focus-visible:ring-[#C6F36B] focus-visible:outline-none ${sizeStyles[size]} ${variantStyles[variant]} ${className}`}
       {...props}
     >
       {activeLoading ? (
