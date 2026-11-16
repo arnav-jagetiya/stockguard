@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 
 export const FooterSection: React.FC = () => {
@@ -50,7 +51,8 @@ export const FooterSection: React.FC = () => {
               Operations
             </div>
             <ul className="space-y-2">
-              <li><a href="/login" className="hover:text-cyan-600 dark:hover:text-cyan-400">Operations Console</a></li>
+              <li><Link to="/login" className="hover:text-cyan-600 dark:hover:text-cyan-400">Operations Console</Link></li>
+              <li><Link to="/register" className="hover:text-cyan-600 dark:hover:text-cyan-400">Create Account</Link></li>
               <li><a href="#demo" className="hover:text-cyan-600 dark:hover:text-cyan-400">Interactive Simulation Lab</a></li>
               <li><span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> All Systems Nominal</span></li>
             </ul>

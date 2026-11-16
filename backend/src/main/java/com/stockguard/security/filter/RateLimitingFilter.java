@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 public class RateLimitingFilter extends OncePerRequestFilter {
 
     private static final String LOGIN_PATH = "/api/auth/login";
+    private static final String REGISTER_PATH = "/api/auth/register";
     private static final String REFRESH_PATH = "/api/auth/refresh";
     private static final long WINDOW_MILLIS = 60_000L; // 1 minute sliding bucket
 
@@ -61,6 +62,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             if (LOGIN_PATH.equals(path)) {
                 limit = securityProperties.getRateLimit().getLoginPermitsPerMinute();
                 endpointKey = "login";
+            } else if (REGISTER_PATH.equals(path)) {
+                limit = securityProperties.getRateLimit().getLoginPermitsPerMinute();
+                endpointKey = "register";
             } else if (REFRESH_PATH.equals(path)) {
                 limit = securityProperties.getRateLimit().getRefreshPermitsPerMinute();
                 endpointKey = "refresh";

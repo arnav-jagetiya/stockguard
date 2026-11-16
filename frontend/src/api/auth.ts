@@ -1,10 +1,17 @@
 import { apiClient } from './client';
-import type { AuthTokenResponse, SwitchOrgResponse, UserMeResponse } from '../types/auth';
+import type { AuthTokenResponse, RegisterRequest, SwitchOrgResponse, UserMeResponse } from '../types/auth';
 
 export async function loginApi(email: string, password: string): Promise<AuthTokenResponse> {
   return apiClient<AuthTokenResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function registerApi(data: RegisterRequest): Promise<AuthTokenResponse> {
+  return apiClient<AuthTokenResponse>('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 

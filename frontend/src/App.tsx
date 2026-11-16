@@ -8,6 +8,7 @@ import { LoadingSpinner } from './components/common/LoadingSpinner';
 // Route-level Code Splitting
 const MarketingPage = lazy(() => import('./pages/marketing/MarketingPage').then((m) => ({ default: m.MarketingPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import('./pages/auth/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const AppShell = lazy(() => import('./components/layout/AppShell').then((m) => ({ default: m.AppShell })));
 
 // Authenticated Application Modules
@@ -39,8 +40,9 @@ export default function App() {
                 {/* Public Marketing Page */}
                 <Route path="/" element={<MarketingPage />} />
 
-                {/* Authentication Screen */}
+                {/* Authentication Screens */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
 
                 {/* Authenticated Operations Console */}
                 <Route path="/app" element={<AppShell />}>

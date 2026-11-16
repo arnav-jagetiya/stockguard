@@ -38,13 +38,18 @@ export const HeroSection: React.FC = () => {
 
         {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <Link to="/register">
+            <Button size="lg" variant="primary" icon={<ArrowRight className="w-4 h-4" />}>
+              Create Organization Account
+            </Button>
+          </Link>
           <Link to="/login">
-            <Button size="lg" icon={<ArrowRight className="w-4 h-4" />}>
-              Launch Operations Console
+            <Button variant="secondary" size="lg">
+              Sign In to Console
             </Button>
           </Link>
           <a href="#demo">
-            <Button variant="secondary" size="lg" icon={<Terminal className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}>
+            <Button variant="ghost" size="lg" icon={<Terminal className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}>
               Explore Interactive Lab
             </Button>
           </a>

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import type { OrganizationSummary, Role, UserSummary } from '../types/auth';
+import type { OrganizationSummary, RegisterRequest, Role, UserSummary } from '../types/auth';
 import {
   loginApi,
+  registerApi,
   logoutApi,
   refreshApi,
   switchOrgApi,
@@ -21,6 +22,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, pass: string) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   switchOrganization: (orgId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
@@ -29,6 +31,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const ACTIVE_ORG_STORAGE_KEY = 'stockguard_active_org_id';
+let inFlightRefreshPromise: Promise<boolean> | null = null;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSummary | null>(null);
@@ -52,29 +55,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const handleSilentRefresh = useCallback(async (): Promise<boolean> => {
-    try {
-      const res = await refreshApi();
-      const orgs = res.availableOrganizations || res.organizations || [];
-      setAuthToken(res.accessToken);
-      setUser(res.user);
-      setOrganizations(orgs);
-
-      const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
-      const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0];
-
-      if (targetOrg) {
-        await applyOrganization(targetOrg);
-      }
-      return true;
-    } catch {
-      setAuthToken(null);
-      setUser(null);
-      setOrganizations([]);
-      setCurrentOrg(null);
-      setPermissions(new Set());
-      setActiveOrganizationId(null);
-      return false;
+    if (inFlightRefreshPromise) {
+      return inFlightRefreshPromise;
     }
+
+    inFlightRefreshPromise = (async () => {
+      try {
+        const res = await refreshApi();
+        const orgs = res.availableOrganizations || res.organizations || [];
+        setAuthToken(res.accessToken);
+        setUser(res.user);
+        setOrganizations(orgs);
+
+        const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
+        const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0];
+
+        if (targetOrg) {
+          await applyOrganization(targetOrg);
+        }
+        return true;
+      } catch {
+        setAuthToken(null);
+        setUser(null);
+        setOrganizations([]);
+        setCurrentOrg(null);
+        setPermissions(new Set());
+        setActiveOrganizationId(null);
+        return false;
+      } finally {
+        inFlightRefreshPromise = null;
+      }
+    })();
+
+    return inFlightRefreshPromise;
   }, [applyOrganization]);
 
   useEffect(() => {
@@ -104,6 +117,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
       const targetOrg = orgs.find((o) => o.id === savedOrgId) || orgs[0];
 
+      if (targetOrg) {
+        await applyOrganization(targetOrg);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: RegisterRequest) => {
+    setIsLoading(true);
+    try {
+      const res = await registerApi(data);
+      const orgs = res.availableOrganizations || res.organizations || [];
+      setAuthToken(res.accessToken);
+      setUser(res.user);
+      setOrganizations(orgs);
+
+      const targetOrg = orgs[0];
       if (targetOrg) {
         await applyOrganization(targetOrg);
       }
@@ -151,6 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user && !!currentOrg,
         isLoading,
         login,
+        register,
         logout,
         switchOrganization,
         hasPermission,

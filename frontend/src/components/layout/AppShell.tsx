@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Sidebar } from './Sidebar';
 import { OrgSwitcher } from './OrgSwitcher';
-import { ThemeSelector } from '../common/ThemeSelector';
+import { ThemeTray } from '../common/ThemeTray';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 
@@ -44,8 +44,8 @@ export const AppShell: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
-            {/* Theme Selector */}
-            <ThemeSelector />
+            {/* Theme Tray */}
+            <ThemeTray />
 
             {/* User Profile and Logout */}
             <div className="flex items-center gap-2.5 sm:gap-3 pl-3 sm:pl-4 border-l border-slate-200 dark:border-slate-800">

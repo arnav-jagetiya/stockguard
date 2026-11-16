@@ -86,6 +86,48 @@ class AuthControllerTest {
     }
 
     @Test
+    @DisplayName("POST /api/auth/register succeeds, returns 201 CREATED and sets HttpOnly refresh cookie")
+    void registerSucceedsWithCreatedStatus() {
+        RegisterRequest request = new RegisterRequest("New Founder", "founder@newco.com", "SecurePass123!", "NewCo Logistics");
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/api/auth/register");
+
+        UUID newUserId = UUID.randomUUID();
+        UUID newOrgId = UUID.randomUUID();
+
+        authService.nextRegisterResult = new LoginResult(
+                "new.access.jwt.token",
+                "opaque-register-refresh-token",
+                900L,
+                "Bearer",
+                newUserId,
+                "founder@newco.com",
+                UUID.randomUUID()
+        );
+
+        queryService.availableOrgs = List.of(
+                new OrganizationSummaryDto(newOrgId, "NewCo Logistics", Role.ADMIN)
+        );
+
+        ResponseEntity<?> response = controller.register(request, servletRequest);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        List<String> cookies = response.getHeaders().get(HttpHeaders.SET_COOKIE);
+        assertThat(cookies).isNotNull().hasSize(1);
+        String cookieHeader = cookies.get(0);
+        assertThat(cookieHeader).contains("stockguard_test_refresh=opaque-register-refresh-token");
+        assertThat(cookieHeader).contains("HttpOnly");
+
+        AuthTokenResponse body = (AuthTokenResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.accessToken()).isEqualTo("new.access.jwt.token");
+        assertThat(body.user().email()).isEqualTo("founder@newco.com");
+        assertThat(body.user().fullName()).isEqualTo("New Founder");
+        assertThat(body.availableOrganizations()).hasSize(1);
+        assertThat(body.availableOrganizations().get(0).role()).isEqualTo(Role.ADMIN);
+    }
+
+    @Test
     @DisplayName("POST /api/auth/login fails when credentials are invalid")
     void loginFailsWithInvalidCredentials() {
         LoginRequest request = new LoginRequest("admin@example.com", "WrongPassword");
@@ -258,8 +300,10 @@ class AuthControllerTest {
 
     private static class StubAuthenticationService extends AuthenticationService {
         LoginResult nextLoginResult;
+        LoginResult nextRegisterResult;
         RefreshResult nextRefreshResult;
         RuntimeException throwOnLogin;
+        RuntimeException throwOnRegister;
         RuntimeException throwOnRefresh;
         String loggedOutToken;
         UUID revokedSessionId;
@@ -272,6 +316,12 @@ class AuthControllerTest {
         public LoginResult login(LoginCommand command) {
             if (throwOnLogin != null) throw throwOnLogin;
             return nextLoginResult;
+        }
+
+        @Override
+        public LoginResult register(com.stockguard.security.model.RegisterCommand command) {
+            if (throwOnRegister != null) throw throwOnRegister;
+            return nextRegisterResult;
         }
 
         @Override

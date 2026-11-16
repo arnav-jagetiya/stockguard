@@ -83,6 +83,12 @@ class AuthenticationIntegrationTest {
     private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
+    private com.stockguard.organization.repository.OrganizationRepository organizationRepository;
+
+    @Autowired
+    private com.stockguard.organization.repository.OrganizationMembershipRepository membershipRepository;
+
+    @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     private JdbcTemplate privilegedJdbcTemplate;
@@ -450,5 +456,59 @@ class AuthenticationIntegrationTest {
 
         assertThatThrownBy(() -> authenticationService.refresh(login.rawRefreshToken()))
                 .isInstanceOf(SessionRevokedException.class);
+    }
+
+    @Test
+    @DisplayName("register creates user, organization, ADMIN membership and returns active session")
+    void registerCreatesUserOrganizationAndAdminMembership() {
+        String email = "founder@alpha.com";
+        String password = "StrongPassword123!";
+        String fullName = "Alice Founder";
+        String orgName = "Alpha Global Logistics";
+
+        LoginResult result = authenticationService.register(
+                new com.stockguard.security.model.RegisterCommand(
+                        fullName, email, password, orgName, "192.168.1.10", "Mozilla/5.0"
+                )
+        );
+
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo(email);
+        assertThat(result.accessToken()).isNotBlank();
+        assertThat(result.rawRefreshToken()).isNotBlank();
+
+        // Verify User in database
+        User createdUser = userRepository.findByNormalizedEmail(email.toLowerCase()).orElseThrow();
+        assertThat(createdUser.isActive()).isTrue();
+        assertThat(passwordEncoder.matches(password, createdUser.getPasswordHash())).isTrue();
+
+        // Verify Organization in database
+        var memberships = membershipRepository.findAllByUserIdAndActiveTrue(createdUser.getId());
+        assertThat(memberships).hasSize(1);
+        var membership = memberships.get(0);
+        assertThat(membership.getRole()).isEqualTo(com.stockguard.organization.domain.Role.ADMIN);
+
+        var org = organizationRepository.findById(membership.getOrganizationId()).orElseThrow();
+        assertThat(org.getName()).isEqualTo(orgName);
+    }
+
+    @Test
+    @DisplayName("register rejects duplicate email")
+    void registerRejectsDuplicateEmail() {
+        String email = "duplicate@company.com";
+        String password = "Password123!";
+
+        authenticationService.register(
+                new com.stockguard.security.model.RegisterCommand(
+                        "First User", email, password, "First Corp", "10.0.0.1", "Client"
+                )
+        );
+
+        assertThatThrownBy(() -> authenticationService.register(
+                new com.stockguard.security.model.RegisterCommand(
+                        "Second User", email, password, "Second Corp", "10.0.0.2", "Client"
+                )
+        )).isInstanceOf(com.stockguard.shared.exception.DuplicateResourceException.class)
+          .hasMessageContaining("already exists");
     }
 }

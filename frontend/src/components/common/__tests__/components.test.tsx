@@ -8,6 +8,7 @@ import { Modal } from '../Modal';
 import { ConfirmDialog } from '../ConfirmDialog';
 import { Skeleton, TableSkeleton } from '../Skeleton';
 import { ThemeSelector } from '../ThemeSelector';
+import { ThemeTray } from '../ThemeTray';
 import { ThemeProvider } from '../../../context/ThemeContext';
 
 describe('Common Component Library', () => {
@@ -148,5 +149,35 @@ describe('Common Component Library', () => {
 
     fireEvent.click(darkBtn);
     expect(localStorage.getItem('stockguard-theme')).toBe('dark');
+  });
+
+  it('renders ThemeTray popover, reveals options and switches theme', () => {
+    render(
+      <ThemeProvider>
+        <ThemeTray />
+      </ThemeProvider>
+    );
+
+    // Initial trigger button
+    const trigger = screen.getByRole('button', { name: /theme mode/i });
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    // Click trigger to open popover tray
+    fireEvent.click(trigger);
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+    // Verify popover header and options
+    expect(screen.getByText(/interface appearance/i)).toBeInTheDocument();
+    expect(screen.getByText(/clean, high-contrast daytime interface/i)).toBeInTheDocument();
+    expect(screen.getByText(/deep midnight navy low-strain palette/i)).toBeInTheDocument();
+    expect(screen.getByText(/automatically synchronizes with your device os/i)).toBeInTheDocument();
+
+    // Select Dark option
+    const darkOption = screen.getByRole('menuitem', { name: /dark/i });
+    fireEvent.click(darkOption);
+
+    expect(localStorage.getItem('stockguard-theme')).toBe('dark');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
   });
 });

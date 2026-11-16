@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, ArrowRight, Activity } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Activity, UserPlus } from 'lucide-react';
 import { Button } from '../common/Button';
-import { ThemeSelector } from '../common/ThemeSelector';
+import { ThemeTray } from '../common/ThemeTray';
 
 export const Navbar: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -45,8 +45,8 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* CTA & Theme Controls */}
-        <div className="flex items-center gap-3">
-          <ThemeSelector />
+        <div className="flex items-center gap-2.5">
+          <ThemeTray />
 
           <a
             href="#demo"
@@ -63,11 +63,18 @@ export const Navbar: React.FC = () => {
               </Button>
             </Link>
           ) : (
-            <Link to="/login">
-              <Button size="sm" icon={<ArrowRight className="w-3.5 h-3.5" />}>
-                Sign In
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/login">
+                <Button size="sm" variant="secondary">
+                  Sign In
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="sm" variant="primary" icon={<UserPlus className="w-3.5 h-3.5" />}>
+                  Register
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </div>

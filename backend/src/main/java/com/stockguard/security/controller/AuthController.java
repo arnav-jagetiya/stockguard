@@ -131,6 +131,57 @@ public class AuthController {
     }
 
     /**
+     * Self-service organization registration endpoint (Option A — Organization Registration).
+     * Creates new user, primary organization, ADMIN membership, session, and returns auth response.
+     */
+    @PostMapping("/register")
+    public ResponseEntity<?> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        String clientIp = servletRequest.getRemoteAddr();
+        String userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT);
+
+        LoginResult result = authenticationService.register(
+                new com.stockguard.security.model.RegisterCommand(
+                        request.fullName(),
+                        request.email(),
+                        request.password(),
+                        request.organizationName(),
+                        clientIp,
+                        userAgent
+                )
+        );
+
+        List<OrganizationSummaryDto> organizations =
+                userContextQueryService.getUserAvailableOrganizations(result.userId());
+
+        ResponseCookie refreshCookie = cookieHelper.buildRefreshCookie(result.rawRefreshToken());
+
+        UserSummaryDto userSummary = new UserSummaryDto(
+                result.userId(),
+                result.email(),
+                request.fullName().trim(),
+                true
+        );
+
+        AuthTokenResponse responseBody = new AuthTokenResponse(
+                result.accessToken(),
+                result.tokenType(),
+                result.expiresInSeconds(),
+                userSummary,
+                organizations
+        );
+
+        securityAuditLog.info("New organization account registered for email: {} with organization: {} from IP: {}",
+                request.email(), request.organizationName(), clientIp);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(responseBody);
+    }
+
+    /**
      * Rotates a single-use opaque refresh token read from the HttpOnly cookie.
      */
     @PostMapping("/refresh")

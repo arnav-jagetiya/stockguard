@@ -43,3 +43,10 @@ export interface SwitchOrgResponse {
   role: Role;
   permissions: string[];
 }
+
+export interface RegisterRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  organizationName: string;
+}
