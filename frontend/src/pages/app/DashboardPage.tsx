@@ -288,7 +288,7 @@ export const DashboardPage: React.FC = () => {
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#147C68] dark:bg-[#6CD8C0]" />
-                <span>Four-stage active order pipeline monitoring (Pending &rarr; Confirmed &rarr; Fulfilled)</span>
+                <span>Lifecycle order pipeline monitoring (Pending &rarr; Confirmed &rarr; Fulfilled / Cancelled)</span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />

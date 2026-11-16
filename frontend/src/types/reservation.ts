@@ -1,4 +1,4 @@
-export type ReservationStatus = 'ACTIVE' | 'EXPIRED' | 'FULFILLED' | 'RELEASED';
+export type ReservationStatus = 'ACTIVE' | 'EXPIRED' | 'CONSUMED' | 'RELEASED';
 
 export interface ReservationAllocation {
   id: string;

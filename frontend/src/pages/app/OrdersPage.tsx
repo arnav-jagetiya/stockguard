@@ -191,10 +191,14 @@ export const OrdersPage: React.FC = () => {
         return <Badge variant="warning">PENDING</Badge>;
       case 'CONFIRMED':
         return <Badge variant="info">CONFIRMED</Badge>;
+      case 'FULFILLING':
+        return <Badge variant="accent">FULFILLING</Badge>;
       case 'FULFILLED':
         return <Badge variant="success">FULFILLED</Badge>;
       case 'CANCELLED':
         return <Badge variant="neutral">CANCELLED</Badge>;
+      case 'EXPIRED':
+        return <Badge variant="error">EXPIRED</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -237,6 +241,7 @@ export const OrdersPage: React.FC = () => {
               { value: 'CONFIRMED', label: 'Confirmed' },
               { value: 'FULFILLED', label: 'Fulfilled' },
               { value: 'CANCELLED', label: 'Cancelled' },
+              { value: 'EXPIRED', label: 'Expired' },
             ]}
           />
         </div>

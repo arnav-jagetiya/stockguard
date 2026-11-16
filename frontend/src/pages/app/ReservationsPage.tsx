@@ -48,8 +48,9 @@ export const ReservationsPage: React.FC = () => {
         return <Badge variant="success" dot>ACTIVE</Badge>;
       case 'EXPIRED':
         return <Badge variant="warning">EXPIRED</Badge>;
+      case 'CONSUMED':
       case 'FULFILLED':
-        return <Badge variant="info">FULFILLED</Badge>;
+        return <Badge variant="info">CONSUMED</Badge>;
       case 'RELEASED':
         return <Badge variant="neutral">RELEASED</Badge>;
       default:

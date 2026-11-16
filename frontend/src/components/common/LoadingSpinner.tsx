@@ -23,10 +23,10 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center p-12 space-y-3 ${className}`}>
       <div className={`relative ${sizeMap[size]}`}>
-        <div className="w-full h-full rounded-full border-2 border-slate-800" />
-        <div className="absolute top-0 left-0 w-full h-full rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+        <div className="w-full h-full rounded-full border-2 border-[#D9E1D7] dark:border-[#26362E]" />
+        <div className="absolute top-0 left-0 w-full h-full rounded-full border-2 border-[#10B981] dark:border-[#C6F36B] border-t-transparent animate-spin" />
       </div>
-      {displayMessage && <p className="text-xs font-medium text-slate-400 animate-pulse">{displayMessage}</p>}
+      {displayMessage && <p className="text-xs font-medium text-[#657369] dark:text-[#9AA99E] animate-pulse">{displayMessage}</p>}
     </div>
   );
 };

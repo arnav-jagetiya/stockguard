@@ -24,7 +24,7 @@ const AuditLogsPage = lazy(() => import('./pages/app/AuditLogsPage').then((m) =>
 const TeamPage = lazy(() => import('./pages/app/TeamPage').then((m) => ({ default: m.TeamPage })));
 
 const RouteLoadingFallback = () => (
-  <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex items-center justify-center">
+  <div className="min-h-screen bg-[#F4F5EF] dark:bg-[#0B100F] flex items-center justify-center">
     <LoadingSpinner size="lg" message="Loading StockGuard module..." />
   </div>
 );
