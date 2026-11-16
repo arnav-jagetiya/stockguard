@@ -296,6 +296,31 @@ class AuthControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
+    @Test
+    @DisplayName("GET /api/auth/demo-credentials returns 404 when bootstrap is disabled")
+    void demoCredentialsReturns404WhenDisabled() {
+        controller.setSecurityProperties(properties);
+        ResponseEntity<?> response = controller.getDemoCredentials();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/demo-credentials returns credentials when bootstrap is enabled")
+    void demoCredentialsReturnsCredentialsWhenEnabled() {
+        properties.getBootstrap().setEnabled(true);
+        properties.getBootstrap().setAdminEmail("admin@stockguard.dev");
+        properties.getBootstrap().setAdminPassword("replace-with-secure-admin-password");
+        controller.setSecurityProperties(properties);
+
+        ResponseEntity<?> response = controller.getDemoCredentials();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> body = (Map<String, Object>) response.getBody();
+        assertThat(body.get("available")).isEqualTo(true);
+        assertThat(body.get("email")).isEqualTo("admin@stockguard.dev");
+        assertThat(body.get("password")).isEqualTo("replace-with-secure-admin-password");
+    }
+
     // --- Lightweight Stubs ---
 
     private static class StubAuthenticationService extends AuthenticationService {

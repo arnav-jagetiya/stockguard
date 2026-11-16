@@ -37,3 +37,13 @@ export async function switchOrgApi(organizationId: string): Promise<SwitchOrgRes
 export async function getMeApi(): Promise<UserMeResponse> {
   return apiClient<UserMeResponse>('/api/auth/me');
 }
+
+export interface DemoCredentialsResponse {
+  available: boolean;
+  email: string;
+  password?: string;
+}
+
+export async function getDemoCredentialsApi(): Promise<DemoCredentialsResponse> {
+  return apiClient<DemoCredentialsResponse>('/api/auth/demo-credentials');
+}

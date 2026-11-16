@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { getDemoCredentialsApi } from '../../api/auth';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { ThemeTray } from '../../components/common/ThemeTray';
@@ -25,6 +26,9 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
+
+  const isDev = import.meta.env.DEV;
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -68,10 +72,22 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const fillAdminCredentials = () => {
-    setEmail('admin@stockguard.dev');
-    setPassword('replace-with-secure-admin-password');
+  const handleFetchDemoCredentials = async () => {
+    setIsDemoLoading(true);
     setErrorMessage(null);
+    try {
+      const demo = await getDemoCredentialsApi();
+      if (demo && demo.email) {
+        setEmail(demo.email);
+        if (demo.password) {
+          setPassword(demo.password);
+        }
+      }
+    } catch {
+      setErrorMessage('Development demo credentials are only available when the backend dev profile is active.');
+    } finally {
+      setIsDemoLoading(false);
+    }
   };
 
   return (
@@ -107,7 +123,10 @@ export const LoginPage: React.FC = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl py-8 px-6 sm:px-9 shadow-2xl rounded-2xl border border-slate-200/90 dark:border-slate-800/90 space-y-5">
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-600 dark:text-rose-400 animate-in fade-in">
+            <div
+              data-testid="login-error"
+              className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-600 dark:text-rose-400 animate-in fade-in"
+            >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
               <span>{errorMessage}</span>
             </div>
@@ -167,14 +186,17 @@ export const LoginPage: React.FC = () => {
                 <span>Remember work email</span>
               </label>
 
-              <button
-                type="button"
-                onClick={fillAdminCredentials}
-                className="text-[11px] font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
-                title="Populate development bootstrap admin credentials"
-              >
-                <Sparkles className="w-3 h-3" /> Fill Demo Admin
-              </button>
+              {isDev && (
+                <button
+                  type="button"
+                  onClick={handleFetchDemoCredentials}
+                  disabled={isDemoLoading}
+                  className="text-[11px] font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  title="Populate development bootstrap credentials via dev API"
+                >
+                  <Sparkles className="w-3 h-3" /> {isDemoLoading ? 'Loading Demo...' : 'Fill Demo Admin'}
+                </button>
+              )}
             </div>
 
             <Button

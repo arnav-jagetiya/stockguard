@@ -106,7 +106,7 @@ public class SecurityConfig {
                         // Prometheus scrape endpoint requires machine-to-machine ROLE_MONITORING authority
                         .requestMatchers("/actuator/prometheus").hasAuthority("ROLE_MONITORING")
                         // Public authentication endpoints
-                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/register").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/register", "/api/auth/demo-credentials").permitAll()
                         // User-scoped authenticated endpoints
                         .requestMatchers("/api/auth/logout", "/api/auth/me", "/api/auth/switch-org").authenticated()
                         // All other application routes require authentication by default

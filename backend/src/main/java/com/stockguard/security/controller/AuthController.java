@@ -1,6 +1,7 @@
 package com.stockguard.security.controller;
 
 import com.stockguard.audit.service.AuditLogService;
+import com.stockguard.security.config.SecurityProperties;
 import com.stockguard.security.dto.*;
 import com.stockguard.security.exception.*;
 import com.stockguard.security.model.LoginCommand;
@@ -18,6 +19,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -48,6 +51,12 @@ public class AuthController {
     private final RefreshTokenCookieHelper cookieHelper;
     private final AuditLogService auditLogService;
     private final TenantMembershipValidator membershipValidator;
+
+    @Autowired(required = false)
+    private SecurityProperties securityProperties;
+
+    @Autowired(required = false)
+    private Environment environment;
 
     @Autowired
     public AuthController(
@@ -322,6 +331,37 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("error", "Unauthorized", "message", ex.getMessage()));
         }
+    }
+
+    /**
+     * Development-only endpoint providing demo administrator credentials for quick login.
+     * Strictly blocked in production profiles and unavailable when bootstrap is disabled.
+     */
+    @GetMapping("/demo-credentials")
+    public ResponseEntity<?> getDemoCredentials() {
+        if (environment != null && environment.acceptsProfiles(Profiles.of("prod"))) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        if (securityProperties == null || securityProperties.getBootstrap() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        SecurityProperties.Bootstrap bootstrap = securityProperties.getBootstrap();
+        if (!bootstrap.isEnabled() || bootstrap.getAdminPassword() == null || bootstrap.getAdminPassword().isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(Map.of(
+                "available", true,
+                "email", bootstrap.getAdminEmail(),
+                "password", bootstrap.getAdminPassword()
+        ));
+    }
+
+    public void setSecurityProperties(SecurityProperties securityProperties) {
+        this.securityProperties = securityProperties;
+    }
+
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
     }
 
     private String deriveFullName(String email) {
