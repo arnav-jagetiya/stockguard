@@ -21,27 +21,27 @@ export const Select: React.FC<SelectProps> = ({
       {label && (
         <label
           htmlFor={selectId}
-          className="block text-xs font-medium text-slate-700 dark:text-slate-300"
+          className="block text-xs font-semibold text-[#18231D] dark:text-[#EEF3EA]"
         >
           {label}
         </label>
       )}
       <select
         id={selectId}
-        className={`w-full bg-white dark:bg-[#0a101d] text-slate-900 dark:text-slate-100 text-sm rounded-lg px-3.5 py-2 border transition-colors outline-none cursor-pointer shadow-xs ${
+        className={`w-full bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA] text-sm rounded-lg px-3.5 py-2 border transition-colors outline-none cursor-pointer shadow-xs ${
           error
             ? 'border-rose-500 focus:border-rose-500'
-            : 'border-slate-300 dark:border-slate-800 focus:border-cyan-500'
+            : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-1 focus:ring-[#456B1F]/30 dark:focus:ring-[#C6F36B]/30'
         } ${className}`}
         {...props}
       >
         {options.map((opt) => (
-          <option key={opt.value} value={opt.value} className="bg-white dark:bg-[#0b1220] text-slate-900 dark:text-slate-200">
+          <option key={opt.value} value={opt.value} className="bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA]">
             {opt.label}
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-rose-500 dark:text-rose-400 font-medium">{error}</p>}
+      {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
     </div>
   );
 };

@@ -61,8 +61,8 @@ export const ReservationsPage: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Active Stock Reservations</h1>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">Active Stock Reservations</h1>
+        <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">
           Inspect distributed two-phase reservation allocations, expiration deadlines, and multi-warehouse locks.
         </p>
       </div>
@@ -110,20 +110,20 @@ export const ReservationsPage: React.FC = () => {
           {/* Reservation Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card className="space-y-1">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase font-mono">Status</span>
+              <span className="text-xs text-[#657369] dark:text-[#9AA99E] uppercase font-mono">Status</span>
               <div className="pt-1">{getStatusBadge(reservation.status)}</div>
             </Card>
 
             <Card className="space-y-1">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase font-mono">Expires At</span>
-              <p className="text-sm font-bold text-slate-900 dark:text-white font-mono pt-1">
+              <span className="text-xs text-[#657369] dark:text-[#9AA99E] uppercase font-mono">Expires At</span>
+              <p className="text-sm font-bold text-[#18231D] dark:text-[#EEF3EA] font-mono pt-1">
                 {new Date(reservation.expiresAt).toLocaleString()}
               </p>
             </Card>
 
             <Card className="space-y-1">
-              <span className="text-xs text-slate-500 dark:text-slate-400 uppercase font-mono">Total Allocation Lines</span>
-              <p className="text-sm font-bold text-cyan-600 dark:text-cyan-400 font-mono pt-1">
+              <span className="text-xs text-[#657369] dark:text-[#9AA99E] uppercase font-mono">Total Allocation Lines</span>
+              <p className="text-sm font-bold text-[#147C68] dark:text-[#6CD8C0] font-mono pt-1">
                 {reservation.allocations.length} line allocations
               </p>
             </Card>
@@ -131,7 +131,7 @@ export const ReservationsPage: React.FC = () => {
 
           {/* Allocation Table */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Facility Allocation Breakdown</h3>
+            <h3 className="text-sm font-semibold text-[#18231D] dark:text-[#EEF3EA]">Facility Allocation Breakdown</h3>
             <Table>
               <TableHead>
                 <tr>
@@ -145,11 +145,11 @@ export const ReservationsPage: React.FC = () => {
               <TableBody>
                 {reservation.allocations.map((a) => (
                   <TableRow key={a.id}>
-                    <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400">{a.orderItemId}</TableCell>
-                    <TableCell className="font-mono text-xs text-cyan-600 dark:text-cyan-400">{a.productId}</TableCell>
-                    <TableCell className="font-mono text-xs text-indigo-600 dark:text-indigo-400">{a.warehouseId}</TableCell>
-                    <TableCell className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{a.quantity}</TableCell>
-                    <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
+                    <TableCell className="font-mono text-xs text-[#657369] dark:text-[#9AA99E]">{a.orderItemId}</TableCell>
+                    <TableCell className="font-mono text-xs text-[#147C68] dark:text-[#6CD8C0] font-semibold">{a.productId}</TableCell>
+                    <TableCell className="font-mono text-xs text-[#8A988E] dark:text-[#6C7D71]">{a.warehouseId}</TableCell>
+                    <TableCell className="font-mono font-bold text-[#456B1F] dark:text-[#C6F36B]">{a.quantity}</TableCell>
+                    <TableCell className="font-mono text-xs text-[#8A988E] dark:text-[#6C7D71]">
                       {new Date(a.createdAt).toLocaleString()}
                     </TableCell>
                   </TableRow>
@@ -159,10 +159,10 @@ export const ReservationsPage: React.FC = () => {
           </div>
         </div>
       ) : (
-        <Card className="p-8 text-center text-slate-400 space-y-2">
-          <BookmarkCheck className="w-8 h-8 text-slate-400 dark:text-slate-500 mx-auto" />
-          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">No Reservation Selected</h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+        <Card className="p-8 text-center text-[#657369] dark:text-[#9AA99E] space-y-2">
+          <BookmarkCheck className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B] mx-auto" />
+          <h3 className="text-sm font-semibold text-[#18231D] dark:text-[#EEF3EA]">No Reservation Selected</h3>
+          <p className="text-xs text-[#657369] dark:text-[#9AA99E] max-w-sm mx-auto">
             Search by Order UUID to inspect the locked allocations and scheduled expiration deadline.
           </p>
         </Card>

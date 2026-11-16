@@ -115,15 +115,15 @@ export const AuditLogsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Immutable Audit Trail</h1>
-            <Badge variant="default" className="text-xs font-mono uppercase bg-cyan-100 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-400 border border-cyan-300 dark:border-cyan-800/40">
+            <h1 className="text-2xl font-bold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">Immutable Audit Trail</h1>
+            <Badge variant="default" className="text-xs font-mono uppercase bg-[#147C68]/10 text-[#147C68] dark:text-[#6CD8C0] border border-[#147C68]/30">
               SOC 2 / ISO 27001 Compliant
             </Badge>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">
             Tamper-evident system of record capturing tenant mutations, actor IDs, timestamps, and full state diffs.
           </p>
         </div>
@@ -147,95 +147,95 @@ export const AuditLogsPage: React.FC = () => {
       )}
 
       {/* Filter Toolbar */}
-      <Card className="p-4 border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900/50 shadow-sm">
+      <Card className="p-4 border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Action</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">Action</label>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
                 value={actionFilter}
                 onChange={(e) => { setActionFilter(e.target.value); setPage(0); }}
                 placeholder="e.g. CREATE_ORDER"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Entity Type</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">Entity Type</label>
             <div className="relative">
-              <Layers className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Layers className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
                 value={entityTypeFilter}
                 onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(0); }}
                 placeholder="e.g. INVENTORY_BALANCE"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Entity ID</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">Entity ID</label>
             <div className="relative">
-              <Hash className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Hash className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
                 value={entityIdFilter}
                 onChange={(e) => { setEntityIdFilter(e.target.value); setPage(0); }}
                 placeholder="UUID"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Actor User ID</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">Actor User ID</label>
             <div className="relative">
-              <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
                 value={actorUserIdFilter}
                 onChange={(e) => { setActorUserIdFilter(e.target.value); setPage(0); }}
                 placeholder="UUID"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">From Date</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">From Date</label>
             <div className="relative">
-              <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="datetime-local"
                 value={startDateFilter}
                 onChange={(e) => { setStartDateFilter(e.target.value); setPage(0); }}
-                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">To Date</label>
+            <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">To Date</label>
             <div className="relative">
-              <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
+              <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="datetime-local"
                 value={endDateFilter}
                 onChange={(e) => { setEndDateFilter(e.target.value); setPage(0); }}
-                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-slate-50 dark:bg-slate-950/70 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
               />
             </div>
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-200 dark:border-white/5">
-          <div className="text-xs text-slate-500">
+        <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
+          <div className="text-xs text-[#657369] dark:text-[#9AA99E]">
             {data ? (
-              <span>Found <strong className="text-slate-800 dark:text-slate-300 font-mono">{data.totalElements}</strong> total audit records</span>
+              <span>Found <strong className="text-[#18231D] dark:text-[#EEF3EA] font-mono">{data.totalElements}</strong> total audit records</span>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ export const AuditLogsPage: React.FC = () => {
               size="sm"
               onClick={handleResetFilters}
               icon={<Filter className="w-3 h-3" />}
-              className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              className="text-xs text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
             >
               Reset Filters
             </Button>
@@ -261,27 +261,26 @@ export const AuditLogsPage: React.FC = () => {
       </Card>
 
       {/* Main Table */}
-      <Card className="border-slate-200 dark:border-white/5 overflow-hidden shadow-sm">
+      <Card className="border-[#D9E1D7] dark:border-[#26362E] overflow-hidden shadow-sm">
         {loading && !data ? (
           <TableSkeleton rows={8} cols={6} />
         ) : !data || data.content.length === 0 ? (
           <EmptyState
-            icon={FileText}
+            icon={<FileText className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
             title="No audit log entries found"
             description="No actions matching your filter criteria have been recorded in this tenant's audit trail."
-            action={
-              (actionFilter || entityTypeFilter || entityIdFilter || actorUserIdFilter || startDateFilter || endDateFilter) ? (
-                <Button variant="secondary" size="sm" onClick={handleResetFilters}>
-                  Clear Search Filters
-                </Button>
-              ) : undefined
+            actionLabel={
+              (actionFilter || entityTypeFilter || entityIdFilter || actorUserIdFilter || startDateFilter || endDateFilter) ? 'Clear Search Filters' : undefined
+            }
+            onAction={
+              (actionFilter || entityTypeFilter || entityIdFilter || actorUserIdFilter || startDateFilter || endDateFilter) ? handleResetFilters : undefined
             }
           />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 uppercase font-mono tracking-wider">
+                <tr className="border-b border-[#D9E1D7] dark:border-[#26362E] bg-[#E9EEE6]/60 dark:bg-[#1B2922]/60 text-[#657369] dark:text-[#9AA99E] uppercase font-mono tracking-wider">
                   <th className="py-3 px-4">Timestamp (UTC)</th>
                   <th className="py-3 px-4">Action</th>
                   <th className="py-3 px-4">Entity Type</th>
@@ -290,10 +289,10 @@ export const AuditLogsPage: React.FC = () => {
                   <th className="py-3 px-4 text-right">Payload</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-white/5 text-slate-700 dark:text-slate-300 font-sans">
+              <tbody className="divide-y divide-[#D9E1D7] dark:divide-[#26362E] text-[#18231D] dark:text-[#EEF3EA] font-sans">
                 {data.content.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
-                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                  <tr key={log.id} className="hover:bg-[#E9EEE6]/50 dark:hover:bg-[#1B2922]/50 transition-colors group">
+                    <td className="py-3 px-4 font-mono text-[#657369] dark:text-[#9AA99E] whitespace-nowrap">
                       {formatTimestamp(log.createdAt)}
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
@@ -301,49 +300,49 @@ export const AuditLogsPage: React.FC = () => {
                         {log.action}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-800 dark:text-slate-300 whitespace-nowrap font-medium">
+                    <td className="py-3 px-4 font-mono text-[#18231D] dark:text-[#EEF3EA] whitespace-nowrap font-medium">
                       {log.entityType}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <td className="py-3 px-4 font-mono text-[#657369] dark:text-[#9AA99E] whitespace-nowrap">
                       {log.entityId ? (
                         <div className="flex items-center gap-1.5">
                           <span>{log.entityId.substring(0, 8)}…{log.entityId.substring(log.entityId.length - 4)}</span>
                           <button
                             onClick={() => copyToClipboard(log.entityId!, `entity-${log.id}`)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#E9EEE6] dark:hover:bg-[#1B2922] rounded text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] transition-opacity cursor-pointer"
                             title="Copy Entity ID"
                           >
                             {copiedKey === `entity-${log.id}` ? (
-                              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                              <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-600">—</span>
+                        <span className="text-[#8A988E] dark:text-[#6C7D71]">—</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <td className="py-3 px-4 font-mono text-[#657369] dark:text-[#9AA99E] whitespace-nowrap">
                       {log.actorUserId ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="text-cyan-700 dark:text-cyan-400/80">
+                          <span className="text-[#147C68] dark:text-[#6CD8C0]">
                             {log.actorUserId.substring(0, 8)}…
                           </span>
                           <button
                             onClick={() => copyToClipboard(log.actorUserId!, `actor-${log.id}`)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#E9EEE6] dark:hover:bg-[#1B2922] rounded text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] transition-opacity cursor-pointer"
                             title="Copy Actor User ID"
                           >
                             {copiedKey === `actor-${log.id}` ? (
-                              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                              <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
                           </button>
                         </div>
                       ) : (
-                        <span className="text-slate-400 dark:text-slate-600 italic">SYSTEM / ANONYMOUS</span>
+                        <span className="text-[#8A988E] dark:text-[#6C7D71] italic">SYSTEM / ANONYMOUS</span>
                       )}
                     </td>
                     <td className="py-3 px-4 text-right whitespace-nowrap">
@@ -366,15 +365,15 @@ export const AuditLogsPage: React.FC = () => {
 
         {/* Pagination Bar */}
         {data && data.totalPages > 1 && (
-          <div className="p-3 px-4 border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-slate-900/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-400">
+          <div className="p-3 px-4 border-t border-[#D9E1D7] dark:border-[#26362E] bg-[#E9EEE6]/40 dark:bg-[#1B2922]/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#657369] dark:text-[#9AA99E]">
             <div className="flex items-center gap-2">
-              <span>Showing page <strong className="text-slate-900 dark:text-slate-200">{data.page + 1}</strong> of <strong className="text-slate-900 dark:text-slate-200">{data.totalPages}</strong> ({data.totalElements} records)</span>
-              <span className="text-slate-400 dark:text-slate-600">|</span>
+              <span>Showing page <strong className="text-[#18231D] dark:text-[#EEF3EA]">{data.page + 1}</strong> of <strong className="text-[#18231D] dark:text-[#EEF3EA]">{data.totalPages}</strong> ({data.totalElements} records)</span>
+              <span className="text-[#8A988E] dark:text-[#6C7D71]">|</span>
               <span>Per page:</span>
               <select
                 value={size}
                 onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }}
-                className="bg-white dark:bg-slate-950 border border-slate-300 dark:border-white/10 rounded px-1.5 py-0.5 text-slate-800 dark:text-slate-300 text-xs focus:outline-none focus:border-cyan-500"
+                className="bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] rounded px-1.5 py-0.5 text-[#18231D] dark:text-[#EEF3EA] text-xs focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B]"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -419,22 +418,22 @@ export const AuditLogsPage: React.FC = () => {
         >
           <div className="space-y-4">
             {/* Metadata Banner */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 dark:bg-slate-950/70 rounded-lg border border-slate-200 dark:border-white/5 text-xs font-mono">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 rounded-lg border border-[#D9E1D7] dark:border-[#26362E] text-xs font-mono">
               <div>
-                <span className="text-slate-500 block text-[10px]">RECORD ID</span>
-                <span className="text-slate-800 dark:text-slate-300 select-all">{selectedLog.id}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block text-[10px]">RECORD ID</span>
+                <span className="text-[#18231D] dark:text-[#EEF3EA] select-all">{selectedLog.id}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px]">TIMESTAMP</span>
-                <span className="text-slate-800 dark:text-slate-300">{formatTimestamp(selectedLog.createdAt)}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block text-[10px]">TIMESTAMP</span>
+                <span className="text-[#18231D] dark:text-[#EEF3EA]">{formatTimestamp(selectedLog.createdAt)}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px]">ACTOR USER ID</span>
-                <span className="text-cyan-700 dark:text-cyan-400 select-all">{selectedLog.actorUserId || 'SYSTEM'}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block text-[10px]">ACTOR USER ID</span>
+                <span className="text-[#147C68] dark:text-[#6CD8C0] select-all">{selectedLog.actorUserId || 'SYSTEM'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px]">ENTITY ID</span>
-                <span className="text-slate-800 dark:text-slate-300 select-all">{selectedLog.entityId || 'N/A'}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block text-[10px]">ENTITY ID</span>
+                <span className="text-[#18231D] dark:text-[#EEF3EA] select-all">{selectedLog.entityId || 'N/A'}</span>
               </div>
             </div>
 
@@ -442,20 +441,20 @@ export const AuditLogsPage: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Before State */}
               <div>
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200 dark:border-white/5">
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#D9E1D7] dark:border-[#26362E]">
+                  <span className="text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-amber-500" />
                     Before State
                   </span>
                   <button
                     onClick={() => copyToClipboard(JSON.stringify(selectedLog.beforeState, null, 2), 'before')}
-                    className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
+                    className="text-[11px] text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] flex items-center gap-1 cursor-pointer"
                   >
-                    {copiedKey === 'before' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedKey === 'before' ? <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" /> : <Copy className="w-3 h-3" />}
                     Copy
                   </button>
                 </div>
-                <pre className="p-3 bg-slate-900 dark:bg-slate-950/90 border border-slate-800 dark:border-white/5 rounded-lg text-xs font-mono text-amber-300 dark:text-amber-200/90 overflow-x-auto max-h-64 scrollbar-thin">
+                <pre className="p-3 bg-[#0B100F] border border-[#26362E] rounded-lg text-xs font-mono text-amber-300 dark:text-amber-200/90 overflow-x-auto max-h-64 scrollbar-thin">
                   {Object.keys(selectedLog.beforeState || {}).length > 0
                     ? JSON.stringify(selectedLog.beforeState, null, 2)
                     : '// No prior state (initial creation or stateless event)'}
@@ -464,20 +463,20 @@ export const AuditLogsPage: React.FC = () => {
 
               {/* After State */}
               <div>
-                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200 dark:border-white/5">
-                  <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#D9E1D7] dark:border-[#26362E]">
+                  <span className="text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#456B1F] dark:bg-[#C6F36B]" />
                     After State
                   </span>
                   <button
                     onClick={() => copyToClipboard(JSON.stringify(selectedLog.afterState, null, 2), 'after')}
-                    className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
+                    className="text-[11px] text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] flex items-center gap-1 cursor-pointer"
                   >
-                    {copiedKey === 'after' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedKey === 'after' ? <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" /> : <Copy className="w-3 h-3" />}
                     Copy
                   </button>
                 </div>
-                <pre className="p-3 bg-slate-900 dark:bg-slate-950/90 border border-slate-800 dark:border-white/5 rounded-lg text-xs font-mono text-emerald-300 dark:text-emerald-200/90 overflow-x-auto max-h-64 scrollbar-thin">
+                <pre className="p-3 bg-[#0B100F] border border-[#26362E] rounded-lg text-xs font-mono text-[#C6F36B] overflow-x-auto max-h-64 scrollbar-thin">
                   {Object.keys(selectedLog.afterState || {}).length > 0
                     ? JSON.stringify(selectedLog.afterState, null, 2)
                     : '// No after state (deletion or terminal purge)'}
@@ -487,27 +486,27 @@ export const AuditLogsPage: React.FC = () => {
 
             {/* Metadata Payload */}
             <div>
-              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200 dark:border-white/5">
-                <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-500" />
+              <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#D9E1D7] dark:border-[#26362E]">
+                <span className="text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#147C68] dark:bg-[#6CD8C0]" />
                   Context Metadata
                 </span>
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(selectedLog.metadata, null, 2), 'meta')}
-                  className="text-[11px] text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
+                  className="text-[11px] text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] flex items-center gap-1 cursor-pointer"
                 >
-                  {copiedKey === 'meta' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                  {copiedKey === 'meta' ? <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" /> : <Copy className="w-3 h-3" />}
                   Copy
                 </button>
               </div>
-              <pre className="p-3 bg-slate-900 dark:bg-slate-950/90 border border-slate-800 dark:border-white/5 rounded-lg text-xs font-mono text-cyan-300 dark:text-cyan-200/90 overflow-x-auto max-h-40 scrollbar-thin">
+              <pre className="p-3 bg-[#0B100F] border border-[#26362E] rounded-lg text-xs font-mono text-[#6CD8C0] overflow-x-auto max-h-40 scrollbar-thin">
                 {Object.keys(selectedLog.metadata || {}).length > 0
                   ? JSON.stringify(selectedLog.metadata, null, 2)
                   : '// No metadata headers attached'}
               </pre>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-white/5">
+            <div className="flex justify-end pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
               <Button variant="secondary" onClick={() => setSelectedLog(null)}>
                 Close
               </Button>

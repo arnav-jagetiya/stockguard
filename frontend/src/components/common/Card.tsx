@@ -4,6 +4,7 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   glow?: boolean;
+  raised?: boolean;
   onClick?: () => void;
 }
 
@@ -11,16 +12,21 @@ export const Card: React.FC<CardProps> = ({
   children,
   className = '',
   glow = false,
+  raised = false,
   onClick,
 }) => {
   return (
     <div
       onClick={onClick}
-      className={`rounded-xl bg-white dark:bg-[#0f172a]/80 border border-slate-200 dark:border-slate-800/80 shadow-xs dark:shadow-none p-5 transition-all duration-200 ${
+      className={`rounded-xl border transition-all duration-200 ${
+        raised
+          ? 'bg-[#E9EEE6] dark:bg-[#1B2922] border-[#D9E1D7] dark:border-[#26362E]'
+          : 'bg-white dark:bg-[#111A17] border-[#D9E1D7] dark:border-[#26362E]'
+      } shadow-xs p-5 ${
         glow
-          ? 'shadow-[0_0_30px_rgba(6,182,212,0.12)] border-cyan-500/40 dark:border-cyan-500/20'
-          : 'hover:border-slate-300 dark:hover:border-slate-700/80'
-      } ${onClick ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131d35]' : ''} ${className}`}
+          ? 'shadow-[0_0_25px_rgba(198,243,107,0.12)] border-[#456B1F]/40 dark:border-[#C6F36B]/40'
+          : 'hover:border-[#657369]/30 dark:hover:border-[#9AA99E]/30'
+      } ${onClick ? 'cursor-pointer hover:bg-[#F9FAF7] dark:hover:bg-[#182621]' : ''} ${className}`}
     >
       {children}
     </div>

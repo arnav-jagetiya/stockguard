@@ -9,37 +9,40 @@ export const Navbar: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-[#080c14]/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 transition-colors">
+    <nav className="fixed top-0 left-0 right-0 z-40 bg-white/85 dark:bg-[#0B100F]/85 backdrop-blur-md border-b border-[#D9E1D7] dark:border-[#26362E] transition-colors">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-cyan-500/20 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] transition-all">
-            <ShieldCheck className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#456B1F] to-[#147C68] dark:from-[#C6F36B] dark:to-[#6CD8C0] flex items-center justify-center text-white dark:text-[#0B100F] font-bold shadow-md shadow-[#C6F36B]/20 group-hover:shadow-[0_0_20px_rgba(198,243,107,0.4)] transition-all">
+            <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
           </div>
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm tracking-wider text-slate-900 dark:text-slate-100">
+              <span className="font-bold text-sm tracking-wider text-[#18231D] dark:text-[#EEF3EA]">
                 STOCKGUARD
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-500/30">
-                PLATFORM
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#C6F36B]/15 text-[#456B1F] dark:text-[#C6F36B] border border-[#D9E1D7] dark:border-[#C6F36B]/30 font-semibold">
+                LIVING WAREHOUSE
               </span>
             </div>
           </div>
         </Link>
 
         {/* Anchor Navigation */}
-        <div className="hidden md:flex items-center gap-8 text-xs font-medium text-slate-600 dark:text-slate-300">
-          <a href="#capabilities" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+        <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-[#657369] dark:text-[#9AA99E]">
+          <a href="#spatial-warehouse" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B] transition-colors">
+            Spatial Warehouse
+          </a>
+          <a href="#capabilities" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B] transition-colors">
             Capabilities
           </a>
-          <a href="#demo" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
-            Interactive Demo
+          <a href="#storytelling" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B] transition-colors">
+            Storytelling Lab
           </a>
-          <a href="#integrity" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
-            Reconciliation Engine
+          <a href="#integrity" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B] transition-colors">
+            Zero-Drift Integrity
           </a>
-          <a href="#architecture" className="hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors">
+          <a href="#architecture" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B] transition-colors">
             Architecture
           </a>
         </div>
@@ -49,11 +52,11 @@ export const Navbar: React.FC = () => {
           <ThemeTray />
 
           <a
-            href="#demo"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-slate-950 dark:hover:text-white bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+            href="#storytelling"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] bg-[#E9EEE6] dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] hover:border-[#657369]/40 dark:hover:border-[#9AA99E]/40 transition-colors"
           >
-            <Activity className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-            Live Simulator
+            <Activity className="w-3.5 h-3.5 text-[#456B1F] dark:text-[#C6F36B]" />
+            Storytelling
           </a>
 
           {isAuthenticated ? (

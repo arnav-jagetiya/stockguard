@@ -91,12 +91,12 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden bg-grid-pattern transition-colors">
+    <div className="min-h-screen bg-[#F4F5EF] dark:bg-[#0B100F] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden transition-colors">
       {/* Top Controls: Return to Home & Theme Tray */}
       <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-20">
         <Link
           to="/"
-          className="text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 transition-colors flex items-center gap-1.5"
+          className="text-xs font-medium text-[#657369] hover:text-[#18231D] dark:text-[#9AA99E] dark:hover:text-[#EEF3EA] transition-colors flex items-center gap-1.5"
         >
           &larr; Back to Platform Overview
         </Link>
@@ -104,24 +104,24 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Background Radial Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-tr from-cyan-500/10 via-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-gradient-to-tr from-[#C6F36B]/10 via-[#147C68]/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Brand Header */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
-        <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 shadow-xl shadow-cyan-500/20 mb-3 ring-4 ring-cyan-500/10">
-          <ShieldCheck className="w-8 h-8 text-white" />
+        <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-[#456B1F] dark:bg-[#C6F36B] shadow-xl shadow-[#456B1F]/20 mb-3 ring-4 ring-[#456B1F]/10 dark:ring-[#C6F36B]/20">
+          <ShieldCheck className="w-8 h-8 text-white dark:text-[#0B100F]" />
         </div>
-        <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="text-2xl font-extrabold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">
           Sign In to STOCKGUARD
         </h2>
-        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+        <p className="mt-1.5 text-xs text-[#657369] dark:text-[#9AA99E] max-w-xs mx-auto">
           High-concurrency inventory integrity & double-entry ledger console.
         </p>
       </div>
 
       {/* Authentication Card */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl py-8 px-6 sm:px-9 shadow-2xl rounded-2xl border border-slate-200/90 dark:border-slate-800/90 space-y-5">
+        <div className="bg-white/95 dark:bg-[#111A17]/95 backdrop-blur-xl py-8 px-6 sm:px-9 shadow-2xl rounded-2xl border border-[#D9E1D7] dark:border-[#26362E] space-y-5">
           {errorMessage && (
             <div
               data-testid="login-error"
@@ -141,7 +141,7 @@ export const LoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@company.com"
-                icon={<Mail className="w-4 h-4 text-slate-400" />}
+                icon={<Mail className="w-4 h-4 text-[#8A988E]" />}
                 autoComplete="email"
               />
             </div>
@@ -154,13 +154,13 @@ export const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                icon={<Lock className="w-4 h-4 text-slate-400" />}
+                icon={<Lock className="w-4 h-4 text-[#8A988E]" />}
                 autoComplete="current-password"
                 rightElement={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 focus:outline-none transition-colors"
+                    className="text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] focus:outline-none transition-colors cursor-pointer"
                     title={showPassword ? 'Hide password' : 'Show password'}
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
@@ -176,12 +176,12 @@ export const LoginPage: React.FC = () => {
 
             {/* Remember Email Checkbox */}
             <div className="flex items-center justify-between text-xs">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400 select-none">
+              <label className="flex items-center gap-2 cursor-pointer text-[#657369] dark:text-[#9AA99E] select-none">
                 <input
                   type="checkbox"
                   checked={rememberEmail}
                   onChange={(e) => setRememberEmail(e.target.checked)}
-                  className="rounded border-slate-300 dark:border-slate-700 text-cyan-600 focus:ring-cyan-500/30 w-3.5 h-3.5"
+                  className="rounded border-[#D9E1D7] dark:border-[#26362E] text-[#456B1F] dark:text-[#C6F36B] focus:ring-[#456B1F]/30 w-3.5 h-3.5"
                 />
                 <span>Remember work email</span>
               </label>
@@ -191,7 +191,7 @@ export const LoginPage: React.FC = () => {
                   type="button"
                   onClick={handleFetchDemoCredentials}
                   disabled={isDemoLoading}
-                  className="text-[11px] font-medium text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="text-[11px] font-medium text-[#147C68] dark:text-[#6CD8C0] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                   title="Populate development bootstrap credentials via dev API"
                 >
                   <Sparkles className="w-3 h-3" /> {isDemoLoading ? 'Loading Demo...' : 'Fill Demo Admin'}
@@ -211,12 +211,12 @@ export const LoginPage: React.FC = () => {
           </form>
 
           {/* Create Account Link */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center gap-3">
-            <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-1.5">
+          <div className="pt-4 border-t border-[#D9E1D7] dark:border-[#26362E] flex flex-col items-center gap-3">
+            <div className="text-xs text-[#657369] dark:text-[#9AA99E] flex items-center justify-center gap-1.5">
               <span>Need a new organization tenant?</span>
               <Link
                 to="/register"
-                className="font-semibold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="font-semibold text-[#456B1F] dark:text-[#C6F36B] hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Create Account</span>
@@ -226,7 +226,7 @@ export const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      <p className="mt-6 text-[11px] text-slate-500 text-center font-mono">
+      <p className="mt-6 text-[11px] text-[#657369] dark:text-[#9AA99E] text-center font-mono">
         Secured with BCrypt · HttpOnly Refresh Cookies · CSRF Validation · Tenant Isolation
       </p>
     </div>

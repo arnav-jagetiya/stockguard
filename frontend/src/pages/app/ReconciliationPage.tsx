@@ -178,10 +178,10 @@ export const ReconciliationPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">
             Inventory Reconciliation Engine
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">
             Automated MVCC snapshot verification, discrepancy persistence, and operator triage.
           </p>
         </div>
@@ -200,18 +200,18 @@ export const ReconciliationPage: React.FC = () => {
 
       {/* Sweep Banner if triggered */}
       {triggerReport && (
-        <div className="p-4 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/30 text-xs text-cyan-900 dark:text-cyan-200 flex items-start justify-between gap-4 animate-in fade-in">
+        <div className="p-4 rounded-xl bg-[#147C68]/10 border border-[#147C68]/30 text-xs text-[#147C68] dark:text-[#6CD8C0] flex items-start justify-between gap-4 animate-in fade-in">
           <div className="space-y-1">
-            <span className="font-bold flex items-center gap-1.5 text-cyan-800 dark:text-cyan-300">
-              <CheckCircle2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Reconciliation Sweep Complete
+            <span className="font-bold flex items-center gap-1.5 text-[#147C68] dark:text-[#6CD8C0]">
+              <CheckCircle2 className="w-4 h-4 text-[#147C68] dark:text-[#6CD8C0]" /> Reconciliation Sweep Complete
             </span>
-            <p className="font-mono text-slate-600 dark:text-slate-300">
+            <p className="font-mono text-[#657369] dark:text-[#9AA99E]">
               Inspected: {triggerReport.totalBalancesInspected} balances | Matching: {triggerReport.matchingBalances} | Discrepant: {triggerReport.discrepantBalances}
             </p>
           </div>
           <button
             onClick={() => setTriggerReport(null)}
-            className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs underline cursor-pointer"
+            className="text-[#657369] hover:text-[#18231D] dark:hover:text-[#EEF3EA] text-xs underline cursor-pointer"
           >
             Dismiss
           </button>
@@ -219,7 +219,7 @@ export const ReconciliationPage: React.FC = () => {
       )}
 
       {/* Filter */}
-      <div className="flex items-center gap-4 bg-white dark:bg-[#0f172a] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex items-center gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
         <div className="w-64">
           <Select
             label="Filter by Status"
@@ -235,7 +235,7 @@ export const ReconciliationPage: React.FC = () => {
             ]}
           />
         </div>
-        <div className="text-xs text-slate-500 dark:text-slate-400 font-mono pt-5">
+        <div className="text-xs text-[#657369] dark:text-[#9AA99E] font-mono pt-5">
           Showing {discrepancies.length} of {totalElements} record(s)
         </div>
       </div>
@@ -245,7 +245,7 @@ export const ReconciliationPage: React.FC = () => {
         <TableSkeleton rows={5} cols={8} />
       ) : discrepancies.length === 0 ? (
         <EmptyState
-          icon={<ShieldCheck className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />}
+          icon={<ShieldCheck className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
           title="No Discrepancies Detected"
           description={selectedStatus ? `No discrepancies matching '${selectedStatus}' state.` : 'All inventory balances and double-entry ledger transactions are 100% synchronized.'}
           actionLabel={canReconcile ? 'Run Verification Sweep' : undefined}
@@ -270,28 +270,28 @@ export const ReconciliationPage: React.FC = () => {
               const delta = d.observedBalanceOnHand - d.observedLedgerOnHand;
               return (
                 <TableRow key={d.id}>
-                  <TableCell className="font-semibold text-slate-900 dark:text-white">
+                  <TableCell className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">
                     {getProductName(d.productId)}
                   </TableCell>
-                  <TableCell className="font-mono text-cyan-600 dark:text-cyan-400">
+                  <TableCell className="font-mono text-[#147C68] dark:text-[#6CD8C0] font-semibold">
                     {getWarehouseName(d.warehouseId)}
                   </TableCell>
                   <TableCell>
                     <Badge variant="warning">{d.discrepancyType}</Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    <span className="text-slate-700 dark:text-slate-300">Bal: {d.observedBalanceOnHand}</span>{' '}
-                    <span className="text-slate-400 dark:text-slate-500">|</span>{' '}
-                    <span className="text-slate-700 dark:text-slate-300">Led: {d.observedLedgerOnHand}</span>{' '}
-                    <span className={`font-bold ml-1 ${delta === 0 ? 'text-slate-400' : delta > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Bal: {d.observedBalanceOnHand}</span>{' '}
+                    <span className="text-[#8A988E] dark:text-[#6C7D71]">|</span>{' '}
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Led: {d.observedLedgerOnHand}</span>{' '}
+                    <span className={`font-bold ml-1 ${delta === 0 ? 'text-[#8A988E]' : delta > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       ({delta > 0 ? `+${delta}` : delta})
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 font-bold">
+                  <TableCell className="font-mono text-xs text-[#8A988E] dark:text-[#6C7D71] font-bold">
                     {d.consecutiveDetectionCount}x
                   </TableCell>
                   <TableCell>{getStatusBadge(d.status)}</TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
+                  <TableCell className="font-mono text-xs text-[#8A988E] dark:text-[#6C7D71]">
                     {new Date(d.lastDetectedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -328,22 +328,22 @@ export const ReconciliationPage: React.FC = () => {
             )}
 
             {/* Metrics Breakdown */}
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-xs font-mono">
               <div>
-                <span className="text-slate-500 block">Balance On-Hand:</span>
-                <span className="font-bold text-slate-900 dark:text-white text-sm">{activeDiscrepancy.observedBalanceOnHand}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block">Balance On-Hand:</span>
+                <span className="font-bold text-[#18231D] dark:text-[#EEF3EA] text-sm">{activeDiscrepancy.observedBalanceOnHand}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Ledger On-Hand:</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block">Ledger On-Hand:</span>
                 <span className="font-bold text-amber-600 dark:text-amber-400 text-sm">{activeDiscrepancy.observedLedgerOnHand}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Balance Reserved:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{activeDiscrepancy.observedBalanceReserved}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block">Balance Reserved:</span>
+                <span className="font-bold text-[#18231D] dark:text-[#EEF3EA]">{activeDiscrepancy.observedBalanceReserved}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Ledger Reserved:</span>
-                <span className="font-bold text-indigo-600 dark:text-indigo-400">{activeDiscrepancy.observedLedgerReserved}</span>
+                <span className="text-[#657369] dark:text-[#9AA99E] block">Ledger Reserved:</span>
+                <span className="font-bold text-[#147C68] dark:text-[#6CD8C0]">{activeDiscrepancy.observedLedgerReserved}</span>
               </div>
             </div>
 
@@ -392,7 +392,7 @@ export const ReconciliationPage: React.FC = () => {
                   />
                 )}
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex justify-end gap-2 pt-3 border-t border-[#D9E1D7] dark:border-[#26362E]">
                   <Button type="button" variant="ghost" onClick={() => setIsTriageOpen(false)}>
                     Cancel
                   </Button>
@@ -404,25 +404,25 @@ export const ReconciliationPage: React.FC = () => {
             ) : (
               /* Read-only Terminal State */
               <div className="space-y-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
+                <div className="p-3 rounded-xl bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Terminal Status:</span>
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Terminal Status:</span>
                     {getStatusBadge(activeDiscrepancy.status)}
                   </div>
                   <div className="flex items-center justify-between font-mono">
-                    <span className="text-slate-500 dark:text-slate-400">Resolution Source:</span>
-                    <span className="text-cyan-600 dark:text-cyan-400">{activeDiscrepancy.resolutionSource || 'OPERATOR_OVERRIDE'}</span>
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Resolution Source:</span>
+                    <span className="text-[#147C68] dark:text-[#6CD8C0]">{activeDiscrepancy.resolutionSource || 'OPERATOR_OVERRIDE'}</span>
                   </div>
                   <div className="flex items-center justify-between font-mono">
-                    <span className="text-slate-500 dark:text-slate-400">Resolved At:</span>
-                    <span className="text-slate-700 dark:text-slate-300">
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Resolved At:</span>
+                    <span className="text-[#18231D] dark:text-[#EEF3EA]">
                       {activeDiscrepancy.resolvedAt ? new Date(activeDiscrepancy.resolvedAt).toLocaleString() : 'N/A'}
                     </span>
                   </div>
                   {activeDiscrepancy.resolutionReason && (
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
-                      <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Reason:</span>
-                      <p className="text-slate-800 dark:text-slate-200 mt-0.5">{activeDiscrepancy.resolutionReason}</p>
+                    <div className="pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
+                      <span className="text-[#657369] dark:text-[#9AA99E] block text-[11px]">Reason:</span>
+                      <p className="text-[#18231D] dark:text-[#EEF3EA] mt-0.5">{activeDiscrepancy.resolutionReason}</p>
                     </div>
                   )}
                 </div>

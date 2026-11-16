@@ -72,24 +72,24 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         {toasts.map((toast) => {
           const typeConfig = {
             success: {
-              icon: <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />,
-              border: 'border-emerald-500/30',
-              bg: 'bg-white dark:bg-slate-900',
+              icon: <CheckCircle2 className="w-5 h-5 text-[#456B1F] dark:text-[#C6F36B] shrink-0" />,
+              border: 'border-[#456B1F]/30 dark:border-[#C6F36B]/30',
+              bg: 'bg-white dark:bg-[#111A17]',
             },
             error: {
               icon: <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />,
               border: 'border-rose-500/30',
-              bg: 'bg-white dark:bg-slate-900',
+              bg: 'bg-white dark:bg-[#111A17]',
             },
             warning: {
               icon: <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />,
               border: 'border-amber-500/30',
-              bg: 'bg-white dark:bg-slate-900',
+              bg: 'bg-white dark:bg-[#111A17]',
             },
             info: {
-              icon: <Info className="w-5 h-5 text-cyan-500 shrink-0" />,
-              border: 'border-cyan-500/30',
-              bg: 'bg-white dark:bg-slate-900',
+              icon: <Info className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0] shrink-0" />,
+              border: 'border-[#147C68]/30 dark:border-[#6CD8C0]/30',
+              bg: 'bg-white dark:bg-[#111A17]',
             },
           }[toast.type];
 
@@ -101,14 +101,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             >
               {typeConfig.icon}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{toast.title}</p>
+                <p className="text-sm font-semibold text-[#18231D] dark:text-[#EEF3EA]">{toast.title}</p>
                 {toast.description && (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{toast.description}</p>
+                  <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-0.5 leading-relaxed">{toast.description}</p>
                 )}
               </div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition-colors"
+                className="text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded transition-colors cursor-pointer"
                 aria-label="Dismiss notification"
               >
                 <X className="w-4 h-4" />

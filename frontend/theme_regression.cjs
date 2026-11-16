@@ -124,8 +124,13 @@ async function run() {
       await page.screenshot({ path: path.join(EVIDENCE_DIR, 'component_modal_overlay.png') });
       console.log('   Captured modal / dialog overlay.');
       // Close modal
-      const cancelBtn = await page.$('button:has-text("Cancel")');
-      if (cancelBtn) await cancelBtn.click();
+      const cancelBtn = await page.evaluateHandle(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.find(b => b.textContent && b.textContent.includes('Cancel'));
+      });
+      if (cancelBtn && cancelBtn.asElement()) {
+        await cancelBtn.asElement().click();
+      }
     }
 
     // Test Theme Persistence Across Hard Refresh

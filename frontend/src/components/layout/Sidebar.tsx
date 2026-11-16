@@ -98,30 +98,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const visibleItems = navItems.filter((item) => !item.permission || hasPermission(item.permission));
 
   const sidebarContent = (
-    <aside className="w-64 h-full bg-white dark:bg-[#0b101d] border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between select-none transition-colors">
+    <aside className="w-64 h-full bg-white dark:bg-[#111A17] border-r border-[#D9E1D7] dark:border-[#26362E] flex flex-col justify-between select-none transition-colors">
       <div>
         {/* Brand Header */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800/80">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-[#D9E1D7] dark:border-[#26362E]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-cyan-500/20">
-              <ShieldCheck className="w-5 h-5 text-slate-950 stroke-[2.5]" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#456B1F] to-[#147C68] dark:from-[#C6F36B] dark:to-[#6CD8C0] flex items-center justify-center text-white dark:text-[#0B100F] font-bold shadow-md shadow-[#C6F36B]/20">
+              <ShieldCheck className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm tracking-wider text-slate-900 dark:text-slate-100">
+                <span className="font-bold text-sm tracking-wider text-[#18231D] dark:text-[#EEF3EA]">
                   STOCKGUARD
                 </span>
-                <span className="text-[9px] font-mono font-semibold px-1 py-0.2 bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 rounded border border-cyan-300 dark:border-cyan-500/30">
+                <span className="text-[9px] font-mono font-bold px-1 py-0.2 bg-[#E9EEE6] dark:bg-[#C6F36B]/15 text-[#456B1F] dark:text-[#C6F36B] rounded border border-[#D9E1D7] dark:border-[#C6F36B]/30">
                   ENTERPRISE
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">v6.2 · PostgreSQL MVCC</p>
+              <p className="text-[10px] text-[#657369] dark:text-[#9AA99E] font-mono">v6.2 · PostgreSQL MVCC</p>
             </div>
           </div>
           {onClose && (
             <button
               onClick={onClose}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="lg:hidden p-1.5 rounded-lg text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] hover:bg-[#E9EEE6] dark:hover:bg-[#1B2922]"
             >
               <X className="w-5 h-5" />
             </button>
@@ -130,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Navigation list */}
         <div className="px-3 py-4 space-y-1">
-          <div className="px-3 pb-2 text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Operations Platform
+          <div className="px-3 pb-2 text-[10px] font-semibold text-[#8A988E] dark:text-[#6C7D71] uppercase tracking-wider font-mono">
+            Command Modules
           </div>
           {visibleItems.map((item) => (
             <NavLink
@@ -141,8 +141,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               className={({ isActive }) =>
                 `flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   isActive
-                    ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/30 font-semibold shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-850/60'
+                    ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/15 text-[#456B1F] dark:text-[#C6F36B] border border-[#456B1F]/30 dark:border-[#C6F36B]/30 font-semibold shadow-xs'
+                    : 'text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] hover:bg-[#F9FAF7] dark:hover:bg-[#182621]'
                 }`
               }
             >
@@ -151,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span>{item.name}</span>
               </div>
               {item.badge && (
-                <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-[#E9EEE6] dark:bg-[#1B2922] text-[#18231D] dark:text-[#EEF3EA] font-mono">
                   {item.badge}
                 </span>
               )}
@@ -161,16 +161,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       </div>
 
       {/* System Status Footer */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800/80">
-        <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0e1628] border border-slate-200 dark:border-slate-800/80 space-y-2">
+      <div className="p-4 border-t border-[#D9E1D7] dark:border-[#26362E]">
+        <div className="p-3 rounded-xl bg-[#F0F4EE] dark:bg-[#16221E] border border-[#D9E1D7] dark:border-[#26362E] space-y-2">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-500 dark:text-slate-400 font-medium">Engine Status</span>
-            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[#657369] dark:text-[#9AA99E] font-medium">Engine Telemetry</span>
+            <span className="flex items-center gap-1.5 text-[#456B1F] dark:text-[#C6F36B] font-mono text-[10px] font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#456B1F] dark:bg-[#C6F36B] animate-pulse" />
               SYNCHRONIZED
             </span>
           </div>
-          <div className="text-[10px] text-slate-500 font-mono">
+          <div className="text-[10px] text-[#8A988E] dark:text-[#6C7D71] font-mono">
             Isolation: REPEATABLE READ
           </div>
         </div>
@@ -189,7 +189,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm animate-in fade-in"
             onClick={onClose}
           />
           <div className="relative z-10 animate-in slide-in-from-left duration-200">

@@ -18,24 +18,24 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
   const options: ThemeOption[] = [
     {
       mode: 'light',
-      label: 'Light',
-      description: 'Clean, high-contrast daytime interface',
-      icon: <Sun className="w-4 h-4 text-amber-500" />,
-      iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
+      label: 'Warm Mineral (Light)',
+      description: 'Porcelain & limestone with Signal Green clarity',
+      icon: <Sun className="w-4 h-4 text-[#456B1F]" />,
+      iconBg: 'bg-[#E9EEE6] text-[#456B1F]',
     },
     {
       mode: 'dark',
-      label: 'Dark',
-      description: 'Deep midnight navy low-strain palette',
-      icon: <Moon className="w-4 h-4 text-cyan-400" />,
-      iconBg: 'bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400',
+      label: 'Midnight Mineral (Dark)',
+      description: 'Carbon & deep pine with Signal Lime precision',
+      icon: <Moon className="w-4 h-4 text-[#C6F36B]" />,
+      iconBg: 'bg-[#1B2922] text-[#C6F36B]',
     },
     {
       mode: 'system',
       label: 'System Preference',
-      description: 'Automatically synchronizes with your device OS',
-      icon: <Monitor className="w-4 h-4 text-indigo-500" />,
-      iconBg: 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400',
+      description: 'Synchronizes dynamically with operating system',
+      icon: <Monitor className="w-4 h-4 text-[#147C68] dark:text-[#6CD8C0]" />,
+      iconBg: 'bg-[#DEE5DA] dark:bg-[#22332B] text-[#147C68] dark:text-[#6CD8C0]',
     },
   ];
 
@@ -65,7 +65,7 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
 
   const currentOption = options.find((opt) => opt.mode === theme) || options[2];
   const activeIcon = theme === 'system'
-    ? (resolvedTheme === 'dark' ? <Moon className="w-3.5 h-3.5 text-cyan-500" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />)
+    ? (resolvedTheme === 'dark' ? <Moon className="w-3.5 h-3.5 text-[#C6F36B]" /> : <Sun className="w-3.5 h-3.5 text-[#456B1F]" />)
     : currentOption.icon;
 
   return (
@@ -78,14 +78,14 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label={`Theme mode: currently ${theme}. Click to change.`}
-        className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 hover:bg-slate-50 dark:hover:bg-slate-800/60 shadow-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all cursor-pointer"
+        className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] hover:bg-[#F9FAF7] dark:hover:bg-[#182621] shadow-xs focus:outline-none focus:ring-2 focus:ring-[#456B1F]/30 dark:focus:ring-[#C6F36B]/30 transition-all cursor-pointer"
       >
-        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800">
+        <span className="flex items-center justify-center w-5 h-5 rounded-md bg-[#E9EEE6] dark:bg-[#1B2922]">
           {activeIcon}
         </span>
         <span className="hidden sm:inline font-medium capitalize">{theme}</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+          className={`w-3.5 h-3.5 text-[#8A988E] dark:text-[#6C7D71] transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -97,15 +97,15 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
           role="menu"
           aria-orientation="vertical"
           aria-label="Appearance options"
-          className="absolute right-0 mt-2 w-72 rounded-xl bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-900/10 dark:shadow-black/40 p-2 z-50 focus:outline-none animate-in fade-in zoom-in-95 duration-150 origin-top-right"
+          className="absolute right-0 mt-2 w-80 rounded-xl bg-white/95 dark:bg-[#111A17]/95 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] shadow-2xl p-2 z-50 focus:outline-none animate-in fade-in zoom-in-95 duration-150 origin-top-right text-[#18231D] dark:text-[#EEF3EA]"
         >
           {/* Header */}
-          <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/80 mb-1.5">
-            <p className="text-[11px] font-semibold tracking-wider text-slate-400 dark:text-slate-500 uppercase">
-              Interface Appearance
+          <div className="px-3 py-2 border-b border-[#D9E1D7] dark:border-[#26362E] mb-1.5">
+            <p className="text-[11px] font-semibold tracking-wider text-[#657369] dark:text-[#9AA99E] uppercase font-mono">
+              Mineral & Signal Appearance
             </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Select theme or synchronize with operating system
+            <p className="text-xs text-[#8A988E] dark:text-[#6C7D71] mt-0.5">
+              Select calibrated aesthetic or synchronize with OS
             </p>
           </div>
 
@@ -125,8 +125,8 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
                   }}
                   className={`w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-cyan-500/10 dark:bg-cyan-500/15 border border-cyan-500/30'
-                      : 'hover:bg-slate-100/80 dark:hover:bg-slate-800/60 border border-transparent'
+                      ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/15 border border-[#456B1F]/30 dark:border-[#C6F36B]/30'
+                      : 'hover:bg-[#F9FAF7] dark:hover:bg-[#182621] border border-transparent'
                   }`}
                 >
                   <div
@@ -139,17 +139,17 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
                       <span
                         className={`text-xs font-semibold ${
                           isSelected
-                            ? 'text-cyan-700 dark:text-cyan-300'
-                            : 'text-slate-800 dark:text-slate-200'
+                            ? 'text-[#456B1F] dark:text-[#C6F36B]'
+                            : 'text-[#18231D] dark:text-[#EEF3EA]'
                         }`}
                       >
                         {option.label}
                       </span>
                       {isSelected && (
-                        <Check className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />
+                        <Check className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B] shrink-0" />
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                    <p className="text-[11px] text-[#657369] dark:text-[#9AA99E] mt-0.5 leading-snug">
                       {option.description}
                     </p>
                   </div>
@@ -159,10 +159,10 @@ export const ThemeTray: React.FC<{ className?: string }> = ({ className = '' }) 
           </div>
 
           {/* Active status footer */}
-          <div className="mt-2 pt-2 px-2.5 pb-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-            <span>Currently active:</span>
-            <span className="font-mono text-cyan-600 dark:text-cyan-400 font-medium capitalize">
-              {resolvedTheme} palette
+          <div className="mt-2 pt-2 px-2.5 pb-1 border-t border-[#D9E1D7] dark:border-[#26362E] flex items-center justify-between text-[11px] text-[#8A988E] dark:text-[#6C7D71]">
+            <span>Active palette:</span>
+            <span className="font-mono text-[#456B1F] dark:text-[#C6F36B] font-semibold capitalize">
+              {resolvedTheme === 'dark' ? 'Midnight Mineral' : 'Warm Mineral'}
             </span>
           </div>
         </div>

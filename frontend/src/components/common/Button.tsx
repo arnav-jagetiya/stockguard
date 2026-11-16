@@ -31,15 +31,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles: Record<ButtonVariant, string> = {
     primary:
-      'bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold shadow-xs hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-400/50',
+      'bg-[#456B1F] hover:bg-[#527E26] text-white dark:bg-[#C6F36B] dark:hover:bg-[#D4F68D] dark:text-[#0B100F] font-semibold border border-[#456B1F] dark:border-[#C6F36B] shadow-xs hover:shadow-[0_0_15px_rgba(69,107,31,0.25)] dark:hover:shadow-[0_0_20px_rgba(198,243,107,0.35)]',
     secondary:
-      'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-medium border border-slate-300/80 dark:border-slate-700/60',
+      'bg-[#E9EEE6] hover:bg-[#DEE5DA] text-[#18231D] dark:bg-[#1B2922] dark:hover:bg-[#22332B] dark:text-[#EEF3EA] font-medium border border-[#D9E1D7] dark:border-[#26362E]',
     outline:
-      'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700/80',
+      'bg-transparent hover:bg-[#E9EEE6] dark:hover:bg-[#1B2922] text-[#18231D] dark:text-[#EEF3EA] border border-[#D9E1D7] dark:border-[#26362E]',
     danger:
-      'bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-medium border border-rose-300 dark:border-rose-500/30',
+      'bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-rose-700 dark:text-rose-400 font-medium border border-rose-300 dark:border-rose-900/40',
     ghost:
-      'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-medium border border-transparent',
+      'bg-transparent hover:bg-[#E9EEE6]/80 dark:hover:bg-[#1B2922]/80 text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] font-medium border border-transparent',
   };
 
   return (

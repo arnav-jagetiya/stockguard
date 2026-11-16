@@ -36,12 +36,12 @@ describe('Common Component Library', () => {
   it('renders Badge with correct status variants and dark mode classes', () => {
     const { rerender } = render(<Badge variant="success">Synchronized</Badge>);
     const successBadge = screen.getByText('Synchronized');
-    expect(successBadge).toHaveClass('text-emerald-700');
-    expect(successBadge).toHaveClass('dark:text-emerald-400');
+    expect(successBadge).toHaveClass('text-[#456B1F]');
+    expect(successBadge).toHaveClass('dark:text-[#C6F36B]');
 
     rerender(<Badge variant="danger">Discrepancy</Badge>);
     const dangerBadge = screen.getByText('Discrepancy');
-    expect(dangerBadge).toHaveClass('text-rose-700');
+    expect(dangerBadge).toHaveClass('text-rose-800');
     expect(dangerBadge).toHaveClass('dark:text-rose-400');
   });
 
@@ -168,13 +168,13 @@ describe('Common Component Library', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
     // Verify popover header and options
-    expect(screen.getByText(/interface appearance/i)).toBeInTheDocument();
-    expect(screen.getByText(/clean, high-contrast daytime interface/i)).toBeInTheDocument();
-    expect(screen.getByText(/deep midnight navy low-strain palette/i)).toBeInTheDocument();
-    expect(screen.getByText(/automatically synchronizes with your device os/i)).toBeInTheDocument();
+    expect(screen.getByText(/mineral & signal appearance/i)).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /warm mineral/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /midnight mineral/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /system preference/i })).toBeInTheDocument();
 
     // Select Dark option
-    const darkOption = screen.getByRole('menuitem', { name: /dark/i });
+    const darkOption = screen.getByRole('menuitem', { name: /midnight mineral/i });
     fireEvent.click(darkOption);
 
     expect(localStorage.getItem('stockguard-theme')).toBe('dark');

@@ -39,17 +39,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 ? 'bg-rose-500/10 text-rose-500'
                 : variant === 'warning'
                 ? 'bg-amber-500/10 text-amber-500'
-                : 'bg-cyan-500/10 text-cyan-500'
+                : 'bg-[#E9EEE6] dark:bg-[#C6F36B]/15 text-[#456B1F] dark:text-[#C6F36B]'
             }`}
           >
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-0.5">
+          <p className="text-sm text-[#657369] dark:text-[#9AA99E] leading-relaxed pt-0.5">
             {message}
           </p>
         </div>
 
-        <div className="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex justify-end gap-3 pt-3 border-t border-[#D9E1D7] dark:border-[#26362E]">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelLabel}
           </Button>

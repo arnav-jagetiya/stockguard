@@ -171,15 +171,15 @@ export const TeamPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Team & Access Governance</h1>
-            <Badge variant="default" className="text-xs font-mono uppercase bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/40">
+            <h1 className="text-2xl font-bold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">Team & Access Governance</h1>
+            <Badge variant="default" className="text-xs font-mono uppercase bg-[#147C68]/10 text-[#147C68] dark:text-[#6CD8C0] border border-[#147C68]/30">
               RBAC v2
             </Badge>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">
             Manage tenant membership, least-privilege role assignments, and organizational access boundaries.
           </p>
         </div>
@@ -214,47 +214,47 @@ export const TeamPage: React.FC = () => {
 
       {/* RBAC Info Card */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
+        <div className="p-3 rounded-lg bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] text-xs">
           <div className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> ADMIN
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-[#657369] dark:text-[#9AA99E] text-[11px] leading-relaxed">
             Tenant administration, full membership governance, facility configuration, and policy control.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
-          <div className="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] text-xs">
+          <div className="font-semibold text-[#147C68] dark:text-[#6CD8C0] flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> MANAGER
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-[#657369] dark:text-[#9AA99E] text-[11px] leading-relaxed">
             Operational oversight, inventory adjustments, stock transfers, and warehouse routing.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
-          <div className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] text-xs">
+          <div className="font-semibold text-[#456B1F] dark:text-[#C6F36B] flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> OPERATOR
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-[#657369] dark:text-[#9AA99E] text-[11px] leading-relaxed">
             Daily operations: receiving, order fulfillment, stock reservations, and discrepancy triage.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
-          <div className="font-semibold text-slate-700 dark:text-slate-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] text-xs">
+          <div className="font-semibold text-[#657369] dark:text-[#9AA99E] flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> VIEWER
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-[#657369] dark:text-[#9AA99E] text-[11px] leading-relaxed">
             Read-only access to catalog, current inventory balances, and executive dashboard metrics.
           </p>
         </div>
       </div>
 
       {/* Members Table */}
-      <Card className="border-slate-200 dark:border-white/5 overflow-hidden shadow-sm">
+      <Card className="border-[#D9E1D7] dark:border-[#26362E] overflow-hidden shadow-sm">
         {loading && members.length === 0 ? (
           <TableSkeleton rows={5} cols={5} />
         ) : members.length === 0 ? (
           <EmptyState
-            icon={Users}
+            icon={<Users className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
             title="No members registered"
             description="No active memberships found for the current organization context."
           />
@@ -262,7 +262,7 @@ export const TeamPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 uppercase font-mono tracking-wider">
+                <tr className="border-b border-[#D9E1D7] dark:border-[#26362E] bg-[#E9EEE6]/60 dark:bg-[#1B2922]/60 text-[#657369] dark:text-[#9AA99E] uppercase font-mono tracking-wider">
                   <th className="py-3 px-4">User ID / Principal</th>
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">Status</th>
@@ -270,14 +270,14 @@ export const TeamPage: React.FC = () => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-white/5 text-slate-700 dark:text-slate-300">
+              <tbody className="divide-y divide-[#D9E1D7] dark:divide-[#26362E] text-[#18231D] dark:text-[#EEF3EA]">
                 {members.map((m) => {
                   const isCurrentUser = user?.id === m.userId;
                   return (
-                    <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
-                      <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300">
+                    <tr key={m.id} className="hover:bg-[#E9EEE6]/50 dark:hover:bg-[#1B2922]/50 transition-colors group">
+                      <td className="py-3 px-4 font-mono text-[#657369] dark:text-[#9AA99E]">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-900 dark:text-white">{m.userId}</span>
+                          <span className="font-medium text-[#18231D] dark:text-[#EEF3EA]">{m.userId}</span>
                           {isCurrentUser && (
                             <Badge variant="info" className="text-[10px] py-0 px-1.5">
                               You
@@ -285,11 +285,11 @@ export const TeamPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => copyToClipboard(m.userId, `user-${m.id}`)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[#E9EEE6] dark:hover:bg-[#1B2922] rounded text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] transition-opacity cursor-pointer"
                             title="Copy User ID"
                           >
                             {copiedKey === `user-${m.id}` ? (
-                              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                              <Check className="w-3 h-3 text-[#456B1F] dark:text-[#C6F36B]" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
@@ -303,18 +303,18 @@ export const TeamPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         {m.active ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                          <span className="inline-flex items-center gap-1.5 text-[#456B1F] dark:text-[#C6F36B] text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#456B1F] dark:bg-[#C6F36B]" />
                             Active
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+                          <span className="inline-flex items-center gap-1.5 text-[#8A988E] dark:text-[#6C7D71] text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#8A988E] dark:bg-[#6C7D71]" />
                             Inactive
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
+                      <td className="py-3 px-4 font-mono text-[#8A988E] dark:text-[#6C7D71]">
                         {formatTimestamp(m.createdAt)}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -329,7 +329,7 @@ export const TeamPage: React.FC = () => {
                                 setEditError(null);
                               }}
                               icon={<Edit3 className="w-3.5 h-3.5" />}
-                              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white h-7 px-2"
+                              className="text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] h-7 px-2"
                             >
                               Role
                             </Button>
@@ -346,7 +346,7 @@ export const TeamPage: React.FC = () => {
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-400 dark:text-slate-600 text-xs font-mono">—</span>
+                          <span className="text-[#8A988E] dark:text-[#6C7D71] text-xs font-mono">—</span>
                         )}
                       </td>
                     </tr>
@@ -373,7 +373,7 @@ export const TeamPage: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] mb-1">
               User UUID <span className="text-rose-500 dark:text-rose-400">*</span>
             </label>
             <Input
@@ -383,13 +383,13 @@ export const TeamPage: React.FC = () => {
               required
               className="font-mono text-xs"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-[#657369] dark:text-[#9AA99E] mt-1">
               Existing platform user UUID to bind to {currentOrg?.name || 'this organization'}.
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+            <label className="block text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] mb-1">
               Assigned Role <span className="text-rose-500 dark:text-rose-400">*</span>
             </label>
             <Select
@@ -399,16 +399,16 @@ export const TeamPage: React.FC = () => {
             />
           </div>
 
-          <div className="p-3 rounded bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/5 text-xs text-slate-600 dark:text-slate-400 space-y-1">
-            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1">
-              <Info className="w-3 h-3 text-cyan-600 dark:text-cyan-400" /> Organization Isolation Note
+          <div className="p-3 rounded bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-xs text-[#657369] dark:text-[#9AA99E] space-y-1">
+            <span className="font-semibold text-[#18231D] dark:text-[#EEF3EA] flex items-center gap-1">
+              <Info className="w-3 h-3 text-[#147C68] dark:text-[#6CD8C0]" /> Organization Isolation Note
             </span>
             <p className="text-[11px] leading-relaxed">
               Users granted access can only inspect and mutate data strictly belonging to this tenant context.
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
+          <div className="flex justify-end gap-2 pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
             <Button variant="secondary" onClick={() => setIsAddOpen(false)} disabled={addLoading}>
               Cancel
             </Button>
@@ -435,14 +435,14 @@ export const TeamPage: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">User ID</label>
-              <div className="p-2.5 rounded bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-300 select-all">
+              <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">User ID</label>
+              <div className="p-2.5 rounded bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] font-mono text-xs text-[#18231D] dark:text-[#EEF3EA] select-all">
                 {editingMember.userId}
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-[#18231D] dark:text-[#EEF3EA] mb-1">
                 New Role Assignment <span className="text-rose-500 dark:text-rose-400">*</span>
               </label>
               <Select
@@ -452,7 +452,7 @@ export const TeamPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
               <Button variant="secondary" onClick={() => setEditingMember(null)} disabled={editLoading}>
                 Cancel
               </Button>

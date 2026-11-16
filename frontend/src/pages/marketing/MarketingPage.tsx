@@ -9,7 +9,7 @@ import { FooterSection } from './FooterSection';
 
 export const MarketingPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080c14] text-slate-900 dark:text-slate-100 flex flex-col selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300 transition-colors">
+    <div className="min-h-screen bg-[#F4F5EF] dark:bg-[#0B100F] text-[#18231D] dark:text-[#EEF3EA] flex flex-col selection:bg-[#C6F36B]/30 selection:text-[#18231D] dark:selection:text-[#C6F36B] transition-colors">
       <Navbar />
       <main className="flex-1">
         <HeroSection />

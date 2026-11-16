@@ -223,13 +223,13 @@ export const InventoryPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
         <button
           onClick={() => setActiveTab('balances')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'balances'
-              ? 'border-cyan-500 dark:border-cyan-400 text-cyan-600 dark:text-cyan-400'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[#456B1F] dark:border-[#C6F36B] text-[#456B1F] dark:text-[#C6F36B]'
+              : 'border-transparent text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]'
           }`}
         >
           Facility Balances
@@ -238,8 +238,8 @@ export const InventoryPage: React.FC = () => {
           onClick={() => setActiveTab('transactions')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'transactions'
-              ? 'border-cyan-500 dark:border-cyan-400 text-cyan-600 dark:text-cyan-400'
-              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+              ? 'border-[#456B1F] dark:border-[#C6F36B] text-[#456B1F] dark:text-[#C6F36B]'
+              : 'border-transparent text-[#657369] dark:text-[#9AA99E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]'
           }`}
         >
           Transaction Ledger History
@@ -248,7 +248,7 @@ export const InventoryPage: React.FC = () => {
 
       {/* Filters (for balances) */}
       {activeTab === 'balances' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
           <Select
             label="Filter by Product"
             value={selectedProduct}
@@ -276,7 +276,7 @@ export const InventoryPage: React.FC = () => {
       ) : activeTab === 'balances' ? (
         balances.length === 0 ? (
           <EmptyState
-            icon={<Boxes className="w-8 h-8" />}
+            icon={<Boxes className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
             title="No Balances Found"
             description="No inventory balances have been established yet for these filters."
             actionLabel={canReceive ? 'Record Opening Stock' : undefined}
@@ -301,16 +301,16 @@ export const InventoryPage: React.FC = () => {
             <TableBody>
               {balances.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-semibold text-slate-900 dark:text-white">
+                  <TableCell className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">
                     {getProductName(b.productId)}
                   </TableCell>
-                  <TableCell className="font-mono text-cyan-600 dark:text-cyan-400">
+                  <TableCell className="font-mono text-[#147C68] dark:text-[#6CD8C0] font-semibold">
                     {getWarehouseName(b.warehouseId)}
                   </TableCell>
-                  <TableCell className="font-mono font-bold text-slate-800 dark:text-slate-100">{b.onHand}</TableCell>
-                  <TableCell className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{b.reserved}</TableCell>
-                  <TableCell className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{b.available}</TableCell>
-                  <TableCell className="font-mono text-slate-400 dark:text-slate-500 text-[11px]">
+                  <TableCell className="font-mono font-bold text-[#18231D] dark:text-[#EEF3EA]">{b.onHand}</TableCell>
+                  <TableCell className="font-mono font-bold text-amber-600 dark:text-amber-400">{b.reserved}</TableCell>
+                  <TableCell className="font-mono font-bold text-[#456B1F] dark:text-[#C6F36B]">{b.available}</TableCell>
+                  <TableCell className="font-mono text-[#8A988E] dark:text-[#6C7D71] text-[11px]">
                     {new Date(b.updatedAt).toLocaleString()}
                   </TableCell>
                 </TableRow>
@@ -341,22 +341,22 @@ export const InventoryPage: React.FC = () => {
             <TableBody>
               {transactions.map((tx) => (
                 <TableRow key={tx.id}>
-                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
+                  <TableCell className="font-mono text-xs text-[#657369] dark:text-[#9AA99E] truncate max-w-[120px]">
                     {tx.id}
                   </TableCell>
                   <TableCell>
                     <Badge variant="info">{tx.transactionType}</Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-300">
+                  <TableCell className="font-mono text-xs text-[#18231D] dark:text-[#EEF3EA] font-semibold">
                     {tx.referenceType ? `${tx.referenceType}: ${tx.referenceId}` : '—'}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
+                  <TableCell className="text-xs text-[#657369] dark:text-[#9AA99E] max-w-xs truncate">
                     {tx.notes || '—'}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
+                  <TableCell className="font-mono text-xs text-[#8A988E] dark:text-[#6C7D71]">
                     {new Date(tx.createdAt).toLocaleString()}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-300">
+                  <TableCell className="font-mono text-xs text-[#18231D] dark:text-[#EEF3EA] font-semibold">
                     {tx.entries ? `${tx.entries.length} deltas` : '0'}
                   </TableCell>
                 </TableRow>

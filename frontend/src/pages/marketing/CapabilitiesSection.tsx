@@ -12,37 +12,37 @@ import {
 export const CapabilitiesSection: React.FC = () => {
   const features = [
     {
-      icon: <Boxes className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />,
-      title: 'Multi-Warehouse Allocation',
+      icon: <Boxes className="w-5 h-5 text-[#456B1F] dark:text-[#C6F36B]" />,
+      title: 'Multi-Warehouse Mesh Allocation',
       description:
         'Priority-based intelligent order line allocation across multiple fulfillment centers without double-booking or inventory fragmentation.',
     },
     {
-      icon: <Timer className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+      icon: <Timer className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
       title: 'Serialized Reservations',
       description:
-        'Distributed reservation locks with automated expiration workers, guaranteeing locked stock returns to available pool if unfulfilled.',
+        'Distributed reservation locks with automated expiration workers, guaranteeing locked stock returns to the available pool if unfulfilled.',
     },
     {
-      icon: <GitCommit className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
-      title: 'Append-Only Ledger',
+      icon: <GitCommit className="w-5 h-5 text-[#456B1F] dark:text-[#C6F36B]" />,
+      title: 'Immutable Double-Entry Ledger',
       description:
         'Every stock movement is an immutable double-entry transaction. Running balances are strictly derived from verifiable historical ledger deltas.',
     },
     {
-      icon: <RotateCw className="w-5 h-5 text-amber-600 dark:text-amber-400" />,
+      icon: <RotateCw className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0]" />,
       title: 'Continuous MVCC Sweeps',
       description:
         'Automated background sweeps detect and isolate phantom discrepancies, ensuring physical on-hand equals ledger records 24/7.',
     },
     {
-      icon: <Split className="w-5 h-5 text-teal-600 dark:text-teal-400" />,
-      title: 'Inter-Warehouse Transfers',
+      icon: <Split className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0]" />,
+      title: 'Atomic Inter-Warehouse Transfers',
       description:
         'Atomic two-phase stock relocation between regional facilities with dual-sided ledger accountability and zero in-transit loss.',
     },
     {
-      icon: <Fingerprint className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
+      icon: <Fingerprint className="w-5 h-5 text-[#456B1F] dark:text-[#C6F36B]" />,
       title: 'Cryptographic Audit Trail',
       description:
         'Comprehensive immutable audit logging for every lifecycle event, state transition, and administrative intervention with user attribution.',
@@ -50,27 +50,27 @@ export const CapabilitiesSection: React.FC = () => {
   ];
 
   return (
-    <section id="capabilities" className="py-24 px-6 max-w-7xl mx-auto border-t border-slate-200 dark:border-slate-900 transition-colors">
+    <section id="capabilities" className="py-24 px-6 max-w-7xl mx-auto border-t border-[#D9E1D7] dark:border-[#26362E] transition-colors">
       <div className="text-center space-y-3 mb-16">
-        <span className="text-xs font-mono uppercase tracking-wider text-cyan-600 dark:text-cyan-400 font-semibold">
+        <span className="text-xs font-mono uppercase tracking-wider text-[#456B1F] dark:text-[#C6F36B] font-bold">
           Architectural Core
         </span>
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">
           Engineered for mission-critical physical operations
         </h2>
-        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
+        <p className="text-sm text-[#657369] dark:text-[#9AA99E] max-w-xl mx-auto">
           Built without fragile microservice orchestration or out-of-process caching layers. Every invariant is backed by database guarantees.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {features.map((feature, idx) => (
-          <Card key={idx} className="space-y-3.5">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center">
+          <Card key={idx} className="space-y-3.5 hover:border-[#456B1F]/40 dark:hover:border-[#C6F36B]/40 transition-all">
+            <div className="w-10 h-10 rounded-xl bg-[#E9EEE6] dark:bg-[#1B2922] border border-[#D9E1D7] dark:border-[#26362E] flex items-center justify-center">
               {feature.icon}
             </div>
-            <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{feature.title}</h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{feature.description}</p>
+            <h3 className="text-base font-bold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">{feature.title}</h3>
+            <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">{feature.description}</p>
           </Card>
         ))}
       </div>

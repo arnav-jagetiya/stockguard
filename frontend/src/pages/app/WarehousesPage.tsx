@@ -152,24 +152,24 @@ export const WarehousesPage: React.FC = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#0f172a] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-xs">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Filter by code or name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-[#0a101d] text-xs text-slate-900 dark:text-slate-100 rounded-lg pl-9 pr-3.5 py-2 border border-slate-300 dark:border-slate-800 outline-none focus:border-cyan-500"
+            className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] rounded-lg pl-9 pr-3.5 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B]"
           />
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none self-start sm:self-auto">
+        <label className="flex items-center gap-2 text-xs text-[#657369] dark:text-[#9AA99E] cursor-pointer select-none self-start sm:self-auto font-medium">
           <input
             type="checkbox"
             checked={activeOnly}
             onChange={(e) => setActiveOnly(e.target.checked)}
-            className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-cyan-600 focus:ring-0"
+            className="rounded border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] text-[#456B1F] dark:text-[#C6F36B] focus:ring-0"
           />
           Show Active Only
         </label>
@@ -180,7 +180,7 @@ export const WarehousesPage: React.FC = () => {
         <TableSkeleton rows={4} columns={6} />
       ) : warehouses.length === 0 ? (
         <EmptyState
-          icon={<Warehouse className="w-8 h-8" />}
+          icon={<Warehouse className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
           title="No Facilities Found"
           description={search ? 'No warehouses matched your search criteria.' : 'No warehouse facilities configured.'}
           actionLabel={canManage && !search ? 'Add Facility' : undefined}
@@ -204,10 +204,10 @@ export const WarehousesPage: React.FC = () => {
           <TableBody>
             {warehouses.map((w) => (
               <TableRow key={w.id}>
-                <TableCell className="font-mono font-bold text-cyan-600 dark:text-cyan-400">{w.code}</TableCell>
-                <TableCell className="font-semibold text-slate-900 dark:text-white">{w.name}</TableCell>
+                <TableCell className="font-mono font-bold text-[#456B1F] dark:text-[#C6F36B]">{w.code}</TableCell>
+                <TableCell className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">{w.name}</TableCell>
                 <TableCell className="font-mono">
-                  <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                  <span className="px-2 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#16221E] border border-[#D9E1D7] dark:border-[#26362E] text-xs font-semibold text-[#147C68] dark:text-[#6CD8C0]">
                     Tier {w.priority}
                   </span>
                 </TableCell>
@@ -218,7 +218,7 @@ export const WarehousesPage: React.FC = () => {
                     <Badge variant="neutral">INACTIVE</Badge>
                   )}
                 </TableCell>
-                <TableCell className="font-mono text-slate-500">
+                <TableCell className="font-mono text-[#657369] dark:text-[#9AA99E]">
                   {new Date(w.createdAt).toLocaleDateString()}
                 </TableCell>
                 {canManage && (
@@ -226,7 +226,7 @@ export const WarehousesPage: React.FC = () => {
                     <button
                       onClick={() => openEdit(w)}
                       title="Edit Facility"
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-200 dark:border-slate-800 transition-colors"
+                      className="p-1.5 rounded-lg bg-[#E9EEE6] hover:bg-[#DEE5DA] dark:bg-[#16221E] dark:hover:bg-[#1B2922] text-[#657369] dark:text-[#9AA99E] hover:text-[#456B1F] dark:hover:text-[#C6F36B] border border-[#D9E1D7] dark:border-[#26362E] transition-colors cursor-pointer"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
@@ -234,7 +234,7 @@ export const WarehousesPage: React.FC = () => {
                       <button
                         onClick={() => setDeactivatingWarehouse(w)}
                         title="Deactivate Facility"
-                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-500/10 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-800 transition-colors"
+                        className="p-1.5 rounded-lg bg-[#E9EEE6] hover:bg-rose-50 dark:bg-[#16221E] dark:hover:bg-rose-950/20 text-[#657369] dark:text-[#9AA99E] hover:text-rose-600 dark:hover:text-rose-400 border border-[#D9E1D7] dark:border-[#26362E] transition-colors cursor-pointer"
                       >
                         <Ban className="w-3.5 h-3.5" />
                       </button>
