@@ -52,6 +52,12 @@ stockguard:
       refresh-permits-per-minute: 120
     registration:
       enabled: true
+  demo:
+    seed-enabled: ${STOCKGUARD_DEMO_SEED_ENABLED:false}
+    admin-email: "acme-admin@stockguard.dev"
+    admin-password: "RedactedAdminSecret2026!"
+    admin-full-name: "Aarav Mehta"
+    org-name: "Acme Industrial Supply Pvt. Ltd."
 
 logging:
   level:

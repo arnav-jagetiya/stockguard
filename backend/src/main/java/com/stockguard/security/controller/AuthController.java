@@ -56,6 +56,9 @@ public class AuthController {
     private SecurityProperties securityProperties;
 
     @Autowired(required = false)
+    private com.stockguard.demo.config.DemoProperties demoProperties;
+
+    @Autowired(required = false)
     private Environment environment;
 
     @Autowired
@@ -354,6 +357,15 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("error", "Forbidden", "message", "Demo credentials discovery is only permitted from local host."));
         }
+        if (demoProperties != null && demoProperties.isSeedEnabled()
+                && demoProperties.getAdminEmail() != null && !demoProperties.getAdminEmail().isBlank()
+                && demoProperties.getAdminPassword() != null && !demoProperties.getAdminPassword().isBlank()) {
+            return ResponseEntity.ok(Map.of(
+                    "available", true,
+                    "email", demoProperties.getAdminEmail(),
+                    "password", demoProperties.getAdminPassword()
+            ));
+        }
         if (securityProperties == null || securityProperties.getBootstrap() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -375,6 +387,10 @@ public class AuthController {
 
     public void setSecurityProperties(SecurityProperties securityProperties) {
         this.securityProperties = securityProperties;
+    }
+
+    public void setDemoProperties(com.stockguard.demo.config.DemoProperties demoProperties) {
+        this.demoProperties = demoProperties;
     }
 
     public void setEnvironment(Environment environment) {

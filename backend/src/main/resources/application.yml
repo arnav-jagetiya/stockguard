@@ -97,6 +97,12 @@ stockguard:
       allow-password-reset: ${STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET:false}
     registration:
       enabled: ${STOCKGUARD_REGISTRATION_ENABLED:false}
+  demo:
+    seed-enabled: ${STOCKGUARD_DEMO_SEED_ENABLED:false}
+    admin-email: ${STOCKGUARD_DEMO_ADMIN_EMAIL:acme-admin@stockguard.dev}
+    admin-password: ${STOCKGUARD_DEMO_ADMIN_PASSWORD:RedactedAdminSecret2026!}
+    admin-full-name: ${STOCKGUARD_DEMO_ADMIN_FULL_NAME:Aarav Mehta}
+    org-name: ${STOCKGUARD_DEMO_ORG_NAME:Acme Industrial Supply Pvt. Ltd.}
   reservation:
     default-ttl-minutes: ${STOCKGUARD_RESERVATION_DEFAULT_TTL_MINUTES:15}
     expiration:

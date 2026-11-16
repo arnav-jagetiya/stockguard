@@ -80,6 +80,8 @@ stockguard:
       allow-password-reset: false
     registration:
       enabled: ${STOCKGUARD_REGISTRATION_ENABLED:false}
+  demo:
+    seed-enabled: false
 
 logging:
   level:
