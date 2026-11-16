@@ -39,7 +39,7 @@ export const CapabilitiesSection: React.FC = () => {
       icon: <Split className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0]" />,
       title: 'Atomic Inter-Warehouse Transfers',
       description:
-        'Atomic two-phase stock relocation between regional facilities with dual-sided ledger accountability and zero in-transit loss.',
+        'Immediate and atomic stock relocation across facilities within a single ACID transaction, recording dual-entry ledger movements (Source OUT: -Q, 0 / Destination IN: +Q, 0) with zero in-transit drift.',
     },
     {
       icon: <Fingerprint className="w-5 h-5 text-[#456B1F] dark:text-[#C6F36B]" />,

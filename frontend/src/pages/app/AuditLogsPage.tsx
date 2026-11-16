@@ -120,7 +120,7 @@ export const AuditLogsPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">Immutable Audit Trail</h1>
             <Badge variant="default" className="text-xs font-mono uppercase bg-[#147C68]/10 text-[#147C68] dark:text-[#6CD8C0] border border-[#147C68]/30">
-              SOC 2 / ISO 27001 Compliant
+              Append-Only Event Ledger
             </Badge>
           </div>
           <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">

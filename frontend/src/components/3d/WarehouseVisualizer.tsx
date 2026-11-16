@@ -29,6 +29,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
   const [activePreset, setActivePreset] = useState<CameraPreset>('isometric');
   const [activeStep, setActiveStep] = useState<number>(1);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
+  const [webglError, setWebglError] = useState<boolean>(false);
   const [hoveredInfo, setHoveredInfo] = useState<{
     bay: string;
     sku: string;
@@ -53,19 +54,19 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     {
       id: 1,
       title: '1. Receive Stock at Inbound Dock',
-      subtitle: 'Physical receipt & initial ledger entry',
-      description: 'Shipment arrives at Dock 01. Stock is verified against purchase PO and ingested into an append-only double-entry ledger with an initial debit transaction.',
-      databaseConcept: 'INSERT INTO inventory_transactions (type: RECEIPT, isolation: READ_COMMITTED)',
+      subtitle: 'Receipt Delta: (+Q on-hand, 0 reserved)',
+      description: 'Shipment arrives at Dock 01. Physical goods are verified against the purchase order and recorded with invariant delta (+Q, 0), incrementing on-hand stock while reserved stock remains zero.',
+      databaseConcept: 'RECEIPT: (+Q, 0) | on_hand = on_hand + Q, reserved unchanged',
       cameraPreset: 'dock',
       activeZone: 'Dock 01 — Receiving Staging',
       icon: <Truck className="w-4 h-4 text-[#C6F36B] dark:text-[#C6F36B]" />,
     },
     {
       id: 2,
-      title: '2. Allocate to High-Density Racks',
-      subtitle: 'Put-away assignment & location balance',
-      description: 'Inventory is assigned to Bay A-02 on Tier 2. The inventory balance record is locked with SELECT FOR UPDATE to prevent phantom over-allocation.',
-      databaseConcept: 'SELECT * FROM inventory_balances WHERE warehouse_id = ? FOR UPDATE',
+      title: '2. High-Density Rack Allocation',
+      subtitle: 'Physical bay put-away & concurrency protection',
+      description: 'Inventory is put away into Bay A-02 on Tier 2. Row-level concurrency is enforced via SELECT FOR UPDATE to guarantee serialized balance updates without lost updates.',
+      databaseConcept: 'SELECT * FROM inventory_balances WHERE id = ? FOR UPDATE',
       cameraPreset: 'aisle',
       activeZone: 'Zone A — High-Density Racks',
       icon: <Boxes className="w-4 h-4 text-[#6CD8C0] dark:text-[#6CD8C0]" />,
@@ -73,41 +74,41 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     {
       id: 3,
       title: '3. Serialized Customer Reservation',
-      subtitle: 'Concurrency lock & available stock reduction',
-      description: 'Customer order places an active reservation. Available stock drops from 120 to 100 while On-Hand remains 120. A TTL expiration timer arms.',
-      databaseConcept: 'UPDATE inventory_balances SET reserved = reserved + 20, version = version + 1',
+      subtitle: 'Reservation Delta: (0 on-hand, +Q reserved)',
+      description: 'Customer order places an active reservation. Inventory balance transitions with invariant delta (0, +Q): Available drops (Available = On-Hand - Reserved) while physical On-Hand remains constant. Cancel/Release reverses with (0, -Q).',
+      databaseConcept: 'RESERVE: (0, +Q) | RELEASE: (0, -Q) | TTL armed',
       cameraPreset: 'isometric',
       activeZone: 'Zone A — Bay A-02-T2',
       icon: <BookmarkCheck className="w-4 h-4 text-amber-400" />,
     },
     {
       id: 4,
-      title: '4. Inter-Warehouse Autonomous Transfer',
-      subtitle: 'Atomic pairing & double-entry movement',
-      description: 'AGV unit moves stock from Zone A to Zone B cross-dock corridor. Origin on_hand decrements as destination on_hand increments in a single atomic transaction.',
-      databaseConcept: 'BEGIN; DEBIT origin; CREDIT destination; COMMIT;',
+      title: '4. Immediate Atomic Transfer',
+      subtitle: 'Dual-entry: Source OUT (-Q, 0) & Destination IN (+Q, 0)',
+      description: 'Transfers are strictly immediate and atomic with zero in-transit intermediate state. Source facility logs Transfer OUT (-Q, 0) and destination logs Transfer IN (+Q, 0) within a single database transaction boundary.',
+      databaseConcept: 'ATOMIC TRANSFER: Source OUT (-Q, 0) + Dest IN (+Q, 0) in 1 TX',
       cameraPreset: 'isometric',
-      activeZone: 'Transit Corridor B-01',
+      activeZone: 'Dual-Facility Transfer Gateway (Immediate)',
       icon: <ArrowLeftRight className="w-4 h-4 text-[#6CD8C0]" />,
     },
     {
       id: 5,
-      title: '5. Pick & Fulfill Order',
-      subtitle: 'Reservation conversion & dispatch',
-      description: 'Order enters pick/pack lifecycle. Reserved stock converts to fulfilled status, decrementing both physical on-hand and active reservation counts.',
-      databaseConcept: 'UPDATE orders SET status = "FULFILLED"; RELEASE reservation;',
+      title: '5. Order Picking & Fulfillment',
+      subtitle: 'Fulfillment Delta: (-Q on-hand, -Q reserved)',
+      description: 'Customer order dispatch commits fulfillment. The active reservation is released and physical on-hand is permanently deducted with invariant delta (-Q, -Q), posting an immutable credit ledger record.',
+      databaseConcept: 'FULFILL: (-Q, -Q) | on_hand = on_hand - Q, reserved = reserved - Q',
       cameraPreset: 'aisle',
       activeZone: 'Zone B — Active Pick Bay',
       icon: <CheckCircle2 className="w-4 h-4 text-[#C6F36B]" />,
     },
     {
       id: 6,
-      title: '6. Automated MVCC Reconciliation',
-      subtitle: 'Zero phantom stock verification sweep',
-      description: 'Scheduled reconciliation worker executes an MVCC snapshot audit, summing ledger movements against snapshot balance. Verified: Zero drift.',
-      databaseConcept: 'SELECT balance = SUM(ledger) FROM audit_sweep; Discrepancies: 0',
+      title: '6. Balance vs Ledger Reconciliation',
+      subtitle: 'Integrity Check: Balance On-Hand vs. Σ(Ledger Deltas)',
+      description: 'Scheduled reconciliation worker executes an automated audit sweep, summing all historical double-entry ledger deltas and comparing them directly against current inventory balance records to detect drift.',
+      databaseConcept: 'AUDIT: inventory_balances.on_hand == SUM(ledger_entries.delta_on_hand)',
       cameraPreset: 'topDown',
-      activeZone: 'Entire Facility Mesh',
+      activeZone: 'Entire Facility Mesh (Audit Sweep)',
       icon: <ShieldCheck className="w-4 h-4 text-[#C6F36B]" />,
     },
   ];
@@ -180,7 +181,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     camera.position.set(18, 14, 20);
     camera.lookAt(0, 1.5, 0);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    } catch {
+      setWebglError(true);
+      return;
+    }
+
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
@@ -251,7 +259,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     const statusMaterials = [
       new THREE.MeshStandardMaterial({ color: isDark ? 0xc6f36b : 0x456b1f, roughness: 0.25, metalness: 0.2 }), // AVAILABLE (Signal Lime)
       new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.2 }),                      // RESERVED (Amber)
-      new THREE.MeshStandardMaterial({ color: 0x6cd8c0, roughness: 0.25, metalness: 0.2 }),                      // TELEMETRY / IN-TRANSIT
+      new THREE.MeshStandardMaterial({ color: 0x6cd8c0, roughness: 0.25, metalness: 0.2 }),                      // ATOMIC DUAL-LEDGER TRANSFER
       new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3, metalness: 0.2 }),                      // AUDIT DISCREPANCY
     ];
 
@@ -385,14 +393,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     agvCargo.position.set(0, 0.55, 0);
     agvCargo.castShadow = true;
     agvCargo.userData = {
-      bay: 'AGV-UNIT-01 (MOBILE)',
+      bay: 'AGV-UNIT-01 (ACTIVE RELOCATION)',
       sku: 'SKU-TRANS-904',
-      product: 'In-Transit Cross-Dock Shipment',
+      product: 'Atomic Transfer Relocation (Simulated)',
       onHand: 50,
-      reserved: 50,
-      available: 0,
-      zone: 'Autonomous Transit Lane',
-      status: 'IN_TRANSIT_ATOMIC',
+      reserved: 0,
+      available: 50,
+      zone: 'Autonomous Guided Movement (Immediate)',
+      status: 'ATOMIC DUAL-LEDGER (OUT: -50 / IN: +50)',
     };
     interactivePallets.push(agvCargo);
     agvGroup.add(agvCargo);
@@ -400,14 +408,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     scene.add(agvGroup);
     agvRef.current = agvGroup;
 
-    // 7. Raycasting for Pallet Hover / Click Interaction
+    // 7. Raycasting for Pallet Hover / Click / Touch Interaction
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
-    const handlePointerMove = (e: MouseEvent) => {
+    const updatePointer = (clientX: number, clientY: number) => {
       const rect = renderer.domElement.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(interactivePallets);
@@ -424,14 +432,43 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
       }
     };
 
-    container.addEventListener('mousemove', handlePointerMove);
+    const handlePointerMove = (e: MouseEvent) => {
+      updatePointer(e.clientX, e.clientY);
+    };
 
-    // 8. Animation & Camera Lerp Loop
+    const handleTouch = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    container.addEventListener('mousemove', handlePointerMove);
+    container.addEventListener('touchstart', handleTouch, { passive: true });
+    container.addEventListener('touchmove', handleTouch, { passive: true });
+
+    // 8. Visibility & Intersection Observers (Cease GPU consumption when off-screen)
+    let isVisible = true;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry.isIntersecting && document.visibilityState === 'visible';
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(container);
+
+    const handleVisibilityChange = () => {
+      isVisible = document.visibilityState === 'visible';
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 9. Animation & Camera Lerp Loop
     let animationFrameId: number;
     const clock = new THREE.Clock();
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+      if (!isVisible) return; // Do not consume GPU when off-screen or tab is backgrounded
+
       const elapsed = clock.getElapsedTime();
 
       // Smooth camera interpolation towards active target
@@ -463,7 +500,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
     animate();
 
-    // 9. Resize Observer
+    // 10. Resize Observer
     const handleResize = () => {
       if (!container) return;
       const w = container.clientWidth;
@@ -478,6 +515,10 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     return () => {
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('mousemove', handlePointerMove);
+      container.removeEventListener('touchstart', handleTouch);
+      container.removeEventListener('touchmove', handleTouch);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      observer.disconnect();
       cancelAnimationFrame(animationFrameId);
       document.body.style.cursor = 'default';
       if (container && renderer.domElement) {
@@ -492,14 +533,29 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
       {/* 3D WebGL Canvas Viewport */}
       <div ref={mountRef} className="h-[480px] sm:h-[560px] w-full relative touch-none" />
 
+      {/* WebGL Failure Fallback */}
+      {webglError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#F4F5EF] dark:bg-[#0B100F] z-30">
+          <Boxes className="w-12 h-12 text-[#456B1F] dark:text-[#C6F36B] mb-3" />
+          <h3 className="text-base font-bold text-[#18231D] dark:text-[#EEF3EA]">3D Hardware Acceleration Unavailable</h3>
+          <p className="text-xs text-[#657369] dark:text-[#9AA99E] max-w-md mt-1">
+            WebGL acceleration is disabled or unsupported in this browser environment. The interactive operational controls and lifecycle storytelling steps remain fully operational below.
+          </p>
+        </div>
+      )}
+
       {/* Top Floating Spatial HUD & Camera Presets */}
       <div className="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-3 pointer-events-none">
         {/* Status Badge */}
-        <div className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/90 dark:bg-[#111A17]/90 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] text-xs font-mono shadow-md">
+        <div className="pointer-events-auto inline-flex flex-wrap items-center gap-2 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-[#111A17]/90 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] text-xs font-mono shadow-md">
           <span className="w-2 h-2 rounded-full bg-[#456B1F] dark:bg-[#C6F36B] animate-pulse" />
           <span className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">SPATIAL WAREHOUSE TWIN</span>
           <span className="text-[#8A988E] dark:text-[#6C7D71]">|</span>
           <span className="text-[#456B1F] dark:text-[#C6F36B] font-bold">144 ACTIVE BAYS</span>
+          <span className="text-[#8A988E] dark:text-[#6C7D71]">|</span>
+          <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
+            Simulated Demonstration · Illustrative Data
+          </span>
         </div>
 
         {/* Camera Preset Switches */}
@@ -552,8 +608,8 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
         <div className="absolute top-20 right-4 w-72 rounded-xl bg-white/95 dark:bg-[#111A17]/95 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] p-3.5 shadow-2xl z-20 pointer-events-none animate-in fade-in zoom-in-95 duration-100 space-y-2">
           <div className="flex items-center justify-between pb-1.5 border-b border-[#D9E1D7] dark:border-[#26362E]">
             <span className="font-mono text-xs font-bold text-[#456B1F] dark:text-[#C6F36B]">{hoveredInfo.bay}</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#E9EEE6] dark:bg-[#1B2922] text-[#18231D] dark:text-[#EEF3EA]">
-              {hoveredInfo.status}
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+              SIMULATED PALLET
             </span>
           </div>
           <div className="space-y-1">

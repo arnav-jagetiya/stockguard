@@ -101,10 +101,10 @@ export const InteractiveSimulator: React.FC = () => {
             <h3 className="text-lg font-bold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">
               Interactive Engine Simulator
             </h3>
-            <Badge variant="info">LIVE VERIFICATION</Badge>
+            <Badge variant="warning">ILLUSTRATIVE SIMULATION · NOT LIVE DATA</Badge>
           </div>
           <p className="text-xs text-[#657369] dark:text-[#9AA99E] mt-1">
-            Experience real-time PostgreSQL MVCC reconciliation, advisory locking, and immutable audit logs.
+            Simulated demonstration showing how the reconciliation engine audits inventory balances against ledger-derived sums.
           </p>
         </div>
 

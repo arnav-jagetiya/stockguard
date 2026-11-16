@@ -6,7 +6,7 @@ export const InteractiveDemoSection: React.FC = () => {
     <section id="storytelling" className="py-24 px-6 max-w-7xl mx-auto border-t border-[#D9E1D7] dark:border-[#26362E] transition-colors">
       <div className="text-center space-y-3 mb-12">
         <span className="text-xs font-mono uppercase tracking-wider text-[#456B1F] dark:text-[#C6F36B] font-bold">
-          Live Verification Laboratory
+          Interactive Simulation Laboratory
         </span>
         <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18231D] dark:text-[#EEF3EA] tracking-tight">
           Test the reconciliation invariants yourself
