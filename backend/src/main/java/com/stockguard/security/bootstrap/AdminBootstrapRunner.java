@@ -112,6 +112,10 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     }
 
     private void validateConfiguration(SecurityProperties.Bootstrap config) {
+        if (config.isAllowPasswordReset() && environment != null && environment.matchesProfiles("prod")) {
+            throw new IllegalStateException(
+                    "Bootstrap password reset is strictly forbidden in production (prod profile active).");
+        }
         if (config.getAdminEmail() == null || config.getAdminEmail().isBlank()) {
             throw new IllegalStateException("Bootstrap admin-email must not be blank when bootstrap is enabled");
         }

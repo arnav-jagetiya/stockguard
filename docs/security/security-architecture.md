@@ -501,3 +501,34 @@ flowchart LR
   * Raw passwords and raw refresh tokens are never written to logs or audit records.
   * All DTOs suppress credential fields in `toString()`.
   * Security events logged to append-only `audit_logs`.
+
+---
+
+## 10. Administrator Bootstrap & Local Development Password Recovery
+
+### 10.1 Bootstrap Initialization
+Initial tenant provisioning and root administrator creation is managed via `AdminBootstrapRunner`.
+* Configured under `stockguard.security.bootstrap` (`enabled`, `admin-email`, `admin-password`, `admin-full-name`, `org-name`).
+* Runs transactionally with a PostgreSQL transaction-scoped advisory lock (`BOOTSTRAP_ADVISORY_LOCK_KEY = 0x53544F434B475541L`).
+* **Strict Idempotency:** When the administrator user and organization already exist with an active `ADMIN` role, the runner logs an initialization confirmation and exits immediately without modifying any credentials or state.
+
+### 10.2 Safe Local Recovery Procedure
+When a local developer loses access to the development administrator credentials, the platform provides a safe, documented, opt-in recovery mechanism:
+
+1. **Disabled by Default:** Password recovery is disabled by default across all profiles (`dev`, `test`, and `prod`). Merely running the `dev` profile does not permit credential resets.
+2. **Explicit Single-Startup Opt-In:** Recovery requires an explicit environment-level opt-in flag for that specific startup invocation:
+   ```bash
+   # Linux / macOS
+   STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET=true ./mvnw spring-boot:run
+
+   # Windows PowerShell
+   $env:STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET="true"
+   .\mvnw.cmd spring-boot:run
+   ```
+   Or via JVM argument:
+   `-Dstockguard.security.bootstrap.allow-password-reset=true`
+3. **Cryptographic & Audit Guarantees:**
+   * New credentials are hash-encoded using Spring Security's `PasswordEncoder` (BCrypt, cost factor 12).
+   * A tamper-evident audit record (`ADMIN_PASSWORD_RESET_RECOVERY`) is persisted to `audit_logs`.
+   * Application logs strictly redact plaintext credentials, logging only user and organization identities.
+4. **Production Failsafe:** In production (`prod` profile active), password recovery is strictly prohibited. Any attempt to supply `allow-password-reset=true` under `prod` results in an immediate `IllegalStateException` on application startup.

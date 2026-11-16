@@ -43,6 +43,9 @@ stockguard:
     cors:
       allowed-origins:
         - "http://localhost:5173"
+    bootstrap:
+      enabled: false
+      allow-password-reset: false
   reservation:
     expiration:
       enabled: false

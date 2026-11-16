@@ -46,7 +46,7 @@ stockguard:
       admin-password: "replace-with-secure-admin-password"
       admin-full-name: "StockGuard Administrator"
       org-name: "StockGuard Demo Organization"
-      allow-password-reset: true
+      allow-password-reset: ${STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET:false}
 
 logging:
   level:

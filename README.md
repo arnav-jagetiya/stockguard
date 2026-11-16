@@ -74,6 +74,22 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
+### 4. Administrator Bootstrap & Local Password Recovery
+
+Initial root tenant setup is managed via the idempotent `AdminBootstrapRunner`.
+
+* **Idempotent by Default:** Once initialized, subsequent startups skip without modifying user accounts or credentials.
+* **Safe Local Recovery:** If local development administrator credentials need to be synchronized or recovered, set the opt-in flag for that specific run:
+  ```bash
+  # Linux / macOS
+  STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET=true ./mvnw spring-boot:run
+
+  # Windows PowerShell
+  $env:STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET="true"
+  .\mvnw.cmd spring-boot:run
+  ```
+* **Security & Invariants:** Password recovery is disabled by default in all profiles, strictly forbidden in `prod` (fails fast on startup), uses BCrypt hashing, logs zero plaintext credentials, and records an immutable audit record in `audit_logs`.
+
 ---
 
 ## Configuration Reference

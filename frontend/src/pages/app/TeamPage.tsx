@@ -103,7 +103,7 @@ export const TeamPage: React.FC = () => {
       setIsAddOpen(false);
       setAddUserId('');
       setAddRole('OPERATOR');
-      toast.success('Member invited and access granted.');
+      toast.success('Member access granted successfully.');
       await fetchMembers();
     } catch (err: unknown) {
       setAddError(err instanceof Error ? err.message : 'Failed to add member');
