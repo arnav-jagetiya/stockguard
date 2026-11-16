@@ -9,7 +9,6 @@ import {
   Check, 
   Copy, 
   Info,
-  AlertTriangle
 } from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -17,9 +16,11 @@ import { Badge } from '../../components/common/Badge';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { Modal } from '../../components/common/Modal';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TableSkeleton } from '../../components/common/Skeleton';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { 
   getMembershipsApi, 
   addMemberApi, 
@@ -38,6 +39,7 @@ const ROLE_OPTIONS = [
 
 export const TeamPage: React.FC = () => {
   const { currentOrg, user, hasPermission } = useAuth();
+  const toast = useToast();
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,6 @@ export const TeamPage: React.FC = () => {
   // Deactivate State
   const [deactivatingMember, setDeactivatingMember] = useState<OrganizationMember | null>(null);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
-  const [deactivateError, setDeactivateError] = useState<string | null>(null);
 
   const canManageUsers = hasPermission('membership:manage') || currentOrg?.role === 'ADMIN';
 
@@ -102,6 +103,7 @@ export const TeamPage: React.FC = () => {
       setIsAddOpen(false);
       setAddUserId('');
       setAddRole('OPERATOR');
+      toast.success('Member invited and access granted.');
       await fetchMembers();
     } catch (err: unknown) {
       setAddError(err instanceof Error ? err.message : 'Failed to add member');
@@ -120,6 +122,7 @@ export const TeamPage: React.FC = () => {
         role: editRole,
       });
       setEditingMember(null);
+      toast.success('Member role updated successfully.');
       await fetchMembers();
     } catch (err: unknown) {
       setEditError(err instanceof Error ? err.message : 'Failed to update member role');
@@ -131,13 +134,13 @@ export const TeamPage: React.FC = () => {
   const handleDeactivate = async () => {
     if (!deactivatingMember) return;
     setDeactivateLoading(true);
-    setDeactivateError(null);
     try {
       await deactivateMemberApi(deactivatingMember.userId);
+      toast.success('Member access revoked.');
       setDeactivatingMember(null);
       await fetchMembers();
     } catch (err: unknown) {
-      setDeactivateError(err instanceof Error ? err.message : 'Failed to deactivate member');
+      toast.error(err instanceof Error ? err.message : 'Failed to deactivate member');
     } finally {
       setDeactivateLoading(false);
     }
@@ -168,15 +171,15 @@ export const TeamPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-white/5">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-white">Team & Access Governance</h1>
-            <Badge variant="default" className="text-xs font-mono uppercase bg-indigo-950/40 text-indigo-400 border border-indigo-800/40">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Team & Access Governance</h1>
+            <Badge variant="default" className="text-xs font-mono uppercase bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/40">
               RBAC v2
             </Badge>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Manage tenant membership, least-privilege role assignments, and organizational access boundaries.
           </p>
         </div>
@@ -204,53 +207,51 @@ export const TeamPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+        <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-sm">
           {error}
         </div>
       )}
 
       {/* RBAC Info Card */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="p-3 rounded-lg bg-slate-900/40 border border-white/5 text-xs">
-          <div className="font-semibold text-amber-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
+          <div className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> ADMIN
           </div>
-          <p className="text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
             Tenant administration, full membership governance, facility configuration, and policy control.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-900/40 border border-white/5 text-xs">
-          <div className="font-semibold text-indigo-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
+          <div className="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> MANAGER
           </div>
-          <p className="text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
             Operational oversight, inventory adjustments, stock transfers, and warehouse routing.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-900/40 border border-white/5 text-xs">
-          <div className="font-semibold text-emerald-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
+          <div className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> OPERATOR
           </div>
-          <p className="text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
             Daily operations: receiving, order fulfillment, stock reservations, and discrepancy triage.
           </p>
         </div>
-        <div className="p-3 rounded-lg bg-slate-900/40 border border-white/5 text-xs">
-          <div className="font-semibold text-slate-400 flex items-center gap-1.5 mb-1">
+        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 text-xs">
+          <div className="font-semibold text-slate-700 dark:text-slate-400 flex items-center gap-1.5 mb-1">
             <ShieldCheck className="w-3.5 h-3.5" /> VIEWER
           </div>
-          <p className="text-slate-400 text-[11px] leading-relaxed">
+          <p className="text-slate-600 dark:text-slate-400 text-[11px] leading-relaxed">
             Read-only access to catalog, current inventory balances, and executive dashboard metrics.
           </p>
         </div>
       </div>
 
       {/* Members Table */}
-      <Card className="border-white/5 overflow-hidden">
+      <Card className="border-slate-200 dark:border-white/5 overflow-hidden shadow-sm">
         {loading && members.length === 0 ? (
-          <div className="p-12 flex justify-center">
-            <LoadingSpinner size="lg" text="Loading organization members..." />
-          </div>
+          <TableSkeleton rows={5} cols={5} />
         ) : members.length === 0 ? (
           <EmptyState
             icon={Users}
@@ -261,7 +262,7 @@ export const TeamPage: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-white/10 bg-slate-900/60 text-slate-400 uppercase font-mono tracking-wider">
+                <tr className="border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-900/60 text-slate-600 dark:text-slate-400 uppercase font-mono tracking-wider">
                   <th className="py-3 px-4">User ID / Principal</th>
                   <th className="py-3 px-4">Role</th>
                   <th className="py-3 px-4">Status</th>
@@ -269,14 +270,14 @@ export const TeamPage: React.FC = () => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-slate-300">
+              <tbody className="divide-y divide-slate-200 dark:divide-white/5 text-slate-700 dark:text-slate-300">
                 {members.map((m) => {
                   const isCurrentUser = user?.id === m.userId;
                   return (
-                    <tr key={m.id} className="hover:bg-slate-800/40 transition-colors group">
-                      <td className="py-3 px-4 font-mono text-slate-300">
+                    <tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
+                      <td className="py-3 px-4 font-mono text-slate-600 dark:text-slate-300">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-white">{m.userId}</span>
+                          <span className="font-medium text-slate-900 dark:text-white">{m.userId}</span>
                           {isCurrentUser && (
                             <Badge variant="info" className="text-[10px] py-0 px-1.5">
                               You
@@ -284,11 +285,11 @@ export const TeamPage: React.FC = () => {
                           )}
                           <button
                             onClick={() => copyToClipboard(m.userId, `user-${m.id}`)}
-                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-700 rounded text-slate-400 hover:text-white transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white transition-opacity"
                             title="Copy User ID"
                           >
                             {copiedKey === `user-${m.id}` ? (
-                              <Check className="w-3 h-3 text-emerald-400" />
+                              <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
                             ) : (
                               <Copy className="w-3 h-3" />
                             )}
@@ -302,18 +303,18 @@ export const TeamPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         {m.active ? (
-                          <span className="inline-flex items-center gap-1.5 text-emerald-400 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
                             Active
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                          <span className="inline-flex items-center gap-1.5 text-slate-400 dark:text-slate-500 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
                             Inactive
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-400">
+                      <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
                         {formatTimestamp(m.createdAt)}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -328,7 +329,7 @@ export const TeamPage: React.FC = () => {
                                 setEditError(null);
                               }}
                               icon={<Edit3 className="w-3.5 h-3.5" />}
-                              className="text-slate-400 hover:text-white h-7 px-2"
+                              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white h-7 px-2"
                             >
                               Role
                             </Button>
@@ -336,19 +337,16 @@ export const TeamPage: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  setDeactivatingMember(m);
-                                  setDeactivateError(null);
-                                }}
+                                onClick={() => setDeactivatingMember(m)}
                                 icon={<UserX className="w-3.5 h-3.5" />}
-                                className="text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 h-7 px-2"
+                                className="text-rose-600 dark:text-rose-400/80 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 h-7 px-2"
                               >
                                 Revoke
                               </Button>
                             )}
                           </div>
                         ) : (
-                          <span className="text-slate-600 text-xs font-mono">—</span>
+                          <span className="text-slate-400 dark:text-slate-600 text-xs font-mono">—</span>
                         )}
                       </td>
                     </tr>
@@ -369,14 +367,14 @@ export const TeamPage: React.FC = () => {
       >
         <form onSubmit={handleAddMember} className="space-y-4">
           {addError && (
-            <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+            <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs">
               {addError}
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              User UUID <span className="text-rose-400">*</span>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              User UUID <span className="text-rose-500 dark:text-rose-400">*</span>
             </label>
             <Input
               value={addUserId}
@@ -391,8 +389,8 @@ export const TeamPage: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              Assigned Role <span className="text-rose-400">*</span>
+            <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Assigned Role <span className="text-rose-500 dark:text-rose-400">*</span>
             </label>
             <Select
               value={addRole}
@@ -401,16 +399,16 @@ export const TeamPage: React.FC = () => {
             />
           </div>
 
-          <div className="p-3 rounded bg-slate-950/70 border border-white/5 text-xs text-slate-400 space-y-1">
-            <span className="font-semibold text-slate-300 flex items-center gap-1">
-              <Info className="w-3 h-3 text-cyan-400" /> Organization Isolation Note
+          <div className="p-3 rounded bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-white/5 text-xs text-slate-600 dark:text-slate-400 space-y-1">
+            <span className="font-semibold text-slate-800 dark:text-slate-300 flex items-center gap-1">
+              <Info className="w-3 h-3 text-cyan-600 dark:text-cyan-400" /> Organization Isolation Note
             </span>
             <p className="text-[11px] leading-relaxed">
               Users granted access can only inspect and mutate data strictly belonging to this tenant context.
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
             <Button variant="secondary" onClick={() => setIsAddOpen(false)} disabled={addLoading}>
               Cancel
             </Button>
@@ -431,21 +429,21 @@ export const TeamPage: React.FC = () => {
         >
           <form onSubmit={handleUpdateRole} className="space-y-4">
             {editError && (
-              <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+              <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs">
                 {editError}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">User ID</label>
-              <div className="p-2.5 rounded bg-slate-950 border border-white/10 font-mono text-xs text-slate-300 select-all">
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">User ID</label>
+              <div className="p-2.5 rounded bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-white/10 font-mono text-xs text-slate-800 dark:text-slate-300 select-all">
                 {editingMember.userId}
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
-                New Role Assignment <span className="text-rose-400">*</span>
+              <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                New Role Assignment <span className="text-rose-500 dark:text-rose-400">*</span>
               </label>
               <Select
                 value={editRole}
@@ -454,7 +452,7 @@ export const TeamPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/5">
               <Button variant="secondary" onClick={() => setEditingMember(null)} disabled={editLoading}>
                 Cancel
               </Button>
@@ -466,46 +464,17 @@ export const TeamPage: React.FC = () => {
         </Modal>
       )}
 
-      {/* Deactivate Confirm Modal */}
-      {deactivatingMember && (
-        <Modal
-          isOpen={!!deactivatingMember}
-          onClose={() => setDeactivatingMember(null)}
-          title="Revoke Organization Access"
-          size="md"
-        >
-          <div className="space-y-4">
-            {deactivateError && (
-              <div className="p-3 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
-                {deactivateError}
-              </div>
-            )}
-
-            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-start gap-2.5">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-rose-200">Revoke access for this user?</p>
-                <p className="mt-1 text-rose-300/90 leading-relaxed">
-                  User <span className="font-mono text-rose-100">{deactivatingMember.userId}</span> will immediately lose all operational privileges within this organization context.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
-              <Button variant="secondary" onClick={() => setDeactivatingMember(null)} disabled={deactivateLoading}>
-                Cancel
-              </Button>
-              <Button 
-                variant="danger" 
-                onClick={handleDeactivate} 
-                loading={deactivateLoading}
-              >
-                Confirm Revocation
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Deactivate Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={!!deactivatingMember}
+        onClose={() => setDeactivatingMember(null)}
+        onConfirm={handleDeactivate}
+        title="Revoke Organization Access"
+        message={`Are you sure you want to revoke organization access for user ${deactivatingMember?.userId}? They will immediately lose all operational privileges within this tenant context.`}
+        confirmText="Revoke Access"
+        variant="danger"
+        isLoading={deactivateLoading}
+      />
     </div>
   );
 };

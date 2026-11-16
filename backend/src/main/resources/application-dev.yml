@@ -5,7 +5,7 @@
 # matching docker-compose / init scripts.
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:stockguard}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:stockguard}}
     username: ${SPRING_DATASOURCE_USERNAME:${DB_APP_USER:stockguard_app}}
     password: ${SPRING_DATASOURCE_PASSWORD:${DB_APP_PASSWORD:test_app_pass}}
 
@@ -40,6 +40,13 @@ stockguard:
     cors:
       allowed-origins:
         - "http://localhost:5173"
+    bootstrap:
+      enabled: true
+      admin-email: "admin@stockguard.dev"
+      admin-password: "replace-with-secure-admin-password"
+      admin-full-name: "StockGuard Administrator"
+      org-name: "StockGuard Demo Organization"
+      allow-password-reset: true
 
 logging:
   level:

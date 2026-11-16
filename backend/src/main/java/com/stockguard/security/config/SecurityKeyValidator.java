@@ -162,8 +162,7 @@ public class SecurityKeyValidator implements ApplicationRunner, InitializingBean
     }
 
     private void validateProductionSecret(String secret, String keyDescription) {
-        List<String> activeProfiles = Arrays.asList(environment.getActiveProfiles());
-        boolean isDevOrTest = activeProfiles.contains("dev") || activeProfiles.contains("test");
+        boolean isDevOrTest = environment.matchesProfiles("dev") || environment.matchesProfiles("test");
 
         if (!isDevOrTest) {
             if (KNOWN_PLACEHOLDER_SECRETS.contains(secret.trim())) {

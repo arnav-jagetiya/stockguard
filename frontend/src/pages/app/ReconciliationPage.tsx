@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   triggerReconciliationApi,
   listDiscrepanciesApi,
@@ -22,7 +23,8 @@ import { Select } from '../../components/common/Select';
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TableSkeleton } from '../../components/common/Skeleton';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
   ShieldCheck,
@@ -33,6 +35,7 @@ import {
 
 export const ReconciliationPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const toast = useToast();
   const canReconcile = hasPermission('inventory:reconcile');
 
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
@@ -43,6 +46,7 @@ export const ReconciliationPage: React.FC = () => {
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isTriggering, setIsTriggering] = useState(false);
+  const [isSweepConfirmOpen, setIsSweepConfirmOpen] = useState(false);
   const [triggerReport, setTriggerReport] = useState<ReconciliationReport | null>(null);
 
   // Detail & Triage Modal
@@ -76,7 +80,7 @@ export const ReconciliationPage: React.FC = () => {
       setWarehouses(whList);
       setMembers(memList);
     } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
+      if (err instanceof Error) toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -87,13 +91,15 @@ export const ReconciliationPage: React.FC = () => {
   }, [selectedStatus]);
 
   const handleTriggerSweep = async () => {
+    setIsSweepConfirmOpen(false);
     setIsTriggering(true);
     try {
       const report = await triggerReconciliationApi();
       setTriggerReport(report);
+      toast.success('Reconciliation sweep executed successfully.');
       await loadData();
     } catch (err: unknown) {
-      if (err instanceof Error) alert(`Sweep failed: ${err.message}`);
+      if (err instanceof Error) toast.error(`Sweep failed: ${err.message}`);
     } finally {
       setIsTriggering(false);
     }
@@ -129,6 +135,7 @@ export const ReconciliationPage: React.FC = () => {
         resolutionReason: reason.trim() || undefined,
       });
       setIsTriageOpen(false);
+      toast.success('Discrepancy decision persisted successfully.');
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setTriageError(err.message);
@@ -150,11 +157,11 @@ export const ReconciliationPage: React.FC = () => {
   const getStatusBadge = (st: DiscrepancyStatus) => {
     switch (st) {
       case 'OPEN':
-        return <Badge variant="error" dot>OPEN</Badge>;
+        return <Badge variant="danger" dot>OPEN</Badge>;
       case 'ACKNOWLEDGED':
         return <Badge variant="warning">ACKNOWLEDGED</Badge>;
       case 'INVESTIGATING':
-        return <Badge variant="accent">INVESTIGATING</Badge>;
+        return <Badge variant="info">INVESTIGATING</Badge>;
       case 'RESOLVED':
         return <Badge variant="success">RESOLVED</Badge>;
       case 'REJECTED':
@@ -171,17 +178,17 @@ export const ReconciliationPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             Inventory Reconciliation Engine
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Automated MVCC snapshot verification, discrepancy persistence, and operator triage.
           </p>
         </div>
 
         {canReconcile && (
           <Button
-            onClick={handleTriggerSweep}
+            onClick={() => setIsSweepConfirmOpen(true)}
             isLoading={isTriggering}
             icon={<RotateCw className="w-4 h-4" />}
           >
@@ -192,18 +199,18 @@ export const ReconciliationPage: React.FC = () => {
 
       {/* Sweep Banner if triggered */}
       {triggerReport && (
-        <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs text-cyan-200 flex items-start justify-between gap-4 animate-in fade-in">
+        <div className="p-4 rounded-xl bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/30 text-xs text-cyan-900 dark:text-cyan-200 flex items-start justify-between gap-4 animate-in fade-in">
           <div className="space-y-1">
-            <span className="font-bold flex items-center gap-1.5 text-cyan-300">
-              <CheckCircle2 className="w-4 h-4 text-cyan-400" /> Reconciliation Sweep Complete
+            <span className="font-bold flex items-center gap-1.5 text-cyan-800 dark:text-cyan-300">
+              <CheckCircle2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> Reconciliation Sweep Complete
             </span>
-            <p className="font-mono text-slate-300">
+            <p className="font-mono text-slate-600 dark:text-slate-300">
               Inspected: {triggerReport.totalBalancesInspected} balances | Matching: {triggerReport.matchingBalances} | Discrepant: {triggerReport.discrepantBalances}
             </p>
           </div>
           <button
             onClick={() => setTriggerReport(null)}
-            className="text-slate-400 hover:text-white text-xs underline cursor-pointer"
+            className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-xs underline cursor-pointer"
           >
             Dismiss
           </button>
@@ -211,7 +218,7 @@ export const ReconciliationPage: React.FC = () => {
       )}
 
       {/* Filter */}
-      <div className="flex items-center gap-4 bg-[#0f172a] p-3.5 rounded-xl border border-slate-800">
+      <div className="flex items-center gap-4 bg-white dark:bg-[#0f172a] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="w-64">
           <Select
             label="Filter by Status"
@@ -227,21 +234,21 @@ export const ReconciliationPage: React.FC = () => {
             ]}
           />
         </div>
-        <div className="text-xs text-slate-400 font-mono pt-5">
+        <div className="text-xs text-slate-500 dark:text-slate-400 font-mono pt-5">
           Showing {discrepancies.length} of {totalElements} record(s)
         </div>
       </div>
 
       {/* Discrepancy Table */}
       {isLoading ? (
-        <LoadingSpinner message="Scanning discrepancy records..." />
+        <TableSkeleton rows={5} cols={8} />
       ) : discrepancies.length === 0 ? (
         <EmptyState
-          icon={<ShieldCheck className="w-8 h-8 text-emerald-400" />}
+          icon={<ShieldCheck className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />}
           title="No Discrepancies Detected"
           description={selectedStatus ? `No discrepancies matching '${selectedStatus}' state.` : 'All inventory balances and double-entry ledger transactions are 100% synchronized.'}
           actionLabel={canReconcile ? 'Run Verification Sweep' : undefined}
-          onAction={handleTriggerSweep}
+          onAction={() => setIsSweepConfirmOpen(true)}
         />
       ) : (
         <Table>
@@ -262,28 +269,28 @@ export const ReconciliationPage: React.FC = () => {
               const delta = d.observedBalanceOnHand - d.observedLedgerOnHand;
               return (
                 <TableRow key={d.id}>
-                  <TableCell className="font-semibold text-white">
+                  <TableCell className="font-semibold text-slate-900 dark:text-white">
                     {getProductName(d.productId)}
                   </TableCell>
-                  <TableCell className="font-mono text-cyan-400">
+                  <TableCell className="font-mono text-cyan-600 dark:text-cyan-400">
                     {getWarehouseName(d.warehouseId)}
                   </TableCell>
                   <TableCell>
                     <Badge variant="warning">{d.discrepancyType}</Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    <span className="text-slate-300">Bal: {d.observedBalanceOnHand}</span>{' '}
-                    <span className="text-slate-500">|</span>{' '}
-                    <span className="text-slate-300">Led: {d.observedLedgerOnHand}</span>{' '}
-                    <span className={`font-bold ml-1 ${delta === 0 ? 'text-slate-400' : delta > 0 ? 'text-amber-400' : 'text-rose-400'}`}>
+                    <span className="text-slate-700 dark:text-slate-300">Bal: {d.observedBalanceOnHand}</span>{' '}
+                    <span className="text-slate-400 dark:text-slate-500">|</span>{' '}
+                    <span className="text-slate-700 dark:text-slate-300">Led: {d.observedLedgerOnHand}</span>{' '}
+                    <span className={`font-bold ml-1 ${delta === 0 ? 'text-slate-400' : delta > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'}`}>
                       ({delta > 0 ? `+${delta}` : delta})
                     </span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400 font-bold">
+                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 font-bold">
                     {d.consecutiveDetectionCount}x
                   </TableCell>
                   <TableCell>{getStatusBadge(d.status)}</TableCell>
-                  <TableCell className="font-mono text-xs text-slate-500">
+                  <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     {new Date(d.lastDetectedAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -314,28 +321,28 @@ export const ReconciliationPage: React.FC = () => {
         {activeDiscrepancy && (
           <form onSubmit={handleSaveTriage} className="space-y-4">
             {triageError && (
-              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+              <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
                 {triageError}
               </div>
             )}
 
             {/* Metrics Breakdown */}
-            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono">
+            <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono">
               <div>
                 <span className="text-slate-500 block">Balance On-Hand:</span>
-                <span className="font-bold text-white text-sm">{activeDiscrepancy.observedBalanceOnHand}</span>
+                <span className="font-bold text-slate-900 dark:text-white text-sm">{activeDiscrepancy.observedBalanceOnHand}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Ledger On-Hand:</span>
-                <span className="font-bold text-amber-400 text-sm">{activeDiscrepancy.observedLedgerOnHand}</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400 text-sm">{activeDiscrepancy.observedLedgerOnHand}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Balance Reserved:</span>
-                <span className="font-bold text-white">{activeDiscrepancy.observedBalanceReserved}</span>
+                <span className="font-bold text-slate-900 dark:text-white">{activeDiscrepancy.observedBalanceReserved}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Ledger Reserved:</span>
-                <span className="font-bold text-indigo-400">{activeDiscrepancy.observedLedgerReserved}</span>
+                <span className="font-bold text-indigo-600 dark:text-indigo-400">{activeDiscrepancy.observedLedgerReserved}</span>
               </div>
             </div>
 
@@ -384,7 +391,7 @@ export const ReconciliationPage: React.FC = () => {
                   />
                 )}
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                   <Button type="button" variant="ghost" onClick={() => setIsTriageOpen(false)}>
                     Cancel
                   </Button>
@@ -396,25 +403,25 @@ export const ReconciliationPage: React.FC = () => {
             ) : (
               /* Read-only Terminal State */
               <div className="space-y-3 pt-2">
-                <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-1.5">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Terminal Status:</span>
+                    <span className="text-slate-500 dark:text-slate-400">Terminal Status:</span>
                     {getStatusBadge(activeDiscrepancy.status)}
                   </div>
                   <div className="flex items-center justify-between font-mono">
-                    <span className="text-slate-400">Resolution Source:</span>
-                    <span className="text-cyan-400">{activeDiscrepancy.resolutionSource || 'OPERATOR_OVERRIDE'}</span>
+                    <span className="text-slate-500 dark:text-slate-400">Resolution Source:</span>
+                    <span className="text-cyan-600 dark:text-cyan-400">{activeDiscrepancy.resolutionSource || 'OPERATOR_OVERRIDE'}</span>
                   </div>
                   <div className="flex items-center justify-between font-mono">
-                    <span className="text-slate-400">Resolved At:</span>
-                    <span className="text-slate-300">
+                    <span className="text-slate-500 dark:text-slate-400">Resolved At:</span>
+                    <span className="text-slate-700 dark:text-slate-300">
                       {activeDiscrepancy.resolvedAt ? new Date(activeDiscrepancy.resolvedAt).toLocaleString() : 'N/A'}
                     </span>
                   </div>
                   {activeDiscrepancy.resolutionReason && (
-                    <div className="pt-2 border-t border-slate-800">
-                      <span className="text-slate-400 block text-[11px]">Reason:</span>
-                      <p className="text-slate-200 mt-0.5">{activeDiscrepancy.resolutionReason}</p>
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800">
+                      <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Reason:</span>
+                      <p className="text-slate-800 dark:text-slate-200 mt-0.5">{activeDiscrepancy.resolutionReason}</p>
                     </div>
                   )}
                 </div>
@@ -429,6 +436,18 @@ export const ReconciliationPage: React.FC = () => {
           </form>
         )}
       </Modal>
+
+      {/* Sweep Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isSweepConfirmOpen}
+        onClose={() => setIsSweepConfirmOpen(false)}
+        onConfirm={handleTriggerSweep}
+        title="Execute Reconciliation Sweep"
+        message="Trigger an on-demand reconciliation sweep across all facilities? This analyzes MVCC snapshot balances against double-entry transaction ledgers and surfaces any discrepancies."
+        confirmText="Execute Sweep"
+        variant="primary"
+        isLoading={isTriggering}
+      />
     </div>
   );
 };

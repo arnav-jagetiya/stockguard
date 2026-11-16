@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   listProductsApi,
   createProductApi,
@@ -10,14 +11,16 @@ import type { Product } from '../../types/product';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Modal } from '../../components/common/Modal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TableSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Package, Plus, Search, Edit2, Ban } from 'lucide-react';
 
 export const ProductsPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const toast = useToast();
   const canManage = hasPermission('product:manage');
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +32,7 @@ export const ProductsPage: React.FC = () => {
   // Modal states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deactivatingProduct, setDeactivatingProduct] = useState<Product | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
@@ -70,6 +74,7 @@ export const ProductsPage: React.FC = () => {
       });
       setIsCreateOpen(false);
       resetForm();
+      toast.success('Product created', `SKU ${formSku.trim()} was successfully added to catalog.`);
       await fetchProducts();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -90,6 +95,7 @@ export const ProductsPage: React.FC = () => {
         price: parseFloat(formPrice) || 0,
         currency: formCurrency.toUpperCase(),
       });
+      toast.success('Product updated', `Product ${editingProduct.sku} has been updated.`);
       setEditingProduct(null);
       resetForm();
       await fetchProducts();
@@ -100,13 +106,18 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
-  const handleDeactivate = async (id: string) => {
-    if (!window.confirm('Are you sure you want to deactivate this product?')) return;
+  const confirmDeactivate = async () => {
+    if (!deactivatingProduct) return;
+    setIsSubmitting(true);
     try {
-      await deactivateProductApi(id);
+      await deactivateProductApi(deactivatingProduct.id);
+      toast.success('Product deactivated', `SKU ${deactivatingProduct.sku} is now inactive.`);
+      setDeactivatingProduct(null);
       await fetchProducts();
     } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
+      if (err instanceof Error) toast.error('Deactivation failed', err.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -133,8 +144,8 @@ export const ProductsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Product Catalog</h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Product Catalog</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Maintain normalized SKU catalog items, unit pricing, and status.
           </p>
         </div>
@@ -153,30 +164,30 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-lg">
+        <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs rounded-lg">
           {error}
         </div>
       )}
 
       {/* Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-[#0f172a] p-3.5 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#0f172a] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Filter by SKU or name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#0a101d] text-xs text-slate-100 rounded-lg pl-9 pr-3.5 py-2 border border-slate-800 outline-none focus:border-cyan-500"
+            className="w-full bg-slate-50 dark:bg-[#0a101d] text-xs text-slate-900 dark:text-slate-100 rounded-lg pl-9 pr-3.5 py-2 border border-slate-300 dark:border-slate-800 outline-none focus:border-cyan-500"
           />
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none self-start sm:self-auto">
+        <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer select-none self-start sm:self-auto">
           <input
             type="checkbox"
             checked={activeOnly}
             onChange={(e) => setActiveOnly(e.target.checked)}
-            className="rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-0"
+            className="rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-cyan-600 focus:ring-0"
           />
           Show Active Only
         </label>
@@ -184,7 +195,7 @@ export const ProductsPage: React.FC = () => {
 
       {/* Product Table */}
       {isLoading ? (
-        <LoadingSpinner message="Retrieving catalog records..." />
+        <TableSkeleton rows={5} columns={6} />
       ) : products.length === 0 ? (
         <EmptyState
           icon={<Package className="w-8 h-8" />}
@@ -211,10 +222,10 @@ export const ProductsPage: React.FC = () => {
           <TableBody>
             {products.map((p) => (
               <TableRow key={p.id}>
-                <TableCell className="font-mono font-bold text-cyan-400">{p.sku}</TableCell>
+                <TableCell className="font-mono font-bold text-cyan-600 dark:text-cyan-400">{p.sku}</TableCell>
                 <TableCell>
-                  <p className="font-semibold text-white">{p.name}</p>
-                  {p.description && <p className="text-[11px] text-slate-400 truncate max-w-sm">{p.description}</p>}
+                  <p className="font-semibold text-slate-900 dark:text-white">{p.name}</p>
+                  {p.description && <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-sm">{p.description}</p>}
                 </TableCell>
                 <TableCell className="font-mono font-semibold">
                   {p.currency} {Number(p.price).toFixed(2)}
@@ -234,15 +245,15 @@ export const ProductsPage: React.FC = () => {
                     <button
                       onClick={() => openEdit(p)}
                       title="Edit Product"
-                      className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 border border-slate-800 transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-cyan-600 dark:hover:text-cyan-400 border border-slate-200 dark:border-slate-800 transition-colors"
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                     </button>
                     {p.active && (
                       <button
-                        onClick={() => handleDeactivate(p.id)}
+                        onClick={() => setDeactivatingProduct(p)}
                         title="Deactivate Product"
-                        className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-slate-800 transition-colors"
+                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 dark:bg-slate-900 dark:hover:bg-rose-500/10 text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-800 transition-colors"
                       >
                         <Ban className="w-3.5 h-3.5" />
                       </button>
@@ -264,7 +275,7 @@ export const ProductsPage: React.FC = () => {
       >
         <form onSubmit={handleCreate} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}
@@ -325,7 +336,7 @@ export const ProductsPage: React.FC = () => {
       >
         <form onSubmit={handleUpdate} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}
@@ -366,6 +377,18 @@ export const ProductsPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Deactivation Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deactivatingProduct}
+        onClose={() => setDeactivatingProduct(null)}
+        onConfirm={confirmDeactivate}
+        title="Deactivate Product"
+        message={`Are you sure you want to deactivate SKU "${deactivatingProduct?.sku}"? Inactive products cannot be used on new orders or inventory receipts.`}
+        confirmLabel="Deactivate"
+        variant="danger"
+        isLoading={isSubmitting}
+      />
     </div>
   );
 };

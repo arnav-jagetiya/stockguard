@@ -5,6 +5,10 @@ import { Badge } from '../Badge';
 import { Card } from '../Card';
 import { EmptyState } from '../EmptyState';
 import { Modal } from '../Modal';
+import { ConfirmDialog } from '../ConfirmDialog';
+import { Skeleton, TableSkeleton } from '../Skeleton';
+import { ThemeSelector } from '../ThemeSelector';
+import { ThemeProvider } from '../../../context/ThemeContext';
 
 describe('Common Component Library', () => {
   it('renders Button with variants and triggers onClick', () => {
@@ -28,12 +32,16 @@ describe('Common Component Library', () => {
     expect(btn.querySelector('svg.animate-spin')).toBeInTheDocument();
   });
 
-  it('renders Badge with correct status variants', () => {
+  it('renders Badge with correct status variants and dark mode classes', () => {
     const { rerender } = render(<Badge variant="success">Synchronized</Badge>);
-    expect(screen.getByText('Synchronized')).toHaveClass('text-emerald-400');
+    const successBadge = screen.getByText('Synchronized');
+    expect(successBadge).toHaveClass('text-emerald-700');
+    expect(successBadge).toHaveClass('dark:text-emerald-400');
 
     rerender(<Badge variant="danger">Discrepancy</Badge>);
-    expect(screen.getByText('Discrepancy')).toHaveClass('text-rose-400');
+    const dangerBadge = screen.getByText('Discrepancy');
+    expect(dangerBadge).toHaveClass('text-rose-700');
+    expect(dangerBadge).toHaveClass('dark:text-rose-400');
   });
 
   it('renders Card with content children', () => {
@@ -78,5 +86,67 @@ describe('Common Component Library', () => {
     // Trigger escape key
     fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
     expect(handleClose).toHaveBeenCalled();
+  });
+
+  it('renders ConfirmDialog and responds to confirm and cancel', () => {
+    const handleConfirm = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <ConfirmDialog
+        isOpen={true}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+        title="Delete Resource"
+        message="Are you sure you want to proceed?"
+        confirmText="Confirm Delete"
+        variant="danger"
+      />
+    );
+
+    expect(screen.getByText('Delete Resource')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to proceed?')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole('button', { name: /confirm delete/i });
+    fireEvent.click(confirmBtn);
+    expect(handleConfirm).toHaveBeenCalledTimes(1);
+
+    const cancelBtn = screen.getByRole('button', { name: /cancel/i });
+    fireEvent.click(cancelBtn);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders Skeleton and TableSkeleton components with correct DOM structure', () => {
+    const { container } = render(
+      <div>
+        <Skeleton className="h-6 w-24" />
+        <TableSkeleton rows={3} cols={4} />
+      </div>
+    );
+
+    const skeletons = container.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
+  });
+
+  it('renders ThemeSelector and allows switching theme mode', () => {
+    render(
+      <ThemeProvider>
+        <ThemeSelector />
+      </ThemeProvider>
+    );
+
+    const lightBtn = screen.getByTitle(/light/i);
+    const darkBtn = screen.getByTitle(/dark/i);
+    const systemBtn = screen.getByTitle(/system/i);
+
+    expect(lightBtn).toBeInTheDocument();
+    expect(darkBtn).toBeInTheDocument();
+    expect(systemBtn).toBeInTheDocument();
+
+    fireEvent.click(lightBtn);
+    expect(localStorage.getItem('stockguard-theme')).toBe('light');
+
+    fireEvent.click(darkBtn);
+    expect(localStorage.getItem('stockguard-theme')).toBe('dark');
   });
 });

@@ -212,7 +212,7 @@ export const WarehouseVisualizer: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-slate-800 bg-[#080c14] shadow-2xl">
+    <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-[#080c14] shadow-2xl">
       {/* 3D WebGL Canvas */}
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 

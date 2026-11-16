@@ -1,6 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { LoadingSpinner } from './components/common/LoadingSpinner';
 
 // Route-level Code Splitting
@@ -21,7 +23,7 @@ const AuditLogsPage = lazy(() => import('./pages/app/AuditLogsPage').then((m) =>
 const TeamPage = lazy(() => import('./pages/app/TeamPage').then((m) => ({ default: m.TeamPage })));
 
 const RouteLoadingFallback = () => (
-  <div className="min-h-screen bg-[#080c14] flex items-center justify-center">
+  <div className="min-h-screen bg-slate-50 dark:bg-[#080c14] flex items-center justify-center">
     <LoadingSpinner size="lg" message="Loading StockGuard module..." />
   </div>
 );
@@ -29,35 +31,39 @@ const RouteLoadingFallback = () => (
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Suspense fallback={<RouteLoadingFallback />}>
-          <Routes>
-            {/* Public Marketing Page */}
-            <Route path="/" element={<MarketingPage />} />
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <Routes>
+                {/* Public Marketing Page */}
+                <Route path="/" element={<MarketingPage />} />
 
-            {/* Authentication Screen */}
-            <Route path="/login" element={<LoginPage />} />
+                {/* Authentication Screen */}
+                <Route path="/login" element={<LoginPage />} />
 
-            {/* Authenticated Operations Console */}
-            <Route path="/app" element={<AppShell />}>
-              <Route index element={<Navigate to="/app/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="products" element={<ProductsPage />} />
-              <Route path="warehouses" element={<WarehousesPage />} />
-              <Route path="inventory" element={<InventoryPage />} />
-              <Route path="orders" element={<OrdersPage />} />
-              <Route path="reservations" element={<ReservationsPage />} />
-              <Route path="transfers" element={<TransfersPage />} />
-              <Route path="reconciliation" element={<ReconciliationPage />} />
-              <Route path="audit-logs" element={<AuditLogsPage />} />
-              <Route path="team" element={<TeamPage />} />
-            </Route>
+                {/* Authenticated Operations Console */}
+                <Route path="/app" element={<AppShell />}>
+                  <Route index element={<Navigate to="/app/dashboard" replace />} />
+                  <Route path="dashboard" element={<DashboardPage />} />
+                  <Route path="products" element={<ProductsPage />} />
+                  <Route path="warehouses" element={<WarehousesPage />} />
+                  <Route path="inventory" element={<InventoryPage />} />
+                  <Route path="orders" element={<OrdersPage />} />
+                  <Route path="reservations" element={<ReservationsPage />} />
+                  <Route path="transfers" element={<TransfersPage />} />
+                  <Route path="reconciliation" element={<ReconciliationPage />} />
+                  <Route path="audit-logs" element={<AuditLogsPage />} />
+                  <Route path="team" element={<TeamPage />} />
+                </Route>
 
-            {/* Wildcard / Catch-All */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-      </AuthProvider>
+                {/* Wildcard / Catch-All */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

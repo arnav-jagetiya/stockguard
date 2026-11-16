@@ -29,14 +29,14 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-slate-800 rounded-2xl bg-[#0b1120]/40 my-4">
+    <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-slate-300 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-[#0b1120]/40 my-4">
       {icon && (
-        <div className="p-3.5 mb-4 text-slate-400 bg-slate-900/80 rounded-2xl border border-slate-800 shadow-inner">
+        <div className="p-3.5 mb-4 text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
           {renderIcon()}
         </div>
       )}
-      <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
-      <p className="mt-1 text-xs text-slate-400 max-w-sm">{description}</p>
+      <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200">{title}</h3>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 max-w-sm">{description}</p>
       {action ? (
         <div className="mt-4">{action}</div>
       ) : actionLabel && onAction ? (

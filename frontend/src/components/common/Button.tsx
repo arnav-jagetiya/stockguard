@@ -31,15 +31,15 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles: Record<ButtonVariant, string> = {
     primary:
-      'bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold shadow-sm hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-400/50',
+      'bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold shadow-xs hover:shadow-[0_0_15px_rgba(6,182,212,0.4)] border border-cyan-400/50',
     secondary:
-      'bg-slate-800 hover:bg-slate-750 text-slate-100 font-medium border border-slate-700/60 hover:border-slate-600',
+      'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 font-medium border border-slate-300/80 dark:border-slate-700/60',
     outline:
-      'bg-transparent hover:bg-slate-800/50 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-500',
+      'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-700/80',
     danger:
-      'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 font-medium border border-rose-500/30 hover:border-rose-500/50',
+      'bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-medium border border-rose-300 dark:border-rose-500/30',
     ghost:
-      'bg-transparent hover:bg-slate-800/40 text-slate-400 hover:text-slate-200 font-medium border border-transparent',
+      'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 font-medium border border-transparent',
   };
 
   return (

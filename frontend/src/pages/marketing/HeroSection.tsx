@@ -15,24 +15,24 @@ export const HeroSection: React.FC = () => {
 
       <div className="text-center space-y-6 max-w-3xl mx-auto">
         {/* Release Pill */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300 shadow-inner">
-          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-          <span className="font-mono text-cyan-300">STOCKGUARD KERNEL v6.2 ACCEPTED</span>
-          <span className="text-slate-500">|</span>
-          <span className="text-slate-400">PostgreSQL ACID Truth</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 shadow-xs dark:shadow-inner">
+          <span className="w-2 h-2 rounded-full bg-cyan-500 dark:bg-cyan-400 animate-pulse" />
+          <span className="font-mono text-cyan-700 dark:text-cyan-300">STOCKGUARD KERNEL v6.2 ACCEPTED</span>
+          <span className="text-slate-400 dark:text-slate-500">|</span>
+          <span className="text-slate-600 dark:text-slate-400">PostgreSQL ACID Truth</span>
         </div>
 
         {/* Editorial Headline */}
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-[1.12]">
+        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.12]">
           Enterprise inventory with{' '}
-          <span className="bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-cyan-600 via-teal-500 to-indigo-600 dark:from-cyan-400 dark:via-teal-300 dark:to-indigo-400 bg-clip-text text-transparent">
             mathematical integrity
           </span>{' '}
           and zero drift.
         </h1>
 
         {/* Value Proposition */}
-        <p className="text-base sm:text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
           The single-source-of-truth inventory platform designed for multi-warehouse operations. Built on PostgreSQL REPEATABLE READ snapshot isolation, serialized reservations, and automated continuous reconciliation.
         </p>
 
@@ -44,22 +44,22 @@ export const HeroSection: React.FC = () => {
             </Button>
           </Link>
           <a href="#demo">
-            <Button variant="secondary" size="lg" icon={<Terminal className="w-4 h-4 text-cyan-400" />}>
+            <Button variant="secondary" size="lg" icon={<Terminal className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}>
               Explore Interactive Lab
             </Button>
           </a>
         </div>
 
         {/* Trust Badges */}
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-400 font-mono">
+        <div className="pt-4 flex flex-wrap items-center justify-center gap-6 text-xs text-slate-600 dark:text-slate-400 font-mono">
           <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Zero Phantom Stock
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Zero Phantom Stock
           </span>
           <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-cyan-400" /> MVCC Snapshot Isolation
+            <CheckCircle2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" /> MVCC Snapshot Isolation
           </span>
           <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="w-4 h-4 text-indigo-400" /> Immutable Append-Only Ledger
+            <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Immutable Append-Only Ledger
           </span>
         </div>
       </div>
@@ -68,7 +68,7 @@ export const HeroSection: React.FC = () => {
       <div className="mt-14 max-w-5xl mx-auto">
         <Suspense
           fallback={
-            <div className="h-[440px] w-full rounded-2xl bg-[#0b101d] border border-slate-800/80 flex items-center justify-center text-slate-500 font-mono text-xs animate-pulse">
+            <div className="h-[440px] w-full rounded-2xl bg-slate-100 dark:bg-[#0b101d] border border-slate-200 dark:border-slate-800/80 flex items-center justify-center text-slate-500 font-mono text-xs animate-pulse">
               Initializing 3D Spatial Warehouse Visualization...
             </div>
           }

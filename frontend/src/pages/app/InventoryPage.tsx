@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import {
   getBalancesApi,
   listTransactionsApi,
@@ -18,7 +19,7 @@ import { Select } from '../../components/common/Select';
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TableSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
 import {
   Boxes,
@@ -30,6 +31,7 @@ import {
 
 export const InventoryPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const toast = useToast();
   const canReceive = hasPermission('inventory:receive');
   const canAdjust = hasPermission('inventory:adjust');
 
@@ -77,7 +79,7 @@ export const InventoryPage: React.FC = () => {
         setTransactions(txData);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
+      if (err instanceof Error) toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -99,6 +101,7 @@ export const InventoryPage: React.FC = () => {
         notes: modalNotes.trim() || undefined,
       });
       setIsReceiveOpen(false);
+      toast.success('Stock received and ledger entry recorded successfully.');
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -119,6 +122,7 @@ export const InventoryPage: React.FC = () => {
         reason: modalReason.trim(),
       });
       setIsAdjustOpen(false);
+      toast.success('Stock adjusted with mandatory audit reason recorded.');
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -139,6 +143,7 @@ export const InventoryPage: React.FC = () => {
         notes: modalNotes.trim() || undefined,
       });
       setIsOpeningOpen(false);
+      toast.success('Opening balance established successfully.');
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -162,8 +167,8 @@ export const InventoryPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Inventory Balances & Ledger</h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Inventory Balances & Ledger</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Real-time physical on-hand, locked reservations, and double-entry transaction ledgers.
           </p>
         </div>
@@ -218,23 +223,23 @@ export const InventoryPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
         <button
           onClick={() => setActiveTab('balances')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'balances'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-cyan-500 dark:border-cyan-400 text-cyan-600 dark:text-cyan-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
           Facility Balances
         </button>
         <button
           onClick={() => setActiveTab('transactions')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'transactions'
-              ? 'border-cyan-400 text-cyan-400'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-cyan-500 dark:border-cyan-400 text-cyan-600 dark:text-cyan-400'
+              : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
           Transaction Ledger History
@@ -243,7 +248,7 @@ export const InventoryPage: React.FC = () => {
 
       {/* Filters (for balances) */}
       {activeTab === 'balances' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#0f172a] border border-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 shadow-sm">
           <Select
             label="Filter by Product"
             value={selectedProduct}
@@ -267,7 +272,7 @@ export const InventoryPage: React.FC = () => {
 
       {/* Main Content */}
       {isLoading ? (
-        <LoadingSpinner message="Calculating real-time inventory balances..." />
+        <TableSkeleton rows={5} cols={6} />
       ) : activeTab === 'balances' ? (
         balances.length === 0 ? (
           <EmptyState
@@ -296,16 +301,16 @@ export const InventoryPage: React.FC = () => {
             <TableBody>
               {balances.map((b) => (
                 <TableRow key={b.id}>
-                  <TableCell className="font-semibold text-white">
+                  <TableCell className="font-semibold text-slate-900 dark:text-white">
                     {getProductName(b.productId)}
                   </TableCell>
-                  <TableCell className="font-mono text-cyan-400">
+                  <TableCell className="font-mono text-cyan-600 dark:text-cyan-400">
                     {getWarehouseName(b.warehouseId)}
                   </TableCell>
-                  <TableCell className="font-mono font-bold text-slate-100">{b.onHand}</TableCell>
-                  <TableCell className="font-mono font-bold text-indigo-400">{b.reserved}</TableCell>
-                  <TableCell className="font-mono font-bold text-emerald-400">{b.available}</TableCell>
-                  <TableCell className="font-mono text-slate-500 text-[11px]">
+                  <TableCell className="font-mono font-bold text-slate-800 dark:text-slate-100">{b.onHand}</TableCell>
+                  <TableCell className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{b.reserved}</TableCell>
+                  <TableCell className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{b.available}</TableCell>
+                  <TableCell className="font-mono text-slate-400 dark:text-slate-500 text-[11px]">
                     {new Date(b.updatedAt).toLocaleString()}
                   </TableCell>
                 </TableRow>
@@ -336,22 +341,22 @@ export const InventoryPage: React.FC = () => {
             <TableBody>
               {transactions.map((tx) => (
                 <TableRow key={tx.id}>
-                  <TableCell className="font-mono text-xs text-slate-400 truncate max-w-[120px]">
+                  <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
                     {tx.id}
                   </TableCell>
                   <TableCell>
                     <Badge variant="info">{tx.transactionType}</Badge>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-300">
+                  <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-300">
                     {tx.referenceType ? `${tx.referenceType}: ${tx.referenceId}` : '—'}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-400 max-w-xs truncate">
+                  <TableCell className="text-xs text-slate-500 dark:text-slate-400 max-w-xs truncate">
                     {tx.notes || '—'}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-500">
+                  <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
                     {new Date(tx.createdAt).toLocaleString()}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-300">
+                  <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-300">
                     {tx.entries ? `${tx.entries.length} deltas` : '0'}
                   </TableCell>
                 </TableRow>
@@ -370,7 +375,7 @@ export const InventoryPage: React.FC = () => {
       >
         <form onSubmit={handleReceiveStock} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}
@@ -420,7 +425,7 @@ export const InventoryPage: React.FC = () => {
       >
         <form onSubmit={handleAdjustStock} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}
@@ -471,7 +476,7 @@ export const InventoryPage: React.FC = () => {
       >
         <form onSubmit={handleOpeningBalance} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}

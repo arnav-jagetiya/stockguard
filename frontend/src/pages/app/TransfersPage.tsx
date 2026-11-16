@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { listTransfersApi, executeTransferApi } from '../../api/transfers';
 import { listWarehousesApi } from '../../api/warehouses';
 import { listProductsApi } from '../../api/products';
@@ -12,12 +13,13 @@ import { Select } from '../../components/common/Select';
 import { Modal } from '../../components/common/Modal';
 import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { TableSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ArrowLeftRight, Plus, Trash2 } from 'lucide-react';
 
 export const TransfersPage: React.FC = () => {
   const { hasPermission } = useAuth();
+  const toast = useToast();
   const canExecute = hasPermission('transfer:execute');
 
   const [transfers, setTransfers] = useState<Transfer[]>([]);
@@ -57,7 +59,7 @@ export const TransfersPage: React.FC = () => {
         setItems([{ productId: prodList[0].id, quantity: 5 }]);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) alert(err.message);
+      if (err instanceof Error) toast.error(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +91,7 @@ export const TransfersPage: React.FC = () => {
       });
       setIsCreateOpen(false);
       setNotes('');
+      toast.success('Inter-facility transfer executed and dual ledger entries posted.');
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -124,8 +127,8 @@ export const TransfersPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Facility Transfers</h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Facility Transfers</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Execute atomic inter-warehouse stock relocations with dual-ledger verification.
           </p>
         </div>
@@ -144,7 +147,7 @@ export const TransfersPage: React.FC = () => {
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-4 bg-[#0f172a] p-3.5 rounded-xl border border-slate-800">
+      <div className="flex items-center gap-4 bg-white dark:bg-[#0f172a] p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="w-64">
           <Select
             label="Filter by Facility"
@@ -160,7 +163,7 @@ export const TransfersPage: React.FC = () => {
 
       {/* Table */}
       {isLoading ? (
-        <LoadingSpinner message="Retrieving transfer records..." />
+        <TableSkeleton rows={5} cols={7} />
       ) : transfers.length === 0 ? (
         <EmptyState
           icon={<ArrowLeftRight className="w-8 h-8" />}
@@ -185,22 +188,22 @@ export const TransfersPage: React.FC = () => {
           <TableBody>
             {transfers.map((t) => (
               <TableRow key={t.id}>
-                <TableCell className="font-mono text-xs text-slate-400 truncate max-w-[120px]">
+                <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">
                   {t.id}
                 </TableCell>
-                <TableCell className="font-mono font-bold text-amber-400">
+                <TableCell className="font-mono font-bold text-amber-600 dark:text-amber-400">
                   {getWarehouseName(t.sourceWarehouseId)}
                 </TableCell>
-                <TableCell className="font-mono font-bold text-emerald-400">
+                <TableCell className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                   {getWarehouseName(t.destinationWarehouseId)}
                 </TableCell>
-                <TableCell className="font-mono text-xs text-slate-200">
+                <TableCell className="font-mono text-xs text-slate-700 dark:text-slate-200">
                   {t.items ? `${t.items.length} product(s)` : '0'}
                 </TableCell>
-                <TableCell className="text-xs text-slate-400 truncate max-w-xs">
+                <TableCell className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">
                   {t.notes || '—'}
                 </TableCell>
-                <TableCell className="font-mono text-xs text-slate-500">
+                <TableCell className="font-mono text-xs text-slate-400 dark:text-slate-500">
                   {new Date(t.createdAt).toLocaleString()}
                 </TableCell>
                 <TableCell>
@@ -222,7 +225,7 @@ export const TransfersPage: React.FC = () => {
       >
         <form onSubmit={handleExecuteTransfer} className="space-y-4">
           {formError && (
-            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+            <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs">
               {formError}
             </div>
           )}
@@ -251,11 +254,11 @@ export const TransfersPage: React.FC = () => {
 
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-300">Transfer Items</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Transfer Items</span>
               <button
                 type="button"
                 onClick={addItem}
-                className="text-xs text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
+                className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" /> Add Product
               </button>
@@ -263,7 +266,7 @@ export const TransfersPage: React.FC = () => {
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {items.map((it, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+                <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                   <div className="flex-1">
                     <Select
                       value={it.productId}
@@ -284,7 +287,7 @@ export const TransfersPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => removeItem(idx)}
-                      className="p-2 text-slate-500 hover:text-rose-400 transition-colors"
+                      className="p-2 text-slate-400 hover:text-rose-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -294,7 +297,7 @@ export const TransfersPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
             <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>

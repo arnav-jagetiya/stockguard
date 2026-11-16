@@ -332,6 +332,16 @@ public class SecurityProperties {
 
         private String orgName = "Primary Organization";
 
+        private boolean allowPasswordReset = false;
+
+        public boolean isAllowPasswordReset() {
+            return allowPasswordReset;
+        }
+
+        public void setAllowPasswordReset(boolean allowPasswordReset) {
+            this.allowPasswordReset = allowPasswordReset;
+        }
+
         public boolean isEnabled() {
             return enabled;
         }

@@ -15,6 +15,7 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -52,6 +53,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     private final JdbcRefreshTokenOperations jdbcOperations;
     private final JdbcTemplate jdbcTemplate;
     private final PlatformTransactionManager transactionManager;
+    private final Environment environment;
 
     public AdminBootstrapRunner(
             SecurityProperties securityProperties,
@@ -61,7 +63,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
             PasswordEncoder passwordEncoder,
             JdbcRefreshTokenOperations jdbcOperations,
             JdbcTemplate jdbcTemplate,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            Environment environment
     ) {
         this.securityProperties = securityProperties;
         this.userRepository = userRepository;
@@ -71,6 +74,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         this.jdbcOperations = jdbcOperations;
         this.jdbcTemplate = jdbcTemplate;
         this.transactionManager = transactionManager;
+        this.environment = environment;
     }
 
     @Override
@@ -125,40 +129,66 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     private void executeBootstrap(SecurityProperties.Bootstrap config) {
         String normalizedEmail = User.normalizeEmail(config.getAdminEmail());
         Optional<User> existingUserOpt = userRepository.findByNormalizedEmail(normalizedEmail);
-        Optional<Organization> existingOrgOpt = organizationRepository.findByName(config.getOrgName().trim());
 
         long userCount = userRepository.count();
         long orgCount = organizationRepository.count();
 
-        // Idempotent completion check
-        if (existingUserOpt.isPresent() && existingOrgOpt.isPresent()) {
+        // Check if admin user already exists
+        if (existingUserOpt.isPresent()) {
             User user = existingUserOpt.get();
-            Organization org = existingOrgOpt.get();
 
-            Optional<OrganizationMembership> membershipOpt =
-                    membershipRepository.findByOrganizationIdAndUserId(org.getId(), user.getId());
+            // Locate active ADMIN membership
+            Optional<OrganizationMembership> adminMembershipOpt = membershipRepository
+                    .findAllByUserIdAndActiveTrue(user.getId())
+                    .stream()
+                    .filter(m -> m.getRole() == Role.ADMIN)
+                    .findFirst();
 
-            if (membershipOpt.isPresent() &&
-                    membershipOpt.get().isActive() &&
-                    membershipOpt.get().getRole() == Role.ADMIN &&
-                    user.isActive()) {
+            if (adminMembershipOpt.isPresent() && user.isActive()) {
+                OrganizationMembership membership = adminMembershipOpt.get();
+                Organization org = organizationRepository.findById(membership.getOrganizationId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Corrupt state: Admin membership references non-existent organization " + membership.getOrganizationId()));
+
+                // Password recovery path: only if allow-password-reset=true and NOT in production
+                if (config.isAllowPasswordReset()) {
+                    if (environment != null && environment.matchesProfiles("prod")) {
+                        throw new IllegalStateException(
+                                "Bootstrap password reset is strictly forbidden in production (prod profile active).");
+                    }
+
+                    if (!passwordEncoder.matches(config.getAdminPassword(), user.getPasswordHash())) {
+                        String newHashedPassword = passwordEncoder.encode(config.getAdminPassword());
+                        user.setPasswordHash(newHashedPassword);
+                        userRepository.saveAndFlush(user);
+
+                        insertPasswordResetAuditLog(org.getId(), user.getId(), Instant.now());
+
+                        log.info("Administrator bootstrap: Successfully reset password for administrator user '{}' in organization '{}' (id: {}) under recovery configuration.",
+                                user.getNormalizedEmail(), org.getName(), org.getId());
+                        return;
+                    } else {
+                        log.info("Administrator bootstrap: Administrator user '{}' in organization '{}' already matches configured recovery password. Skipping.",
+                                user.getNormalizedEmail(), org.getName());
+                        return;
+                    }
+                }
+
                 log.info("Administrator bootstrap: Administrator user '{}' and organization '{}' are already fully initialized. Skipping.",
                         user.getNormalizedEmail(), org.getName());
                 return;
             }
 
             throw new IllegalStateException(
-                    "Partially initialized database detected: User and Organization exist, but valid active ADMIN membership is missing.");
+                    "Partially initialized database detected: User exists, but valid active ADMIN membership is missing.");
         }
 
         // Partial initialization fail-closed checks
-        if (existingUserOpt.isPresent() || existingOrgOpt.isPresent() || userCount > 0 || orgCount > 0) {
+        if (userCount > 0 || orgCount > 0) {
             throw new IllegalStateException(
                     "Partially initialized or inconsistent database state detected: userCount=" + userCount +
                             ", orgCount=" + orgCount +
-                            ", userExists=" + existingUserOpt.isPresent() +
-                            ", orgExists=" + existingOrgOpt.isPresent() +
-                            ". Cannot safely bootstrap administrator.");
+                            ", userExists=false. Cannot safely bootstrap administrator.");
         }
 
         // Pristine initialization
@@ -179,6 +209,22 @@ public class AdminBootstrapRunner implements ApplicationRunner {
 
         log.info("Administrator bootstrap completed successfully: Created organization '{}' (id: {}) and admin user '{}' (id: {}).",
                 org.getName(), org.getId(), user.getNormalizedEmail(), user.getId());
+    }
+
+    private void insertPasswordResetAuditLog(UUID orgId, UUID userId, Instant now) {
+        String sql = "INSERT INTO audit_logs " +
+                "(id, organization_id, actor_user_id, action, entity_type, entity_id, metadata, created_at) " +
+                "VALUES (?, ?, ?, 'ADMIN_PASSWORD_RESET_RECOVERY', 'USER', ?, ?::jsonb, ?)";
+        String metadataJson = "{\"event\": \"ADMIN_PASSWORD_RESET_RECOVERY\", \"recovered_role\": \"ADMIN\"}";
+        jdbcTemplate.update(
+                sql,
+                UUID.randomUUID(),
+                orgId,
+                userId,
+                userId,
+                metadataJson,
+                Timestamp.from(now)
+        );
     }
 
     private void insertBootstrapAuditLog(UUID orgId, UUID userId, Instant now) {

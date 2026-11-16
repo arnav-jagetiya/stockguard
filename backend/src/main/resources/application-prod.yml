@@ -75,6 +75,9 @@ stockguard:
       login-permits-per-minute: ${STOCKGUARD_RATE_LIMIT_LOGIN:5}
       refresh-permits-per-minute: ${STOCKGUARD_RATE_LIMIT_REFRESH:20}
       trusted-proxies: ${STOCKGUARD_TRUSTED_PROXIES:}
+    bootstrap:
+      enabled: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:false}
+      allow-password-reset: false
 
 logging:
   level:

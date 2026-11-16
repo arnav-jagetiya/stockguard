@@ -7,16 +7,22 @@ import com.stockguard.organization.repository.OrganizationMembershipRepository;
 import com.stockguard.organization.repository.OrganizationRepository;
 import com.stockguard.security.config.SecurityProperties;
 import com.stockguard.security.domain.User;
+import com.stockguard.security.repository.JdbcRefreshTokenOperations;
 import com.stockguard.security.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.env.MockEnvironment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("dev")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class AdminBootstrapIntegrationTest {
 
     @Container
@@ -71,9 +78,16 @@ class AdminBootstrapIntegrationTest {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
+    private JdbcRefreshTokenOperations jdbcOperations;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
     private AdminBootstrapRunner bootstrapRunner;
 
     @Test
+    @Order(1)
     @DisplayName("bootstrap does nothing when disabled")
     void bootstrapDisabledDoesNothing() throws Exception {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
@@ -89,6 +103,7 @@ class AdminBootstrapIntegrationTest {
     }
 
     @Test
+    @Order(2)
     @DisplayName("bootstrap fails closed if enabled but credentials incomplete")
     void bootstrapFailsClosedOnIncompleteCredentials() {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
@@ -104,15 +119,44 @@ class AdminBootstrapIntegrationTest {
     }
 
     @Test
-    @DisplayName("bootstrap provisions admin user, org, membership, and audit log on pristine DB")
-    void bootstrapProvisionsAdminEntities() throws Exception {
+    @Order(3)
+    @DisplayName("bootstrap fails closed if admin exists without corresponding organization membership")
+    void bootstrapFailsClosedOnPartialInconsistentState() {
+        SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
+        config.setEnabled(true);
+        config.setAdminEmail("orphan-admin@stockguard.io");
+        config.setAdminPassword("ValidPassword123!");
+        config.setAdminFullName("Orphan Admin");
+        config.setOrgName("Orphan Corp");
+
+        // Manually create orphan user without organization or membership
+        User orphan = User.create("orphan-admin@stockguard.io", passwordEncoder.encode("ValidPassword123!"));
+        orphan = userRepository.saveAndFlush(orphan);
+
+        try {
+            assertThatThrownBy(() -> bootstrapRunner.run(null))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("Partially initialized database detected");
+        } finally {
+            // Clean up orphan user so subsequent tests start with clean DB
+            userRepository.delete(orphan);
+            userRepository.flush();
+        }
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("bootstrap provisions admin entities and handles recovery lifecycle")
+    void bootstrapProvisionsAndHandlesRecoveryLifecycle() throws Exception {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
         config.setEnabled(true);
         config.setAdminEmail("root-admin@stockguard.io");
         config.setAdminPassword("BootstrapSecret123!");
         config.setAdminFullName("System Administrator");
         config.setOrgName("StockGuard Primary Tenant");
+        config.setAllowPasswordReset(false);
 
+        // 1. Pristine bootstrap
         bootstrapRunner.run(null);
 
         // Verify User
@@ -134,37 +178,56 @@ class AdminBootstrapIntegrationTest {
         assertThat(membership.getRole()).isEqualTo(Role.ADMIN);
         assertThat(membership.isActive()).isTrue();
 
-        // Verify Audit Log
-        List<Map<String, Object>> auditEntries = jdbcTemplate.queryForList(
+        // Verify Initial Audit Log
+        List<Map<String, Object>> initialAudit = jdbcTemplate.queryForList(
                 "SELECT * FROM audit_logs WHERE entity_id = ? AND action = 'SYSTEM_BOOTSTRAP'",
                 user.getId()
         );
-        assertThat(auditEntries).isNotEmpty();
-        Map<String, Object> log = auditEntries.getFirst();
+        assertThat(initialAudit).isNotEmpty();
+        Map<String, Object> log = initialAudit.getFirst();
         assertThat(log.get("actor_user_id")).isEqualTo(user.getId());
         assertThat(log.get("entity_type")).isEqualTo("SYSTEM");
 
-        // Running again must be idempotent
+        // 2. Running again with allowPasswordReset=false and different password is idempotent (does NOT change password)
+        config.setAdminPassword("IgnoredPassword789!");
         bootstrapRunner.run(null);
-        assertThat(userRepository.findByNormalizedEmail("root-admin@stockguard.io")).isPresent();
-    }
+        User userUnchanged = userRepository.findByNormalizedEmail("root-admin@stockguard.io").orElseThrow();
+        assertThat(passwordEncoder.matches("BootstrapSecret123!", userUnchanged.getPasswordHash())).isTrue();
+        assertThat(passwordEncoder.matches("IgnoredPassword789!", userUnchanged.getPasswordHash())).isFalse();
 
-    @Test
-    @DisplayName("bootstrap fails closed if admin exists without corresponding organization membership")
-    void bootstrapFailsClosedOnPartialInconsistentState() {
-        SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
-        config.setEnabled(true);
-        config.setAdminEmail("orphan-admin@stockguard.io");
-        config.setAdminPassword("ValidPassword123!");
-        config.setAdminFullName("Orphan Admin");
-        config.setOrgName("Orphan Corp");
+        // 3. Running with allowPasswordReset=true updates password and writes recovery audit log
+        config.setAllowPasswordReset(true);
+        config.setAdminPassword("RecoveredPassword456!");
+        bootstrapRunner.run(null);
 
-        // Manually create orphan user without organization or membership
-        User orphan = User.create("orphan-admin@stockguard.io", passwordEncoder.encode("ValidPassword123!"));
-        userRepository.save(orphan);
+        User userUpdated = userRepository.findByNormalizedEmail("root-admin@stockguard.io").orElseThrow();
+        assertThat(passwordEncoder.matches("RecoveredPassword456!", userUpdated.getPasswordHash())).isTrue();
 
-        assertThatThrownBy(() -> bootstrapRunner.run(null))
+        List<Map<String, Object>> recoveryAudit = jdbcTemplate.queryForList(
+                "SELECT * FROM audit_logs WHERE entity_id = ? AND action = 'ADMIN_PASSWORD_RESET_RECOVERY'",
+                userUpdated.getId()
+        );
+        assertThat(recoveryAudit).isNotEmpty();
+
+        // 4. Running with allowPasswordReset=true in prod profile fails closed
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.setActiveProfiles("prod");
+
+        AdminBootstrapRunner prodRunner = new AdminBootstrapRunner(
+                securityProperties,
+                userRepository,
+                organizationRepository,
+                membershipRepository,
+                passwordEncoder,
+                jdbcOperations,
+                jdbcTemplate,
+                transactionManager,
+                prodEnv
+        );
+
+        config.setAdminPassword("AttemptedProdPassword!");
+        assertThatThrownBy(() -> prodRunner.run(null))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("inconsistent database state");
+                .hasMessageContaining("Bootstrap password reset is strictly forbidden in production");
     }
 }

@@ -6,7 +6,7 @@ import type { Warehouse as WarehouseType } from '../../types/warehouse';
 import { StatCard } from '../../components/common/StatCard';
 import { Card } from '../../components/common/Card';
 import { Badge } from '../../components/common/Badge';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { Skeleton } from '../../components/common/Skeleton';
 import {
   Boxes,
   Package,
@@ -73,20 +73,39 @@ export const DashboardPage: React.FC = () => {
   }, [selectedWarehouseId]);
 
   if (isLoading) {
-    return <LoadingSpinner message="Calculating MVCC tenant balance snapshot..." size="lg" />;
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="lg:col-span-2 h-52 rounded-xl" />
+          <Skeleton className="h-52 rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   if (error || !summary) {
     return (
-      <div className="p-6 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm space-y-2">
+      <div className="p-6 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm space-y-2">
         <div className="font-bold flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-rose-400" />
+          <ShieldAlert className="w-4 h-4 text-rose-500 dark:text-rose-400" />
           Dashboard Data Unavailable
         </div>
-        <p className="text-xs text-rose-400">{error || 'Unable to retrieve tenant metrics.'}</p>
+        <p className="text-xs text-rose-600 dark:text-rose-400">{error || 'Unable to retrieve tenant metrics.'}</p>
         <button
           onClick={fetchDashboardData}
-          className="text-xs text-cyan-400 hover:underline pt-2 cursor-pointer"
+          className="text-xs text-cyan-600 dark:text-cyan-400 hover:underline pt-2 cursor-pointer font-medium"
         >
           Retry Connection
         </button>
@@ -99,16 +118,16 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             Operational Overview
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Real-time multi-warehouse inventory health derived from PostgreSQL REPEATABLE READ snapshot.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+          <Clock className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
           <span>Snapshot: {new Date(summary.generatedAt).toLocaleTimeString()}</span>
         </div>
       </div>
@@ -118,7 +137,7 @@ export const DashboardPage: React.FC = () => {
         <StatCard
           title="Total On Hand"
           value={summary.inventory.totalOnHand.toLocaleString()}
-          subtitle="Physical physical units across all sites"
+          subtitle="Physical units across all sites"
           icon={<Boxes className="w-4 h-4" />}
           variant="cyan"
         />
@@ -158,34 +177,34 @@ export const DashboardPage: React.FC = () => {
         <Card className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-white">Order Pipeline</h3>
-              <p className="text-xs text-slate-400">Current lifecycle states of open customer orders</p>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Order Pipeline</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Current lifecycle states of open customer orders</p>
             </div>
-            <ShoppingCart className="w-4 h-4 text-cyan-400" />
+            <ShoppingCart className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500 font-semibold">Pending</span>
-              <p className="text-lg font-bold text-amber-400 font-mono">{summary.orders.pendingCount}</p>
+              <p className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono">{summary.orders.pendingCount}</p>
               <span className="text-[10px] text-slate-500">Unreserved</span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500 font-semibold">Confirmed</span>
-              <p className="text-lg font-bold text-cyan-400 font-mono">{summary.orders.confirmedCount}</p>
+              <p className="text-lg font-bold text-cyan-600 dark:text-cyan-400 font-mono">{summary.orders.confirmedCount}</p>
               <span className="text-[10px] text-slate-500">Stock Allocated</span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500 font-semibold">Fulfilled</span>
-              <p className="text-lg font-bold text-emerald-400 font-mono">{summary.orders.fulfilledCount}</p>
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 font-mono">{summary.orders.fulfilledCount}</p>
               <span className="text-[10px] text-slate-500">Dispatched</span>
             </div>
 
-            <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1">
               <span className="text-[10px] uppercase font-mono text-slate-500 font-semibold">Cancelled</span>
-              <p className="text-lg font-bold text-slate-400 font-mono">{summary.orders.cancelledCount}</p>
+              <p className="text-lg font-bold text-slate-600 dark:text-slate-400 font-mono">{summary.orders.cancelledCount}</p>
               <span className="text-[10px] text-slate-500">Released</span>
             </div>
           </div>
@@ -195,28 +214,28 @@ export const DashboardPage: React.FC = () => {
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-white">Catalog & Stockouts</h3>
-              <p className="text-xs text-slate-400">Active SKU distribution</p>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Catalog & Stockouts</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Active SKU distribution</p>
             </div>
-            <Package className="w-4 h-4 text-indigo-400" />
+            <Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           </div>
 
           <div className="space-y-3 pt-2">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs text-slate-400">Active Products</span>
-              <span className="text-sm font-bold text-slate-100 font-mono">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <span className="text-xs text-slate-600 dark:text-slate-400">Active Products</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">
                 {summary.catalog.activeProductsCount}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs text-slate-400">Active Warehouses</span>
-              <span className="text-sm font-bold text-slate-100 font-mono">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <span className="text-xs text-slate-600 dark:text-slate-400">Active Warehouses</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">
                 {summary.catalog.activeWarehousesCount}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900 border border-slate-800">
-              <span className="text-xs text-slate-400">Out-of-Stock SKUs</span>
-              <span className={`text-sm font-bold font-mono ${summary.inventory.outOfStockActiveProductsCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <span className="text-xs text-slate-600 dark:text-slate-400">Out-of-Stock SKUs</span>
+              <span className={`text-sm font-bold font-mono ${summary.inventory.outOfStockActiveProductsCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 {summary.inventory.outOfStockActiveProductsCount}
               </span>
             </div>
@@ -227,24 +246,24 @@ export const DashboardPage: React.FC = () => {
       {/* Warehouse Drilldown Selector */}
       {warehouses.length > 0 && (
         <Card className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-800/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200 dark:border-slate-800/80">
             <div>
               <div className="flex items-center gap-2">
-                <Warehouse className="w-4 h-4 text-cyan-400" />
-                <h3 className="text-sm font-bold text-white">Facility Drilldown</h3>
+                <Warehouse className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Facility Drilldown</h3>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Inspect isolated balance and reservation breakdown by warehouse
               </p>
             </div>
 
             {/* Warehouse Selector */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-medium">Select Facility:</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Select Facility:</span>
               <select
                 value={selectedWarehouseId}
                 onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                className="bg-slate-900 text-xs text-slate-200 border border-slate-800 rounded-lg px-3 py-1.5 outline-none cursor-pointer focus:border-cyan-500"
+                className="bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-800 rounded-lg px-3 py-1.5 outline-none cursor-pointer focus:border-cyan-500 shadow-xs"
               >
                 {warehouses.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -256,30 +275,34 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {isDrilldownLoading ? (
-            <LoadingSpinner message="Fetching facility metrics..." size="sm" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 rounded-xl" />
+              ))}
+            </div>
           ) : warehouseDrilldown ? (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">On Hand</span>
-                <p className="text-base font-bold text-white font-mono mt-1">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono">On Hand</span>
+                <p className="text-base font-bold text-slate-900 dark:text-white font-mono mt-1">
                   {warehouseDrilldown.inventory.totalOnHand.toLocaleString()}
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Available</span>
-                <p className="text-base font-bold text-emerald-400 font-mono mt-1">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono">Available</span>
+                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 font-mono mt-1">
                   {warehouseDrilldown.inventory.totalAvailable.toLocaleString()}
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Allocated Units</span>
-                <p className="text-base font-bold text-indigo-400 font-mono mt-1">
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono">Allocated Units</span>
+                <p className="text-base font-bold text-indigo-600 dark:text-indigo-400 font-mono mt-1">
                   {warehouseDrilldown.reservations.totalAllocatedUnits.toLocaleString()}
                 </p>
               </div>
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Out-of-Stock SKUs</span>
-                <p className={`text-base font-bold font-mono mt-1 ${warehouseDrilldown.inventory.outOfStockProductsCount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-mono">Out-of-Stock SKUs</span>
+                <p className={`text-base font-bold font-mono mt-1 ${warehouseDrilldown.inventory.outOfStockProductsCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>
                   {warehouseDrilldown.inventory.outOfStockProductsCount}
                 </p>
               </div>
@@ -290,28 +313,28 @@ export const DashboardPage: React.FC = () => {
 
       {/* Recent Movements Stream */}
       <Card className="space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800/80">
           <div>
-            <h3 className="text-sm font-semibold text-white">Recent Ledger Movements</h3>
-            <p className="text-xs text-slate-400">Auditable append-only double-entry transactions</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Recent Ledger Movements</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Auditable append-only double-entry transactions</p>
           </div>
-          <Activity className="w-4 h-4 text-cyan-400" />
+          <Activity className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
         </div>
 
         {summary.recentMovements.length === 0 ? (
           <p className="text-xs text-slate-500 py-4 text-center">No recent stock movements recorded.</p>
         ) : (
-          <div className="divide-y divide-slate-800/60 font-mono text-xs">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-xs">
             {summary.recentMovements.map((m) => (
               <div key={m.transactionId} className="py-2.5 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <Badge variant="info">{m.transactionType}</Badge>
-                  <span className="text-slate-300 truncate max-w-xs">
+                  <span className="text-slate-700 dark:text-slate-300 truncate max-w-xs">
                     {m.referenceType ? `${m.referenceType}: ${m.referenceId || 'N/A'}` : 'Direct Transaction'}
                   </span>
                 </div>
-                <div className="flex items-center gap-4 text-slate-400 shrink-0">
-                  <span className="text-slate-500">{m.createdByName}</span>
+                <div className="flex items-center gap-4 text-slate-500 dark:text-slate-400 shrink-0">
+                  <span className="text-slate-600 dark:text-slate-500">{m.createdByName}</span>
                   <span className="text-[11px]">{new Date(m.createdAt).toLocaleTimeString()}</span>
                 </div>
               </div>
