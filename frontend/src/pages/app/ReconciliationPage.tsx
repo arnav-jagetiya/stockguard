@@ -188,6 +188,7 @@ export const ReconciliationPage: React.FC = () => {
 
         {canReconcile && (
           <Button
+            data-testid="trigger-sweep-btn"
             onClick={() => setIsSweepConfirmOpen(true)}
             isLoading={isTriggering}
             icon={<RotateCw className="w-4 h-4" />}

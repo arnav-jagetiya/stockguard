@@ -78,6 +78,8 @@ stockguard:
     bootstrap:
       enabled: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:false}
       allow-password-reset: false
+    registration:
+      enabled: ${STOCKGUARD_REGISTRATION_ENABLED:false}
 
 logging:
   level:

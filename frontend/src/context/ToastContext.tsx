@@ -97,7 +97,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             <div
               key={toast.id}
               role="alert"
-              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-lg backdrop-blur-md transition-all duration-200 transform translate-y-0 ${typeConfig.border} ${typeConfig.bg}`}
+              className={`pointer-events-auto flex items-start gap-3 p-3.5 rounded-xl border shadow-lg backdrop-blur-md transition-all duration-200 transform translate-y-0 animate-in fade-in slide-in-from-top-3 sm:slide-in-from-bottom-3 ${typeConfig.border} ${typeConfig.bg}`}
             >
               {typeConfig.icon}
               <div className="flex-1 min-w-0">

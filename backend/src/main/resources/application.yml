@@ -95,6 +95,8 @@ stockguard:
       admin-full-name: ${STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME:}
       org-name: ${STOCKGUARD_BOOTSTRAP_ORG_NAME:Primary Organization}
       allow-password-reset: ${STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET:false}
+    registration:
+      enabled: ${STOCKGUARD_REGISTRATION_ENABLED:false}
   reservation:
     default-ttl-minutes: ${STOCKGUARD_RESERVATION_DEFAULT_TTL_MINUTES:15}
     expiration:

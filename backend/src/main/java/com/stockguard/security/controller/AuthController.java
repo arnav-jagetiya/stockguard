@@ -148,6 +148,12 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest servletRequest
     ) {
+        if (securityProperties != null && securityProperties.getRegistration() != null && !securityProperties.getRegistration().isEnabled()) {
+            securityAuditLog.warn("Registration rejected: public organization registration is disabled in this environment (IP: {})", servletRequest.getRemoteAddr());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "Public organization registration is disabled in this environment."));
+        }
+
         String clientIp = servletRequest.getRemoteAddr();
         String userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT);
 
@@ -335,12 +341,18 @@ public class AuthController {
 
     /**
      * Development-only endpoint providing demo administrator credentials for quick login.
-     * Strictly blocked in production profiles and unavailable when bootstrap is disabled.
+     * Strictly blocked in production profiles, restricted to loopback IP addresses,
+     * and unavailable when bootstrap is disabled. Never logs secrets.
      */
     @GetMapping("/demo-credentials")
-    public ResponseEntity<?> getDemoCredentials() {
-        if (environment != null && environment.acceptsProfiles(Profiles.of("prod"))) {
+    public ResponseEntity<?> getDemoCredentials(HttpServletRequest servletRequest) {
+        if (environment != null && (environment.acceptsProfiles(Profiles.of("prod")) || !environment.acceptsProfiles(Profiles.of("dev")))) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        if (servletRequest != null && !isLoopbackAddress(servletRequest.getRemoteAddr())) {
+            securityAuditLog.warn("Access to demo credentials rejected from non-loopback IP: {}", servletRequest.getRemoteAddr());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "Demo credentials discovery is only permitted from local host."));
         }
         if (securityProperties == null || securityProperties.getBootstrap() == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -354,6 +366,11 @@ public class AuthController {
                 "email", bootstrap.getAdminEmail(),
                 "password", bootstrap.getAdminPassword()
         ));
+    }
+
+    private boolean isLoopbackAddress(String ip) {
+        if (ip == null || ip.isBlank()) return false;
+        return "127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip) || "localhost".equalsIgnoreCase(ip);
     }
 
     public void setSecurityProperties(SecurityProperties securityProperties) {

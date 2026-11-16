@@ -42,9 +42,21 @@ public class SecurityProperties {
     @NotNull
     private Bootstrap bootstrap = new Bootstrap();
 
+    @Valid
+    @NotNull
+    private Registration registration = new Registration();
+
     @Min(4)
     @Max(31)
     private int passwordEncoderCost = 12;
+
+    public Registration getRegistration() {
+        return registration;
+    }
+
+    public void setRegistration(Registration registration) {
+        this.registration = registration;
+    }
 
     public Bootstrap getBootstrap() {
         return bootstrap;
@@ -380,6 +392,19 @@ public class SecurityProperties {
 
         public void setOrgName(String orgName) {
             this.orgName = orgName;
+        }
+    }
+
+    public static class Registration {
+
+        private boolean enabled = false;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
         }
     }
 }

@@ -300,25 +300,58 @@ class AuthControllerTest {
     @DisplayName("GET /api/auth/demo-credentials returns 404 when bootstrap is disabled")
     void demoCredentialsReturns404WhenDisabled() {
         controller.setSecurityProperties(properties);
-        ResponseEntity<?> response = controller.getDemoCredentials();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+        ResponseEntity<?> response = controller.getDemoCredentials(request);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    @DisplayName("GET /api/auth/demo-credentials returns credentials when bootstrap is enabled")
+    @DisplayName("GET /api/auth/demo-credentials returns credentials when bootstrap is enabled and local loopback")
     void demoCredentialsReturnsCredentialsWhenEnabled() {
         properties.getBootstrap().setEnabled(true);
         properties.getBootstrap().setAdminEmail("admin@stockguard.dev");
         properties.getBootstrap().setAdminPassword("replace-with-secure-admin-password");
         controller.setSecurityProperties(properties);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
 
-        ResponseEntity<?> response = controller.getDemoCredentials();
+        ResponseEntity<?> response = controller.getDemoCredentials(request);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         @SuppressWarnings("unchecked")
         Map<String, Object> body = (Map<String, Object>) response.getBody();
         assertThat(body.get("available")).isEqualTo(true);
         assertThat(body.get("email")).isEqualTo("admin@stockguard.dev");
         assertThat(body.get("password")).isEqualTo("replace-with-secure-admin-password");
+    }
+
+    @Test
+    @DisplayName("GET /api/auth/demo-credentials returns 403 when request originates from non-loopback IP")
+    void demoCredentialsReturns403WhenNonLoopback() {
+        properties.getBootstrap().setEnabled(true);
+        properties.getBootstrap().setAdminEmail("admin@stockguard.dev");
+        properties.getBootstrap().setAdminPassword("replace-with-secure-admin-password");
+        controller.setSecurityProperties(properties);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("198.51.100.25");
+
+        ResponseEntity<?> response = controller.getDemoCredentials(request);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/register returns 403 when public registration is disabled")
+    void registerReturns403WhenDisabled() {
+        properties.getRegistration().setEnabled(false);
+        controller.setSecurityProperties(properties);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRemoteAddr("127.0.0.1");
+
+        RegisterRequest regReq = new RegisterRequest(
+                "Jane Doe", "jane@company.com", "Password123!", "Acme Inc"
+        );
+        ResponseEntity<?> response = controller.register(regReq, request);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     // --- Lightweight Stubs ---
