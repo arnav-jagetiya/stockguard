@@ -1,3 +1,7 @@
+# ==============================================================================
+# STOCKGUARD — Backend Docker Build Ignore Specification
+# ==============================================================================
+
 target/
 .mvn/wrapper/maven-wrapper.jar
 .git/
@@ -6,3 +10,11 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12

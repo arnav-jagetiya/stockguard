@@ -243,9 +243,10 @@ class FlywayMigrationAndSchemaValidationTest {
                 UUID auditId = UUID.randomUUID();
 
                 // Setup parent entities
+                String testEmail = "test-" + userId + "@example.com";
                 jdbcTemplate.update("INSERT INTO organizations (id, name) VALUES (?, ?)", orgId, "Test Org");
                 jdbcTemplate.update("INSERT INTO users (id, email, normalized_email) VALUES (?, ?, ?)",
-                        userId, "test@example.com", "test@example.com");
+                        userId, testEmail, testEmail);
                 jdbcTemplate.update("INSERT INTO organization_memberships (organization_id, user_id, role) VALUES (?, ?, ?)",
                         orgId, userId, "ADMIN");
                 jdbcTemplate.update("INSERT INTO products (id, organization_id, sku, normalized_sku, name) VALUES (?, ?, ?, ?, ?)",

@@ -1,0 +1,38 @@
+# ==============================================================================
+# STOCKGUARD — Root Docker Build Ignore Specification
+# ==============================================================================
+
+# Version control and editor files
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+
+# Documentation, reports, and evidence
+docs/
+verification_evidence/
+test-results/
+playwright-report/
+*.md
+LICENSE
+
+# Local backups and database dumps
+backups/
+postgres-data/
+pgdata/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Temporary and log files
+logs/
+*.log
+tmp/
+temp/
+*.tmp

@@ -1,3 +1,7 @@
+# ==============================================================================
+# STOCKGUARD — Frontend Docker Build Ignore Specification
+# ==============================================================================
+
 node_modules/
 dist/
 .git/
@@ -6,3 +10,15 @@ dist/
 .vscode/
 .idea/
 coverage/
+
+# Exclude historical screenshots and verification evidence (~10.2 MB)
+verification_evidence/
+
+# Exclude local/browser test runners and legacy acceptance scripts
+scripts/
+*.cjs
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example

@@ -33,6 +33,8 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 | **Milestone 9A** | Realistic Demo Environment (Acme Industrial Supply Pvt. Ltd.) | ✅ Complete |
 | **Milestone 9B** | Production Readiness, Docker Stack, SLIs, Backup/Recovery & Release Runbook | ✅ Complete |
 | **Milestone 10** | Public Demo Experience, Portfolio Showcase & Final Release Hardening | ✅ Complete |
+| **Milestone 11A** | Product Experience Refinement, 3D Theme Integration & Comprehensive Acceptance | ✅ Complete |
+| **Milestone 11B** | Repository Hygiene, CI Hardening & Public GitHub Preparation | ✅ Complete |
 
 ---
 
@@ -41,7 +43,8 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 ### Prerequisites
 
 * **Java 21** (JDK 21+)
-* **Docker & Docker Compose** (for PostgreSQL)
+* **Node.js 22+** and **npm** (for frontend development)
+* **Docker & Docker Compose** (for PostgreSQL database and container orchestration)
 * **Maven Wrapper** (included in repository: `./mvnw` or `mvnw.cmd`)
 
 ### 1. Start Database Infrastructure
@@ -53,13 +56,14 @@ cd backend
 docker-compose up -d
 ```
 
-The database container will start on port `5432` (or configured `DB_PORT`) and automatically execute `init-db/init-roles.sql` to establish:
+The database container will start on port `5433` (or configured `DB_PORT`) and automatically execute `init-db/init-roles.sql` to establish:
 * `stockguard_owner` (migration credentials)
 * `stockguard_app` (runtime DML credentials)
 
-### 2. Run the Verification Suite
+### 2. Run the Verification Suites
 
-Run all unit, integration, and security filter tests against a fresh PostgreSQL Testcontainer:
+#### Backend Test Suite (JUnit 5 + Testcontainers + Spring MVC Test)
+Run all 342 unit, integration, and security filter tests against a fresh PostgreSQL Testcontainer:
 
 ```bash
 cd backend
@@ -68,11 +72,49 @@ cd backend
 
 *(On Windows, use `mvnw.cmd clean verify -DDB_PORT=5433` if port 5432 is bound to local PostgreSQL).*
 
-### 3. Run the Backend Application
+#### Frontend Test Suite (Vitest + React Testing Library)
+Run all 237 frontend component and unit tests:
 
+```bash
+cd frontend
+npm test
+```
+
+#### Browser Acceptance Verification (Playwright / Puppeteer Browser Suite)
+With backend and frontend running, execute the automated browser acceptance and 3D visual verification suites:
+
+```bash
+cd frontend
+# 1. End-to-end user workflows, 10-module exploration, and demo mode enforcement (28 assertions)
+node scripts/run-acceptance.mjs
+
+# 2. 3D Living Warehouse WebGL context, camera transitions, and theme persistence (16 assertions)
+node scripts/verify-3d-warehouse.mjs
+```
+
+### 3. Run the Applications Locally
+
+#### Backend (Spring Boot 4 / Java 21)
 ```bash
 cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+#### Frontend (React 19 / Vite / Tailwind CSS v4)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+The frontend development server will launch at `http://localhost:5173`.
+
+### 4. Run the Full Production Docker Stack
+
+To validate the unified production deployment topology with strict network isolation (reverse proxy, Spring Boot backend, PostgreSQL 16, and Prometheus):
+
+```bash
+# Set required production environment variables (or copy from .env.example)
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 ### 4. Administrator Bootstrap & Local Password Recovery
@@ -359,16 +401,30 @@ Detailed architectural and operational documentation is maintained in [`docs/dep
 
 ## Testing & Verification
 
-The test suite exercises all layers of the security, persistence, and authorization architecture using JUnit 5, Mockito, Spring MVC Test, and Testcontainers (PostgreSQL 16):
+STOCKGUARD maintains comprehensive verification across all architectural layers:
 
 ```bash
+# 1. Backend Verification (JUnit 5 + Testcontainers + Spring MVC Test)
 cd backend
 ./mvnw clean verify
+
+# 2. Frontend Unit & Component Tests (Vitest + React Testing Library)
+cd frontend
+npm test
+
+# 3. Automated Browser Acceptance Suite (Node.js ESM runner against running stack)
+cd frontend
+node scripts/run-acceptance.mjs
+
+# 4. 3D Living Warehouse Visual Verification (WebGL context, camera modes & theme tests)
+cd frontend
+node scripts/verify-3d-warehouse.mjs
 ```
 
-* **Unit Tests:** JWT token encoding/decoding, key rotation, claims extraction, rate limit window counters, CIDR subnet matching, password hashing, and exception handling.
-* **Slice Tests:** WebMvc slice tests for controllers, validation errors, and custom headers.
-* **Integration Tests:** End-to-end filter chain scenarios, database-backed session revocation, replay detection with family revocation, tenant context enforcement, and concurrent last-admin protection.
+* **Backend Test Suite:** 342 automated tests across 72 test classes covering JWT token lifecycle, key rotation, claims extraction, rate limit window counters, CIDR subnet matching, password hashing, Flyway schema migrations, MVCC snapshot reconciliations, two-phase reservation allocations, and concurrent last-admin protection.
+* **Frontend Test Suite:** 237 unit and component tests across 35 test suites verifying navigation, auth state restoration, inventory ledger views, order management, theme switching, and responsive design.
+* **Acceptance Suite:** 28 end-to-end browser assertions exercising the complete 10-module user journey, demo mode mutation protection, and state synchronization.
+* **3D Visual Suite:** 16 browser assertions confirming zero WebGL context loss during theme toggles, raycast hit detection, and camera perspective transitions.
 
 ---
 
@@ -376,29 +432,73 @@ cd backend
 
 ```
 stockguard/
+├── .github/
+│   └── workflows/
+│       └── ci.yml                    # GitHub Actions CI workflow (backend, frontend, container validation)
 ├── backend/
+│   ├── Dockerfile                    # Multi-stage production container build (Java 21 Alpine)
 │   ├── init-db/
 │   │   └── init-roles.sql            # PostgreSQL dual-role privilege initialization
+│   ├── mvnw / mvnw.cmd / .mvn/       # Maven build wrapper
+│   ├── pom.xml                       # Maven build descriptor (Java 21, Spring Boot 4.1.2)
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/stockguard/
 │   │   │   │   ├── audit/            # Security and operational audit logging
 │   │   │   │   ├── common/           # Shared identifiers and entities
+│   │   │   │   ├── demo/             # Synthetic Acme Industrial Supply tenant & seeder
 │   │   │   │   ├── inventory/        # Balances, ledger entries, transactions, reconciliation
+│   │   │   │   ├── order/            # Order engine, status progression, line items
 │   │   │   │   ├── organization/     # Tenants, memberships, last-admin protection
 │   │   │   │   ├── product/          # Product catalog and normalized SKU management
+│   │   │   │   ├── reservation/      # Two-phase reservation engine & background expiry
 │   │   │   │   ├── security/         # JWT, sessions, filters, RBAC, exception handlers
 │   │   │   │   ├── shared/           # Common exceptions and distributed idempotency engine
-│   │   │   │   ├── transfer/         # Multi-item inter-warehouse transfers, DTOs, service, controller
+│   │   │   │   ├── transfer/         # Multi-item inter-warehouse transfers
 │   │   │   │   └── warehouse/        # Facility management, priority routing, codes
 │   │   │   └── resources/
-│   │   │       ├── db/migration/     # Flyway immutable migrations (V1, V2, V3)
+│   │   │       ├── db/migration/     # Flyway immutable migrations (V1 through V13)
 │   │   │       ├── application.yml   # Base application configuration
 │   │   │       ├── application-dev.yml # Local development overrides
 │   │   │       └── application-prod.yml # Hardened production configuration
-│   │   └── test/                     # 245+ unit, integration, and security tests
-│   ├── docker-compose.yml            # Local PostgreSQL 16 container definition
-│   └── pom.xml                       # Maven build descriptor
-├── docs/                             # Architecture Decision Records (ADR 001-011) & specs
-└── README.md
+│   │   └── test/                     # 342 automated unit, integration, and security tests
+│   └── docker-compose.yml            # Local PostgreSQL 16 container definition
+├── docs/                             # Architecture Decision Records (ADR 001-014), specs, and runbooks
+│   ├── api/                          # OpenAPI 3.0 specification (openapi.yaml)
+│   ├── architecture/                 # System architecture overview & ADRs 001-014
+│   ├── archive/                      # Historical milestone plans & intermediate proposals
+│   ├── database/                     # Data dictionary, schema specification, transaction design
+│   ├── deployment/                   # Production architecture, runbooks, security checklist
+│   ├── project-bible/                # Domain models, engineering principles, invariants
+│   └── runbooks/                     # Operational runbooks (deployment, DR, monitoring)
+├── frontend/
+│   ├── Dockerfile                    # Multi-stage production container build (Vite + Nginx Alpine)
+│   ├── entrypoint.sh                 # Unified container entrypoint & fallback TLS generator
+│   ├── nginx.conf                    # Nginx reverse proxy, security headers & SPA routing
+│   ├── package.json / package-lock.json # React 19, Vite 8, Tailwind CSS v4, Three.js 0.187
+│   ├── scripts/                      # Active browser test runners & legacy archive
+│   │   ├── run-acceptance.mjs        # 28-assertion browser acceptance runner
+│   │   ├── verify-3d-warehouse.mjs   # 16-assertion 3D Living Warehouse runner
+│   │   └── legacy/                   # Archived historical acceptance test scripts
+│   ├── src/                          # React 19 SPA, 3D Warehouse canvas, pages, components
+│   └── verification_evidence/        # Historical audit screenshots (M8, M9A, M10)
+├── nginx/
+│   ├── README.md                     # Gateway architecture documentation
+│   └── ssl/                          # Host volume mount point for production TLS certificates
+├── prometheus/
+│   ├── alerts.yml                    # SLI alerting rules and Prometheus thresholds
+│   ├── prometheus.env.example        # Environment variable template for Prometheus
+│   └── prometheus.yml                # Scrape configuration for Spring Boot actuator metrics
+├── scripts/
+│   ├── backup_db.sh                  # Non-destructive database backup utility
+│   ├── health_check.sh               # Health check verification script
+│   ├── restore_db.sh                 # Database restore utility with safety pre-checks
+│   └── seed_demo.sh                  # Acme Industrial Supply demo seeder runner
+├── .dockerignore                     # Root Docker build ignore specification
+├── .env.example                      # Production environment variable template
+├── .gitignore                        # Root Git ignore specification
+├── docker-compose.prod.yml           # Production multi-container topology (3-network isolation)
+├── LICENSE                           # MIT License
+├── README.md                         # Primary project documentation
+└── SECURITY.md                       # Security policy and vulnerability disclosure protocol
 ```

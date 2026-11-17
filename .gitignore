@@ -66,6 +66,8 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+!backend/.env.example
+!prometheus/prometheus.env.example
 *.pem
 *.key
 *.p12
@@ -74,7 +76,11 @@ Desktop.ini
 *credentials*.json
 *credentials*.yaml
 *credentials*.yml
-*secret*
+*secrets*.env
+*secrets*.json
+*secrets*.yaml
+*secrets*.yml
+*.secret
 
 # ===========================
 # Docker — Local Development
@@ -95,6 +101,9 @@ temp/
 *.swp
 *.swo
 *~
+test-results/
+playwright-report/
+/verification_evidence/
 
 # ===========================
 # Backups and Database Dumps
