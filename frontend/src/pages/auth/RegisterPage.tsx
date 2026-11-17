@@ -121,16 +121,37 @@ export const RegisterPage: React.FC = () => {
           <ShieldCheck className="w-8 h-8 text-white dark:text-[#0B100F]" />
         </div>
         <h2 className="text-2xl font-extrabold tracking-tight text-[#18231D] dark:text-[#EEF3EA]">
-          Create Organization Account
+          Organization Registration
         </h2>
         <p className="mt-1.5 text-xs text-[#657369] dark:text-[#9AA99E] max-w-sm mx-auto">
-          Start your enterprise inventory control tenant. You will receive root Administrator privileges.
+          Public self-registration is closed for this deployment. Explore the platform via the live demo or sign in to your tenant.
         </p>
       </div>
 
-      {/* Registration Card */}
+      {/* Registration Notice & Alternatives Card */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white/95 dark:bg-[#111A17]/95 backdrop-blur-xl py-8 px-6 sm:px-9 shadow-2xl rounded-2xl border border-[#D9E1D7] dark:border-[#26362E] space-y-5">
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+            <div className="flex items-center gap-2 font-bold">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Public Self-Registration Disabled</span>
+            </div>
+            <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+              New tenant provisioning requires explicit platform administrator onboarding. To experience StockGuard with real seeded distribution operations, access our public live demo.
+            </p>
+            <div className="pt-2 flex flex-col gap-2">
+              <Link to="/login?demo=true">
+                <Button className="w-full" size="sm" variant="primary">
+                  Explore Live Demo (Acme Industrial)
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button className="w-full" size="sm" variant="outline">
+                  Sign In to Existing Account
+                </Button>
+              </Link>
+            </div>
+          </div>
           {errorMessage && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-600 dark:text-rose-400 animate-in fade-in">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />

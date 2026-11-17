@@ -31,9 +31,9 @@ export const CapabilitiesSection: React.FC = () => {
     },
     {
       icon: <RotateCw className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0]" />,
-      title: 'Continuous MVCC Sweeps',
+      title: 'Scheduled MVCC Reconciliation',
       description:
-        'Automated background sweeps detect and isolate phantom discrepancies, ensuring physical on-hand equals ledger records 24/7.',
+        'Automated background sweeps execute snapshot audits under REPEATABLE READ isolation, detecting and isolating physical balance variances against double-entry ledger records.',
     },
     {
       icon: <Split className="w-5 h-5 text-[#147C68] dark:text-[#6CD8C0]" />,

@@ -34,6 +34,7 @@ export const OrdersPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const toast = useToast();
   const canCreate = hasPermission('order:create');
+  const canReserve = hasPermission('reservation:create');
   const canConfirm = hasPermission('order:confirm');
   const canFulfill = hasPermission('order:fulfill');
   const canCancel = hasPermission('order:cancel');
@@ -298,13 +299,15 @@ export const OrdersPage: React.FC = () => {
 
                     {o.status === 'PENDING' && (
                       <>
-                        <button
-                          onClick={() => handleReserve(o.id)}
-                          className="px-2 py-1 text-xs font-semibold text-[#147C68] dark:text-[#6CD8C0] bg-[#147C68]/10 hover:bg-[#147C68]/20 rounded-md border border-[#147C68]/30 transition-colors cursor-pointer"
-                          title="Reserve inventory"
-                        >
-                          Reserve
-                        </button>
+                        {canReserve && (
+                          <button
+                            onClick={() => handleReserve(o.id)}
+                            className="px-2 py-1 text-xs font-semibold text-[#147C68] dark:text-[#6CD8C0] bg-[#147C68]/10 hover:bg-[#147C68]/20 rounded-md border border-[#147C68]/30 transition-colors cursor-pointer"
+                            title="Reserve inventory"
+                          >
+                            Reserve
+                          </button>
+                        )}
 
                         {canConfirm && (
                           <button

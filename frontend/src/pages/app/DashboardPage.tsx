@@ -33,7 +33,7 @@ export const DashboardPage: React.FC = () => {
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canCreateProduct = hasPermission('product:create');
+  const canCreateProduct = hasPermission('product:manage');
   const canManageWarehouse = hasPermission('warehouse:manage');
 
   const fetchDashboardData = async () => {

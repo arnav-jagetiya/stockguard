@@ -85,8 +85,8 @@ export const IntegritySection: React.FC = () => {
               <span className="text-[#456B1F] dark:text-[#C6F36B] font-semibold">100% Verifiable via Ledger</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-[#D9E1D7]/60 dark:border-[#26362E]/60">
-              <span className="text-[#657369] dark:text-[#9AA99E]">Reconciliation Frequency</span>
-              <span className="text-[#456B1F] dark:text-[#C6F36B] font-semibold">Continuous Automated Sweeps</span>
+              <span className="text-[#657369] dark:text-[#9AA99E]">Reconciliation Engine</span>
+              <span className="text-[#456B1F] dark:text-[#C6F36B] font-semibold">Scheduled &amp; On-Demand (REPEATABLE READ)</span>
             </div>
             <div className="flex items-center justify-between py-2 border-b border-[#D9E1D7]/60 dark:border-[#26362E]/60">
               <span className="text-[#657369] dark:text-[#9AA99E]">Tenant Isolation</span>

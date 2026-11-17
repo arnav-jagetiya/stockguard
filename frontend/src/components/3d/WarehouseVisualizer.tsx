@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { useTheme } from '../../context/ThemeContext';
 import {
   Play,
   RotateCcw,
@@ -24,8 +25,89 @@ export interface StoryStep {
   icon: React.ReactNode;
 }
 
+interface SceneElements {
+  scene: THREE.Scene;
+  renderer: THREE.WebGLRenderer;
+  ambientLight: THREE.AmbientLight;
+  mainLight: THREE.DirectionalLight;
+  telemetryLight: THREE.PointLight;
+  floorMat: THREE.MeshStandardMaterial;
+  dockMat: THREE.MeshStandardMaterial;
+  uprightMat: THREE.MeshStandardMaterial;
+  agvBodyMat: THREE.MeshStandardMaterial;
+  availableMat: THREE.MeshStandardMaterial;
+  transferMat: THREE.MeshStandardMaterial;
+  gridHelper: THREE.GridHelper | null;
+}
+
+const STORY_STEPS: StoryStep[] = [
+  {
+    id: 1,
+    title: '1. Receive Stock at Inbound Dock',
+    subtitle: 'Receipt Delta: (+Q on-hand, 0 reserved)',
+    description: 'Shipment arrives at Dock 01. Physical goods are verified against the purchase order and recorded with invariant delta (+Q, 0), incrementing on-hand stock while reserved stock remains zero.',
+    databaseConcept: 'RECEIPT: (+Q, 0) | on_hand = on_hand + Q, reserved unchanged',
+    cameraPreset: 'dock',
+    activeZone: 'Dock 01 — Receiving Staging',
+    icon: <Truck className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />,
+  },
+  {
+    id: 2,
+    title: '2. High-Density Rack Allocation',
+    subtitle: 'Physical bay put-away & concurrency protection',
+    description: 'Inventory is put away into Bay A-02 on Tier 2. Row-level concurrency is enforced via SELECT FOR UPDATE to guarantee serialized balance updates without lost updates.',
+    databaseConcept: 'SELECT * FROM inventory_balances WHERE id = ? FOR UPDATE',
+    cameraPreset: 'aisle',
+    activeZone: 'Zone A — High-Density Racks',
+    icon: <Boxes className="w-4 h-4 text-[#147C68] dark:text-[#6CD8C0]" />,
+  },
+  {
+    id: 3,
+    title: '3. Serialized Customer Reservation',
+    subtitle: 'Reservation Delta: (0 on-hand, +Q reserved)',
+    description: 'Customer order places an active reservation. Inventory balance transitions with invariant delta (0, +Q): Available drops (Available = On-Hand - Reserved) while physical On-Hand remains constant. Cancel/Release reverses with (0, -Q).',
+    databaseConcept: 'RESERVE: (0, +Q) | RELEASE: (0, -Q) | TTL armed',
+    cameraPreset: 'isometric',
+    activeZone: 'Zone A — Bay A-02-T2',
+    icon: <BookmarkCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />,
+  },
+  {
+    id: 4,
+    title: '4. Immediate Atomic Transfer',
+    subtitle: 'Dual-entry: Source OUT (-Q, 0) & Destination IN (+Q, 0)',
+    description: 'Transfers are strictly immediate and atomic with zero in-transit intermediate state. Source facility logs Transfer OUT (-Q, 0) and destination logs Transfer IN (+Q, 0) within a single database transaction boundary.',
+    databaseConcept: 'ATOMIC TRANSFER: Source OUT (-Q, 0) + Dest IN (+Q, 0) in 1 TX',
+    cameraPreset: 'isometric',
+    activeZone: 'Dual-Facility Transfer Gateway (Immediate)',
+    icon: <ArrowLeftRight className="w-4 h-4 text-[#147C68] dark:text-[#6CD8C0]" />,
+  },
+  {
+    id: 5,
+    title: '5. Order Picking & Fulfillment',
+    subtitle: 'Fulfillment Delta: (-Q on-hand, -Q reserved)',
+    description: 'Customer order dispatch commits fulfillment. The active reservation is released and physical on-hand is permanently deducted with invariant delta (-Q, -Q), posting an immutable credit ledger record.',
+    databaseConcept: 'FULFILL: (-Q, -Q) | on_hand = on_hand - Q, reserved = reserved - Q',
+    cameraPreset: 'aisle',
+    activeZone: 'Zone B — Active Pick Bay',
+    icon: <CheckCircle2 className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />,
+  },
+  {
+    id: 6,
+    title: '6. Balance vs Ledger Reconciliation',
+    subtitle: 'Integrity Check: Balance On-Hand vs. Σ(Ledger Deltas)',
+    description: 'Scheduled reconciliation worker executes an automated audit sweep (REPEATABLE READ snapshot isolation), summing all historical double-entry ledger deltas and comparing them directly against current inventory balance records to detect drift.',
+    databaseConcept: 'AUDIT: inventory_balances.on_hand == SUM(ledger_entries.delta_on_hand)',
+    cameraPreset: 'topDown',
+    activeZone: 'Entire Facility Mesh (Audit Sweep)',
+    icon: <ShieldCheck className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />,
+  },
+];
+
 export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ className = '' }) => {
   const mountRef = useRef<HTMLDivElement>(null);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   const [activePreset, setActivePreset] = useState<CameraPreset>('isometric');
   const [activeStep, setActiveStep] = useState<number>(1);
   const [isAutoPlaying, setIsAutoPlaying] = useState<boolean>(false);
@@ -44,76 +126,22 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
   // References to communicate between React state and Three.js animation loop
   const cameraTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(18, 14, 20));
   const lookAtTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1.5, 0));
+  const activePresetRef = useRef<CameraPreset>('isometric');
   const agvRef = useRef<THREE.Group | null>(null);
   const activeStepRef = useRef<number>(1);
+  const sceneElementsRef = useRef<SceneElements | null>(null);
+
   useEffect(() => {
     activeStepRef.current = activeStep;
   }, [activeStep]);
 
-  const storySteps: StoryStep[] = [
-    {
-      id: 1,
-      title: '1. Receive Stock at Inbound Dock',
-      subtitle: 'Receipt Delta: (+Q on-hand, 0 reserved)',
-      description: 'Shipment arrives at Dock 01. Physical goods are verified against the purchase order and recorded with invariant delta (+Q, 0), incrementing on-hand stock while reserved stock remains zero.',
-      databaseConcept: 'RECEIPT: (+Q, 0) | on_hand = on_hand + Q, reserved unchanged',
-      cameraPreset: 'dock',
-      activeZone: 'Dock 01 — Receiving Staging',
-      icon: <Truck className="w-4 h-4 text-[#C6F36B] dark:text-[#C6F36B]" />,
-    },
-    {
-      id: 2,
-      title: '2. High-Density Rack Allocation',
-      subtitle: 'Physical bay put-away & concurrency protection',
-      description: 'Inventory is put away into Bay A-02 on Tier 2. Row-level concurrency is enforced via SELECT FOR UPDATE to guarantee serialized balance updates without lost updates.',
-      databaseConcept: 'SELECT * FROM inventory_balances WHERE id = ? FOR UPDATE',
-      cameraPreset: 'aisle',
-      activeZone: 'Zone A — High-Density Racks',
-      icon: <Boxes className="w-4 h-4 text-[#6CD8C0] dark:text-[#6CD8C0]" />,
-    },
-    {
-      id: 3,
-      title: '3. Serialized Customer Reservation',
-      subtitle: 'Reservation Delta: (0 on-hand, +Q reserved)',
-      description: 'Customer order places an active reservation. Inventory balance transitions with invariant delta (0, +Q): Available drops (Available = On-Hand - Reserved) while physical On-Hand remains constant. Cancel/Release reverses with (0, -Q).',
-      databaseConcept: 'RESERVE: (0, +Q) | RELEASE: (0, -Q) | TTL armed',
-      cameraPreset: 'isometric',
-      activeZone: 'Zone A — Bay A-02-T2',
-      icon: <BookmarkCheck className="w-4 h-4 text-amber-400" />,
-    },
-    {
-      id: 4,
-      title: '4. Immediate Atomic Transfer',
-      subtitle: 'Dual-entry: Source OUT (-Q, 0) & Destination IN (+Q, 0)',
-      description: 'Transfers are strictly immediate and atomic with zero in-transit intermediate state. Source facility logs Transfer OUT (-Q, 0) and destination logs Transfer IN (+Q, 0) within a single database transaction boundary.',
-      databaseConcept: 'ATOMIC TRANSFER: Source OUT (-Q, 0) + Dest IN (+Q, 0) in 1 TX',
-      cameraPreset: 'isometric',
-      activeZone: 'Dual-Facility Transfer Gateway (Immediate)',
-      icon: <ArrowLeftRight className="w-4 h-4 text-[#6CD8C0]" />,
-    },
-    {
-      id: 5,
-      title: '5. Order Picking & Fulfillment',
-      subtitle: 'Fulfillment Delta: (-Q on-hand, -Q reserved)',
-      description: 'Customer order dispatch commits fulfillment. The active reservation is released and physical on-hand is permanently deducted with invariant delta (-Q, -Q), posting an immutable credit ledger record.',
-      databaseConcept: 'FULFILL: (-Q, -Q) | on_hand = on_hand - Q, reserved = reserved - Q',
-      cameraPreset: 'aisle',
-      activeZone: 'Zone B — Active Pick Bay',
-      icon: <CheckCircle2 className="w-4 h-4 text-[#C6F36B]" />,
-    },
-    {
-      id: 6,
-      title: '6. Balance vs Ledger Reconciliation',
-      subtitle: 'Integrity Check: Balance On-Hand vs. Σ(Ledger Deltas)',
-      description: 'Scheduled reconciliation worker executes an automated audit sweep, summing all historical double-entry ledger deltas and comparing them directly against current inventory balance records to detect drift.',
-      databaseConcept: 'AUDIT: inventory_balances.on_hand == SUM(ledger_entries.delta_on_hand)',
-      cameraPreset: 'topDown',
-      activeZone: 'Entire Facility Mesh (Audit Sweep)',
-      icon: <ShieldCheck className="w-4 h-4 text-[#C6F36B]" />,
-    },
-  ];
+  useEffect(() => {
+    activePresetRef.current = activePreset;
+  }, [activePreset]);
 
-  // Camera presets map
+  const storySteps = STORY_STEPS;
+
+  // Camera presets map — lerps smoothly without destroying the WebGL scene
   const setPreset = (preset: CameraPreset) => {
     setActivePreset(preset);
     switch (preset) {
@@ -150,7 +178,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     const interval = setInterval(() => {
       setActiveStep((prev) => {
         const next = prev >= 6 ? 1 : prev + 1;
-        const step = storySteps.find((s) => s.id === next);
+        const step = STORY_STEPS.find((s) => s.id === next);
         if (step) setPreset(step.cameraPreset);
         return next;
       });
@@ -158,21 +186,80 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     return () => clearInterval(interval);
   }, [isAutoPlaying]);
 
+  // Reactive theme update effect: updates scene colors, lights, materials, fog, and grid instantaneously
+  useEffect(() => {
+    const el = sceneElementsRef.current;
+    if (!el) return;
+
+    // 1. Background & Fog
+    const bgColor = isDark ? 0x0b100f : 0xf4f5ef;
+    const fogColor = isDark ? 0x0b100f : 0xf4f5ef;
+    el.scene.background = new THREE.Color(bgColor);
+    el.scene.fog = new THREE.FogExp2(fogColor, isDark ? 0.022 : 0.020);
+
+    // 2. Exposure & Tonemapping
+    el.renderer.toneMappingExposure = isDark ? 1.15 : 1.05;
+
+    // 3. Ambient Lighting
+    el.ambientLight.color.set(isDark ? 0x7a8a80 : 0xd8ded6);
+    el.ambientLight.intensity = isDark ? 0.85 : 0.95;
+
+    // 4. Directional Sun/Key Light
+    el.mainLight.color.set(isDark ? 0xc6f36b : 0xffffff);
+    el.mainLight.intensity = isDark ? 1.4 : 1.7;
+
+    // 5. Telemetry Fill Light
+    el.telemetryLight.color.set(isDark ? 0x6cd8c0 : 0x147c68);
+    el.telemetryLight.intensity = isDark ? 2.0 : 1.6;
+
+    // 6. Floor & Staging Materials
+    el.floorMat.color.set(isDark ? 0x111a17 : 0xe9eee6);
+    el.floorMat.roughness = isDark ? 0.85 : 0.78;
+    el.dockMat.color.set(isDark ? 0x16221e : 0xdde4da);
+
+    // 7. Racks & AGV Structural Materials
+    el.uprightMat.color.set(isDark ? 0x26362e : 0x657369);
+    el.agvBodyMat.color.set(isDark ? 0x1b2922 : 0x26362e);
+
+    // 8. Color-coded pallet status materials
+    el.availableMat.color.set(isDark ? 0xc6f36b : 0x456b1f);
+    el.transferMat.color.set(isDark ? 0x6cd8c0 : 0x147c68);
+
+    // 9. Spatial Precision Grid Alignment
+    if (el.gridHelper) {
+      el.scene.remove(el.gridHelper);
+      el.gridHelper.geometry.dispose();
+      if (Array.isArray(el.gridHelper.material)) {
+        el.gridHelper.material.forEach((m) => m.dispose());
+      } else {
+        el.gridHelper.material.dispose();
+      }
+    }
+    const newGrid = new THREE.GridHelper(
+      36,
+      36,
+      isDark ? 0x26362e : 0xd9e1d7,
+      isDark ? 0x16221e : 0xe2e8df
+    );
+    newGrid.position.y = 0.005;
+    el.scene.add(newGrid);
+    el.gridHelper = newGrid;
+  }, [isDark]);
+
+  // Main Three.js Scene Setup (Mounts once, never destroyed on camera/theme change)
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    // Detect dark or light mode
-    const isDark = document.documentElement.classList.contains('dark');
+    const initialIsDark = document.documentElement.classList.contains('dark');
 
     // 1. Scene, Camera, Renderer
     const scene = new THREE.Scene();
-    const bgColor = isDark ? 0x0b100f : 0xf4f5ef;
-    const fogColor = isDark ? 0x0b100f : 0xf4f5ef;
+    const bgColor = initialIsDark ? 0x0b100f : 0xf4f5ef;
+    const fogColor = initialIsDark ? 0x0b100f : 0xf4f5ef;
     scene.background = new THREE.Color(bgColor);
-    scene.fog = new THREE.FogExp2(fogColor, 0.022);
+    scene.fog = new THREE.FogExp2(fogColor, initialIsDark ? 0.022 : 0.020);
 
     const width = container.clientWidth;
     const height = container.clientHeight || 520;
@@ -194,14 +281,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = isDark ? 1.15 : 1.05;
+    renderer.toneMappingExposure = initialIsDark ? 1.15 : 1.05;
     container.appendChild(renderer.domElement);
 
     // 2. Lighting System
-    const ambientLight = new THREE.AmbientLight(isDark ? 0x7a8a80 : 0xd8ded6, 0.85);
+    const ambientLight = new THREE.AmbientLight(initialIsDark ? 0x7a8a80 : 0xd8ded6, initialIsDark ? 0.85 : 0.95);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(isDark ? 0xc6f36b : 0xffffff, isDark ? 1.4 : 1.8);
+    const mainLight = new THREE.DirectionalLight(initialIsDark ? 0xc6f36b : 0xffffff, initialIsDark ? 1.4 : 1.7);
     mainLight.position.set(15, 22, 12);
     mainLight.castShadow = true;
     mainLight.shadow.mapSize.width = 1024;
@@ -214,15 +301,15 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     mainLight.shadow.camera.bottom = -20;
     scene.add(mainLight);
 
-    const telemetryLight = new THREE.PointLight(isDark ? 0x6cd8c0 : 0x147c68, 2.0, 35);
+    const telemetryLight = new THREE.PointLight(initialIsDark ? 0x6cd8c0 : 0x147c68, initialIsDark ? 2.0 : 1.6, 35);
     telemetryLight.position.set(-8, 9, -6);
     scene.add(telemetryLight);
 
     // 3. Concrete Floor with Zone Markings & Hazard Guides
     const floorGeo = new THREE.PlaneGeometry(42, 34);
     const floorMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0x111a17 : 0xe9eee6,
-      roughness: 0.85,
+      color: initialIsDark ? 0x111a17 : 0xe9eee6,
+      roughness: initialIsDark ? 0.85 : 0.78,
       metalness: 0.15,
     });
     const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -231,7 +318,12 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     scene.add(floor);
 
     // Grid lines for precision spatial alignment
-    const gridHelper = new THREE.GridHelper(36, 36, isDark ? 0x26362e : 0xd9e1d7, isDark ? 0x16221e : 0xe9eee6);
+    const gridHelper = new THREE.GridHelper(
+      36,
+      36,
+      initialIsDark ? 0x26362e : 0xd9e1d7,
+      initialIsDark ? 0x16221e : 0xe2e8df
+    );
     gridHelper.position.y = 0.005;
     scene.add(gridHelper);
 
@@ -241,14 +333,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
     const uprightGeo = new THREE.BoxGeometry(0.14, 5.2, 0.14);
     const uprightMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0x26362e : 0x657369,
+      color: initialIsDark ? 0x26362e : 0x657369,
       metalness: 0.75,
       roughness: 0.3,
     });
 
     const beamGeo = new THREE.BoxGeometry(4.2, 0.1, 0.9);
     const beamMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0xb45309 : 0xb45309, // Industrial Safety Amber
+      color: 0xb45309, // Industrial Safety Amber
       metalness: 0.6,
       roughness: 0.35,
     });
@@ -258,13 +350,28 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     const palletWoodMat = new THREE.MeshStandardMaterial({ color: 0x8a6f47, roughness: 0.9 });
 
     const boxGeo = new THREE.BoxGeometry(0.9, 0.65, 0.72);
-    const statusMaterials = [
-      new THREE.MeshStandardMaterial({ color: isDark ? 0xc6f36b : 0x456b1f, roughness: 0.25, metalness: 0.2 }), // AVAILABLE (Signal Lime)
-      new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.2 }),                      // RESERVED (Amber)
-      new THREE.MeshStandardMaterial({ color: 0x6cd8c0, roughness: 0.25, metalness: 0.2 }),                      // ATOMIC DUAL-LEDGER TRANSFER
-      new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.3, metalness: 0.2 }),                      // AUDIT DISCREPANCY
-    ];
+    const availableMat = new THREE.MeshStandardMaterial({
+      color: initialIsDark ? 0xc6f36b : 0x456b1f,
+      roughness: 0.25,
+      metalness: 0.2,
+    });
+    const reservedMat = new THREE.MeshStandardMaterial({
+      color: 0xf59e0b,
+      roughness: 0.3,
+      metalness: 0.2,
+    });
+    const transferMat = new THREE.MeshStandardMaterial({
+      color: initialIsDark ? 0x6cd8c0 : 0x147c68,
+      roughness: 0.25,
+      metalness: 0.2,
+    });
+    const discrepancyMat = new THREE.MeshStandardMaterial({
+      color: 0xf43f5e,
+      roughness: 0.3,
+      metalness: 0.2,
+    });
 
+    const statusMaterials = [availableMat, reservedMat, transferMat, discrepancyMat];
     const interactivePallets: THREE.Mesh[] = [];
 
     // Construct 3 distinct storage aisles (Aisle 1, Aisle 2, Aisle 3)
@@ -337,7 +444,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     // 5. Inbound Receiving Dock 01 Staging Platform
     const dockGeo = new THREE.BoxGeometry(6.5, 0.4, 5.0);
     const dockMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0x16221e : 0xdde4da,
+      color: initialIsDark ? 0x16221e : 0xdde4da,
       roughness: 0.6,
       metalness: 0.3,
     });
@@ -348,7 +455,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
     // Inbound pallets on dock
     for (let i = -1; i <= 1; i++) {
-      const p = new THREE.Mesh(boxGeo, statusMaterials[0]);
+      const p = new THREE.Mesh(boxGeo, availableMat);
       p.position.set(11 + i * 1.5, 0.8, -7.5);
       p.castShadow = true;
       p.userData = {
@@ -371,7 +478,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
     const agvBodyGeo = new THREE.BoxGeometry(1.8, 0.35, 1.1);
     const agvBodyMat = new THREE.MeshStandardMaterial({
-      color: isDark ? 0x1b2922 : 0x26362e,
+      color: initialIsDark ? 0x1b2922 : 0x26362e,
       metalness: 0.85,
       roughness: 0.2,
     });
@@ -405,7 +512,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     agvWood.position.set(0, 0.24, 0);
     agvGroup.add(agvWood);
 
-    const agvCargo = new THREE.Mesh(boxGeo, statusMaterials[2]);
+    const agvCargo = new THREE.Mesh(boxGeo, transferMat);
     agvCargo.position.set(0, 0.62, 0);
     agvCargo.castShadow = true;
     agvCargo.userData = {
@@ -423,6 +530,22 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
     scene.add(agvGroup);
     agvRef.current = agvGroup;
+
+    // Save references to scene elements for instantaneous live theme updates
+    sceneElementsRef.current = {
+      scene,
+      renderer,
+      ambientLight,
+      mainLight,
+      telemetryLight,
+      floorMat,
+      dockMat,
+      uprightMat,
+      agvBodyMat,
+      availableMat,
+      transferMat,
+      gridHelper,
+    };
 
     // 7. Raycasting for Pallet Hover / Click / Touch Interaction
     const raycaster = new THREE.Raycaster();
@@ -510,7 +633,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
         }
 
         // Gentle ambient orbit when in isometric mode
-        if (activePreset === 'isometric') {
+        if (activePresetRef.current === 'isometric') {
           const wobble = Math.sin(elapsed * 0.15) * 0.8;
           camera.position.x = 18 + wobble;
         }
@@ -542,12 +665,13 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
       observer.disconnect();
       cancelAnimationFrame(animationFrameId);
       document.body.style.cursor = 'default';
+      sceneElementsRef.current = null;
       if (container && renderer.domElement) {
         container.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
-  }, [activePreset]);
+  }, []); // Mounts once and handles camera presets and themes reactively
 
   return (
     <div className={`relative w-full rounded-2xl overflow-hidden border border-[#D9E1D7] dark:border-[#26362E] bg-[#F4F5EF] dark:bg-[#0B100F] shadow-xl ${className}`}>
@@ -580,9 +704,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
         </div>
 
         {/* Camera Preset Switches */}
-        <div className="pointer-events-auto inline-flex items-center gap-1 p-1 rounded-xl bg-white/90 dark:bg-[#111A17]/90 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] shadow-md text-xs">
+        <div
+          role="group"
+          aria-label="3D Warehouse Camera Perspectives"
+          className="pointer-events-auto inline-flex items-center gap-1 p-1 rounded-xl bg-white/90 dark:bg-[#111A17]/90 backdrop-blur-md border border-[#D9E1D7] dark:border-[#26362E] shadow-md text-xs"
+        >
           <button
             onClick={() => setPreset('isometric')}
+            aria-pressed={activePreset === 'isometric'}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
               activePreset === 'isometric'
                 ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/20 text-[#456B1F] dark:text-[#C6F36B] font-semibold'
@@ -593,6 +722,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
           </button>
           <button
             onClick={() => setPreset('topDown')}
+            aria-pressed={activePreset === 'topDown'}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
               activePreset === 'topDown'
                 ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/20 text-[#456B1F] dark:text-[#C6F36B] font-semibold'
@@ -603,6 +733,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
           </button>
           <button
             onClick={() => setPreset('aisle')}
+            aria-pressed={activePreset === 'aisle'}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
               activePreset === 'aisle'
                 ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/20 text-[#456B1F] dark:text-[#C6F36B] font-semibold'
@@ -613,6 +744,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
           </button>
           <button
             onClick={() => setPreset('dock')}
+            aria-pressed={activePreset === 'dock'}
             className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
               activePreset === 'dock'
                 ? 'bg-[#E9EEE6] dark:bg-[#C6F36B]/20 text-[#456B1F] dark:text-[#C6F36B] font-semibold'
@@ -673,6 +805,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+              aria-label={isAutoPlaying ? 'Pause lifecycle walkthrough' : 'Play lifecycle walkthrough'}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                 isAutoPlaying
                   ? 'bg-[#456B1F] dark:bg-[#C6F36B] text-white dark:text-[#0B100F] border-[#456B1F] dark:border-[#C6F36B]'
@@ -703,15 +836,22 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
           </span>
         </div>
 
-        {/* 6 Step Navigation Selector */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {/* 6 Step Navigation Selector — Un-truncated titles & subtitles */}
+        <div
+          role="tablist"
+          aria-label="Lifecycle Stages"
+          className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2"
+        >
           {storySteps.map((step) => {
             const isActive = step.id === activeStep;
             return (
               <button
                 key={step.id}
+                role="tab"
+                aria-selected={isActive}
+                aria-label={`Step ${step.id}: ${step.title.split('. ')[1]}`}
                 onClick={() => handleStepSelect(step.id)}
-                className={`flex flex-col text-left p-2.5 rounded-xl border transition-all cursor-pointer ${
+                className={`flex flex-col text-left p-3 rounded-xl border transition-all cursor-pointer min-h-[92px] justify-between ${
                   isActive
                     ? 'bg-white dark:bg-[#1B2922] border-[#456B1F] dark:border-[#C6F36B] shadow-xs ring-1 ring-[#456B1F]/30 dark:ring-[#C6F36B]/30'
                     : 'bg-[#F9FAF7] dark:bg-[#111A17] border-[#D9E1D7] dark:border-[#26362E] hover:border-[#657369]/40 dark:hover:border-[#9AA99E]/40'
@@ -721,12 +861,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
                   <span className="shrink-0">{step.icon}</span>
                   <span className="text-[10px] font-mono font-bold text-[#8A988E] dark:text-[#6C7D71]">0{step.id}</span>
                 </div>
-                <span className={`text-xs font-bold truncate ${isActive ? 'text-[#456B1F] dark:text-[#C6F36B]' : 'text-[#18231D] dark:text-[#EEF3EA]'}`}>
-                  {step.title.split('. ')[1]}
-                </span>
-                <span className="text-[10px] text-[#657369] dark:text-[#9AA99E] truncate mt-0.5">
-                  {step.subtitle}
-                </span>
+                <div className="space-y-0.5 flex-1 flex flex-col justify-center">
+                  <span className={`text-xs font-bold leading-tight ${isActive ? 'text-[#456B1F] dark:text-[#C6F36B]' : 'text-[#18231D] dark:text-[#EEF3EA]'}`}>
+                    {step.title.split('. ')[1]}
+                  </span>
+                  <span className="text-[10px] text-[#657369] dark:text-[#9AA99E] leading-tight line-clamp-2">
+                    {step.subtitle}
+                  </span>
+                </div>
               </button>
             );
           })}

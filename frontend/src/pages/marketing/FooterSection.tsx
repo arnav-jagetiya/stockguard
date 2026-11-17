@@ -14,7 +14,7 @@ export const FooterSection: React.FC = () => {
             <span className="font-bold text-sm tracking-wider text-[#18231D] dark:text-[#EEF3EA]">STOCKGUARD</span>
           </div>
           <p className="text-xs text-[#657369] dark:text-[#9AA99E] leading-relaxed">
-            Enterprise multi-warehouse inventory platform. Authoritative, continuous MVCC reconciliation, serialized distributed reservation locks, and immutable ledger auditability.
+            Enterprise multi-warehouse inventory platform. Authoritative scheduled &amp; on-demand MVCC reconciliation, serialized distributed reservation locks, and immutable ledger auditability.
           </p>
           <div className="text-[11px] font-mono text-[#8A988E] dark:text-[#6C7D71]">
             PostgreSQL 16 · Spring Boot 4.1.2 · Java 21 · React 19 · Vite 8
@@ -52,7 +52,7 @@ export const FooterSection: React.FC = () => {
             </div>
             <ul className="space-y-2">
               <li><Link to="/login" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B]">Operations Console</Link></li>
-              <li><Link to="/register" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B]">Create Account</Link></li>
+              <li><Link to="/login?demo=true" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B]">Explore Live Demo</Link></li>
               <li><a href="#storytelling" className="hover:text-[#456B1F] dark:hover:text-[#C6F36B]">Storytelling Lab</a></li>
               <li><span className="text-[#456B1F] dark:text-[#C6F36B] flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#456B1F] dark:bg-[#C6F36B] animate-pulse" /> All Systems Nominal</span></li>
             </ul>

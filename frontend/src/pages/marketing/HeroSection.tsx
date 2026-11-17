@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
-import { ArrowRight, Terminal, CheckCircle2, ShieldCheck, Cpu, Sparkles } from 'lucide-react';
+import { Terminal, CheckCircle2, ShieldCheck, Cpu, Sparkles } from 'lucide-react';
 
 const WarehouseVisualizer = lazy(() =>
   import('../../components/3d/WarehouseVisualizer').then((m) => ({ default: m.WarehouseVisualizer }))
@@ -42,21 +42,16 @@ export const HeroSection: React.FC = () => {
               Explore Live Demo
             </Button>
           </Link>
-          <Link to="/register">
-            <Button size="lg" variant="secondary" icon={<ArrowRight className="w-4 h-4" />}>
-              Create Organization
+          <a href="#storytelling">
+            <Button variant="secondary" size="lg" icon={<Terminal className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />}>
+              Storytelling Lab
             </Button>
-          </Link>
+          </a>
           <Link to="/login">
             <Button variant="ghost" size="lg">
               Sign In
             </Button>
           </Link>
-          <a href="#storytelling">
-            <Button variant="ghost" size="lg" icon={<Terminal className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />}>
-              Storytelling Lab
-            </Button>
-          </a>
         </div>
 
         {/* Industrial Guarantees Trust Badges */}
