@@ -68,7 +68,7 @@ export const OrdersPage: React.FC = () => {
       setOrders(orderList);
       setProducts(prodList);
       if (items.length === 0 && prodList.length > 0) {
-        setItems([{ productId: prodList[0].id, quantity: 1, unitPrice: prodList[0].price || 10 }]);
+        setItems([{ productId: prodList[0].id, quantity: 1, unitPrice: 10.0 }]);
       }
     } catch (err: unknown) {
       if (err instanceof Error) toast.error(err.message);
@@ -169,7 +169,7 @@ export const OrdersPage: React.FC = () => {
     if (products.length === 0) return;
     setItems((prev) => [
       ...prev,
-      { productId: products[0].id, quantity: 1, unitPrice: products[0].price || 10 },
+      { productId: products[0].id, quantity: 1, unitPrice: 10.0 },
     ]);
   };
 

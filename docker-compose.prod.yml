@@ -1,24 +1,54 @@
+# ==============================================================================
+# STOCKGUARD — Production Docker Compose Stack
+# Strict Three-Network Isolation Architecture (ADR-014)
+# ==============================================================================
+
 services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 Database
+  # Connected exclusively to isolated internal network: stockguard-app-db
+  # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: stockguard-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-stockguard}
-      POSTGRES_USER: ${DB_USER:-stockguard}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-stockguard}
+      POSTGRES_DB: ${POSTGRES_DB:-stockguard}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      APP_DB_USER: ${APP_DB_USER:-stockguard_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      OWNER_DB_USER: ${OWNER_DB_USER:-stockguard_owner}
+      OWNER_DB_PASSWORD: ${OWNER_DB_PASSWORD}
     volumes:
       - stockguard-postgres-data:/var/lib/postgresql/data
       - ./backend/init-db:/docker-entrypoint-initdb.d:ro
     networks:
       - stockguard-app-db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-stockguard} -d ${DB_NAME:-stockguard}"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-stockguard}"]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 1024M
 
+  # ----------------------------------------------------------------------------
+  # 2. Spring Boot 3 Backend Application
+  # Connects to:
+  # - stockguard-public (for Nginx reverse proxy to forward /api/ requests)
+  # - stockguard-app-db (to communicate with PostgreSQL database)
+  # - stockguard-monitoring (for Prometheus to scrape /actuator/prometheus)
+  # Ports are NOT mapped directly to the public host.
+  # ----------------------------------------------------------------------------
   stockguard-app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     image: stockguard/backend:latest
     container_name: stockguard-app
     restart: unless-stopped
@@ -27,30 +57,79 @@ services:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-stockguard}
-      SPRING_DATASOURCE_USERNAME: stockguard_app
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/stockguard?sslmode=disable}
+      SPRING_DATASOURCE_USERNAME: ${APP_DB_USER:-stockguard_app}
       SPRING_DATASOURCE_PASSWORD: ${APP_DB_PASSWORD}
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-stockguard}
-      FLYWAY_USER: stockguard_owner
+      FLYWAY_URL: ${FLYWAY_URL:-jdbc:postgresql://postgres:5432/stockguard?sslmode=disable}
+      FLYWAY_USER: ${OWNER_DB_USER:-stockguard_owner}
       FLYWAY_PASSWORD: ${OWNER_DB_PASSWORD}
       STOCKGUARD_JWT_ACTIVE_SECRET: ${STOCKGUARD_JWT_ACTIVE_SECRET}
+      STOCKGUARD_JWT_ACTIVE_KEY_ID: ${STOCKGUARD_JWT_ACTIVE_KEY_ID:-sg-prod-2026-v1}
+      STOCKGUARD_CORS_ALLOWED_ORIGINS: ${STOCKGUARD_CORS_ALLOWED_ORIGINS:-https://app.stockguard.com}
       MANAGEMENT_PORT: 8081
       STOCKGUARD_MONITORING_SCRAPER_USERNAME: ${STOCKGUARD_MONITORING_SCRAPER_USERNAME:-stockguard-prometheus}
       STOCKGUARD_MONITORING_SCRAPER_PASSWORD: ${PROMETHEUS_SCRAPER_SECRET}
-    ports:
-      - "8080:8080"
+      STOCKGUARD_TRUSTED_PROXIES: ${STOCKGUARD_TRUSTED_PROXIES:-172.28.0.0/16,127.0.0.1}
+      STOCKGUARD_REGISTRATION_ENABLED: ${STOCKGUARD_REGISTRATION_ENABLED:-false}
+      STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:-false}
     expose:
+      - "8080"
       - "8081"
     networks:
       - stockguard-public
       - stockguard-app-db
       - stockguard-monitoring
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health/liveness || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8081/actuator/health/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.00"
+          memory: 1536M
+
+  # ----------------------------------------------------------------------------
+  # 3. Nginx Reverse Proxy & Frontend SPA Server
+  # Serves compiled React assets, handles TLS termination, applies security headers,
+  # and reverse proxies /api/ traffic to Spring Boot.
+  # ----------------------------------------------------------------------------
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: stockguard/frontend:latest
+    container_name: stockguard-web
+    restart: unless-stopped
+    depends_on:
+      stockguard-app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - stockguard-public
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
 
+  # ----------------------------------------------------------------------------
+  # 4. Prometheus Monitoring Engine
+  # Scrapes actuator metrics over internal monitoring network: stockguard-monitoring
+  # Never exposed to the public internet or reverse proxy.
+  # ----------------------------------------------------------------------------
   prometheus:
     image: prom/prometheus:v2.51.0
     container_name: stockguard-prometheus
@@ -59,10 +138,19 @@ services:
       - stockguard-app
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - stockguard-prometheus-data:/prometheus
     networks:
       - stockguard-monitoring
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
 
+# ------------------------------------------------------------------------------
+# Isolated Network Topology
+# ------------------------------------------------------------------------------
 networks:
   stockguard-public:
     name: stockguard-public
@@ -76,6 +164,9 @@ networks:
     driver: bridge
     internal: true
 
+# ------------------------------------------------------------------------------
+# Persistent Volume Storage
+# ------------------------------------------------------------------------------
 volumes:
   stockguard-postgres-data:
     name: stockguard-postgres-data

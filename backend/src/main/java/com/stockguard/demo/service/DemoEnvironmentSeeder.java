@@ -136,13 +136,19 @@ public class DemoEnvironmentSeeder {
 
         String orgName = properties.getOrgName() != null ? properties.getOrgName().trim() : "Acme Industrial Supply Pvt. Ltd.";
 
-        // Idempotency check: if organization exists and has completed catalog seeding, skip to prevent mutations
+        // Idempotency check: verify both entity existence and the DEMO_SEED_COMPLETED audit marker to ensure safe recovery
         Optional<Organization> existingOrgOpt = organizationRepository.findByName(orgName);
         if (existingOrgOpt.isPresent()) {
             Organization existingOrg = existingOrgOpt.get();
             int existingProducts = productRepository.findAllByOrganizationIdOrderByNormalizedSkuAsc(existingOrg.getId()).size();
-            if (existingProducts >= 25) {
-                log.info("Demo environment for organization '{}' (id: {}) is already fully seeded (found {} products). Skipping.",
+            Integer seedMarkerCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM audit_logs WHERE organization_id = ? AND action = 'DEMO_SEED_COMPLETED'",
+                    Integer.class,
+                    existingOrg.getId()
+            );
+            boolean hasCompletedMarker = seedMarkerCount != null && seedMarkerCount > 0;
+            if (existingProducts >= 25 && hasCompletedMarker) {
+                log.info("Demo environment for organization '{}' (id: {}) is already fully seeded (found {} products and DEMO_SEED_COMPLETED audit marker). Skipping.",
                         orgName, existingOrg.getId(), existingProducts);
                 return DemoSeedResult.alreadySeeded(existingOrg.getId(), orgName);
             }

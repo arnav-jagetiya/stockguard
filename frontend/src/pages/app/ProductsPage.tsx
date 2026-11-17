@@ -39,8 +39,6 @@ export const ProductsPage: React.FC = () => {
   const [formSku, setFormSku] = useState('');
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [formPrice, setFormPrice] = useState('0.00');
-  const [formCurrency, setFormCurrency] = useState('USD');
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchProducts = async () => {
@@ -69,8 +67,6 @@ export const ProductsPage: React.FC = () => {
         sku: formSku.trim(),
         name: formName.trim(),
         description: formDesc.trim() || undefined,
-        price: parseFloat(formPrice) || 0,
-        currency: formCurrency.toUpperCase(),
       });
       setIsCreateOpen(false);
       resetForm();
@@ -92,8 +88,6 @@ export const ProductsPage: React.FC = () => {
       await updateProductApi(editingProduct.id, {
         name: formName.trim(),
         description: formDesc.trim() || undefined,
-        price: parseFloat(formPrice) || 0,
-        currency: formCurrency.toUpperCase(),
       });
       toast.success('Product updated', `Product ${editingProduct.sku} has been updated.`);
       setEditingProduct(null);
@@ -125,8 +119,6 @@ export const ProductsPage: React.FC = () => {
     setEditingProduct(p);
     setFormName(p.name);
     setFormDesc(p.description || '');
-    setFormPrice(p.price.toString());
-    setFormCurrency(p.currency);
     setFormError(null);
   };
 
@@ -134,8 +126,6 @@ export const ProductsPage: React.FC = () => {
     setFormSku('');
     setFormName('');
     setFormDesc('');
-    setFormPrice('0.00');
-    setFormCurrency('USD');
     setFormError(null);
   };
 
@@ -213,7 +203,6 @@ export const ProductsPage: React.FC = () => {
             <tr>
               <TableHeader>SKU Code</TableHeader>
               <TableHeader>Product Name</TableHeader>
-              <TableHeader>Price / Unit</TableHeader>
               <TableHeader>Status</TableHeader>
               <TableHeader>Created</TableHeader>
               {canManage && <TableHeader className="text-right">Actions</TableHeader>}
@@ -226,9 +215,6 @@ export const ProductsPage: React.FC = () => {
                 <TableCell>
                   <p className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">{p.name}</p>
                   {p.description && <p className="text-[11px] text-[#657369] dark:text-[#9AA99E] truncate max-w-sm">{p.description}</p>}
-                </TableCell>
-                <TableCell className="font-mono font-semibold">
-                  {p.currency} {Number(p.price).toFixed(2)}
                 </TableCell>
                 <TableCell>
                   {p.active ? (
@@ -299,23 +285,6 @@ export const ProductsPage: React.FC = () => {
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
           />
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Unit Price"
-              type="number"
-              step="0.01"
-              value={formPrice}
-              onChange={(e) => setFormPrice(e.target.value)}
-              required
-            />
-            <Input
-              label="Currency"
-              placeholder="USD"
-              value={formCurrency}
-              onChange={(e) => setFormCurrency(e.target.value.toUpperCase())}
-              required
-            />
-          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)}>
               Cancel
@@ -351,22 +320,6 @@ export const ProductsPage: React.FC = () => {
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
           />
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="Unit Price"
-              type="number"
-              step="0.01"
-              value={formPrice}
-              onChange={(e) => setFormPrice(e.target.value)}
-              required
-            />
-            <Input
-              label="Currency"
-              value={formCurrency}
-              onChange={(e) => setFormCurrency(e.target.value.toUpperCase())}
-              required
-            />
-          </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => setEditingProduct(null)}>
               Cancel

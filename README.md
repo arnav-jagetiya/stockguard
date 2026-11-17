@@ -25,13 +25,13 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 | **Milestone 1** | Scaffolding, Spring Boot 4.1.2, Java 21, Maven, Testcontainers | ✅ Complete |
 | **Milestone 2** | Database Schema, V1 Core Tables, V2 Append-Only Triggers, V3 Auth Schema | ✅ Complete |
 | **Milestone 3** | Identity Persistence, Organization Membership, Last-Admin Protection | ✅ Complete |
-| **Milestone 4 — Phase 1** | JWT Signing, Key Rotation, Constant-Time Claims Verification | ✅ Complete |
-| **Milestone 4 — Phase 2** | Session Lifecycle, Refresh Rotation, Replay Detection & Revocation | ✅ Complete |
-| **Milestone 4 — Phase 3** | Auth REST APIs, CSRF Defense, CORS, Rate Limiting, 23-Permission RBAC | ✅ Complete |
-| **Milestone 4 — Phase 4A** | Security Hardening, Production Config, Probes, Global Error Handling | ✅ Complete |
-| **Milestone 4 — Phase 4B** | Final Regression, Release Readiness & Baseline Audit | ✅ Complete |
-| **Milestone 5A** | Product Catalog, Warehouse Management & Core Inventory Engine | ✅ Complete |
-| **Milestone 5B** | Advanced Inventory Operations (Multi-Item Inter-Warehouse Transfers) | ✅ Complete |
+| **Milestone 4** | JWT Signing, Key Rotation, Session Lifecycle, RBAC, Security Hardening | ✅ Complete |
+| **Milestone 5** | Product Catalog, Warehouses, Core Inventory & Inter-Facility Transfers | ✅ Complete |
+| **Milestone 6** | Order Engine, Line Items, Status Progression & Cancellation | ✅ Complete |
+| **Milestone 7** | Two-Phase Reservations, Allocation Invariants & Background Expiration | ✅ Complete |
+| **Milestone 8** | MVCC Snapshot Reconciliation, Discrepancy Triage & Decision Audit | ✅ Complete |
+| **Milestone 9A** | Realistic Demo Environment (Acme Industrial Supply Pvt. Ltd.) | ✅ Complete |
+| **Milestone 9B** | Production Readiness, Docker Stack, SLIs, Backup/Recovery & Release Runbook | ✅ Complete |
 
 ---
 
@@ -310,6 +310,38 @@ STOCKGUARD supports immediate, atomic multi-item inter-warehouse inventory trans
   12. **Pre-Commit Integrity Verification**: Verifies pair completeness ($1 \text{ OUT} + 1 \text{ IN}$ per item), matching warehouses, correct products, opposite deltas, and zero net delta before transaction commit.
   13. **Distributed Idempotency & Concurrency Retries**: Integrates with `IdempotencyService`. Concurrent identical requests wait for in-flight execution and replay the committed response; payload mismatches return HTTP 409 Conflict. If transient PostgreSQL deadlocks or serialization failures occur (`40P01`, `40001`, `55P03`), the service automatically retries in a fresh transaction with jittered backoff.
   14. **Deadlock Limitations Notice**: Canonical locking establishes deterministic acquisition order for the specified warehouse, product and inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not guarantee system-wide deadlock freedom. Eligible transient database failures are handled through fresh-transaction retries.
+
+---
+
+## Production Deployment & Operational Architecture (Milestone 9B)
+
+STOCKGUARD provides a fully automated, production-hardened Docker Compose deployment topology enforcing strict three-network isolation (ADR-014), dual-role least privilege (ADR-002), and continuous Prometheus observability.
+
+### Quick Start Production Stack
+```bash
+# 1. Copy and populate production secrets template
+cp .env.example .env
+# Edit .env with secure random secrets generated via openssl
+
+# 2. Build and launch the isolated production containers
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 3. Verify container health status
+docker compose -f docker-compose.prod.yml ps
+```
+
+### Comprehensive Deployment & Operational Runbooks
+Detailed architectural and operational documentation is maintained in [`docs/deployment/`](docs/deployment/):
+
+* [**Production Architecture Specification**](docs/deployment/production-architecture.md): Topology diagrams, network isolation boundaries, container resource limits.
+* [**Environment Configuration Matrix**](docs/deployment/environment-configuration.md): Complete environment variable guide, fail-fast rules, secret generation.
+* [**Docker Deployment Runbook**](docs/deployment/docker-deployment.md): Step-by-step deployment guide, first-time boot, rolling upgrades.
+* [**Domain & TLS/HTTPS Provisioning**](docs/deployment/domain-and-https.md): DNS setup, Let's Encrypt / Certbot automated renewals, commercial TLS certs.
+* [**Database Backup, Restoration & DR**](docs/deployment/database-backup-and-restore.md): `pg_dump -Fc` scripts, non-destructive restore test, RPO (1h) and RTO (15m).
+* [**Prometheus Metrics, SLIs & Alerting**](docs/deployment/monitoring-and-alerting.md): 14 Micrometer metrics catalog, SLI alert expressions, Alertmanager routing.
+* [**Production Security Checklist**](docs/deployment/security-checklist.md): Pre-deployment gate, OWASP Top 10 mitigations, secret rotation runbook.
+* [**Production Release Runbook**](docs/deployment/release-runbook.md): Release staging, verification checklist, smoke testing, rollback protocol.
+* [**Disaster Recovery Plan**](docs/deployment/disaster-recovery.md): Business continuity, server loss, secret compromise, quarterly drill protocol.
 
 ---
 

@@ -1,0 +1,83 @@
+# ==============================================================================
+# STOCKGUARD — Prometheus Alerting Rules & SLI Thresholds
+# ==============================================================================
+
+groups:
+  - name: stockguard_platform_alerts
+    rules:
+      # 1. Service Availability (App Down)
+      - alert: StockGuardServiceDown
+        expr: up{job="stockguard"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: application
+        annotations:
+          summary: "StockGuard backend instance is down"
+          description: "Spring Boot backend instance has been unreachable on management port 8081 for > 1 minute."
+
+      # 2. HTTP 5xx Server Error Rate (> 1% over 5m)
+      - alert: HighHttp5xxErrorRate
+        expr: (sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m]))) * 100 > 1.0
+        for: 3m
+        labels:
+          severity: critical
+          tier: application
+        annotations:
+          summary: "High HTTP 5xx error rate (> 1%)"
+          description: "Application is returning 5xx server errors for more than 1% of total requests over the last 5 minutes."
+
+      # 3. P95 Request Latency (> 500ms over 5m)
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket[5m])) by (le)) > 0.500
+        for: 5m
+        labels:
+          severity: warning
+          tier: performance
+        annotations:
+          summary: "High P95 HTTP request latency (> 500ms)"
+          description: "95th percentile request latency exceeds 500ms over the trailing 5-minute window."
+
+      # 4. Database Connection Pool Saturation (> 80% active connections)
+      - alert: HikariPoolSaturation
+        expr: (hikaricp_connections_active{pool="StockGuardProdHikariPool"} / hikaricp_connections_max{pool="StockGuardProdHikariPool"}) * 100 > 80.0
+        for: 2m
+        labels:
+          severity: warning
+          tier: database
+        annotations:
+          summary: "HikariCP database connection pool near saturation (> 80%)"
+          description: "Database connection pool utilization has exceeded 80% of configured maximum pool size for > 2 minutes."
+
+      # 5. JVM Memory Pressure (> 85% heap used)
+      - alert: JvmHeapMemoryPressure
+        expr: (jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}) * 100 > 85.0
+        for: 3m
+        labels:
+          severity: warning
+          tier: runtime
+        annotations:
+          summary: "JVM Heap Memory Pressure (> 85%)"
+          description: "JVM Heap utilization exceeds 85% for > 3 minutes. Potential memory leak or undersized heap allocation."
+
+      # 6. Inventory Reconciliation Discrepancies Detected
+      - alert: ReconciliationDiscrepancyDetected
+        expr: stockguard_reconciliation_discrepant_balances_total > 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: inventory-integrity
+        annotations:
+          summary: "Inventory reconciliation discrepancy detected"
+          description: "Automated MVCC reconciliation sweep detected a balance mismatch between physical on-hand inventory and the double-entry transaction ledger."
+
+      # 7. Reservation Expiration Job Failure
+      - alert: ReservationExpirationFailed
+        expr: rate(stockguard_reservation_expiration_failures_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          tier: inventory-lifecycle
+        annotations:
+          summary: "Reservation expiration scheduled background task failed"
+          description: "The background reservation expiration worker encountered an unhandled failure during its expiration sweep."

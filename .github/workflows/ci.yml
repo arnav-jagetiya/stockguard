@@ -1,0 +1,115 @@
+# ==============================================================================
+# STOCKGUARD — Continuous Integration & Quality Verification Pipeline
+# ==============================================================================
+
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. Backend Verification (Java 21 + Spring Boot + Testcontainers)
+  # ----------------------------------------------------------------------------
+  backend:
+    name: Backend Build & Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "maven"
+
+      - name: Grant execute permission for Maven wrapper
+        run: chmod +x mvnw
+
+      - name: Run Backend Clean Verification & Test Suite
+        run: ./mvnw clean verify -B
+        env:
+          SPRING_PROFILES_ACTIVE: test
+
+  # ----------------------------------------------------------------------------
+  # 2. Frontend Verification (Node 22 + TypeScript + Vitest + Vite)
+  # ----------------------------------------------------------------------------
+  frontend:
+    name: Frontend Lint, Test & Bundle
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Linter (oxlint)
+        run: npx oxlint
+
+      - name: Run Unit & Component Tests (Vitest)
+        run: npm test
+
+      - name: Run Production Bundle Build (TypeScript + Vite)
+        run: npm run build
+
+  # ----------------------------------------------------------------------------
+  # 3. Container & Compose Verification
+  # ----------------------------------------------------------------------------
+  docker:
+    name: Docker Images & Compose Topology Validation
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Backend Dockerfile Build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: stockguard/backend:ci-test
+
+      - name: Validate Frontend Dockerfile Build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          tags: stockguard/frontend:ci-test
+
+      - name: Validate Production Docker Compose Specification
+        run: |
+          docker compose -f docker-compose.prod.yml config --quiet
+        env:
+          POSTGRES_PASSWORD: ci_test_postgres_pass
+          APP_DB_PASSWORD: ci_test_app_pass
+          OWNER_DB_PASSWORD: ci_test_owner_pass
+          STOCKGUARD_JWT_ACTIVE_SECRET: Y2ktdGVzdC1iYXNlNjQtc2VjcmV0LW1pbi0yNTYtYml0cy12YWxpZGF0aW9uCg==
+          PROMETHEUS_SCRAPER_SECRET: ci_test_prometheus_pass

@@ -97,6 +97,12 @@ temp/
 *~
 
 # ===========================
+# Backups and Database Dumps
+# ===========================
+backups/
+*.dump
+
+# ===========================
 # Generated / Build Artifacts
 # ===========================
 *.generated.*

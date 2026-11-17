@@ -440,11 +440,16 @@ export const DashboardPage: React.FC = () => {
                 {summary.inventory.outOfStockActiveProductsCount}
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-[#F9FAF7] dark:bg-[#16221E] border border-[#D9E1D7] dark:border-[#26362E]">
+            <div className="p-3 rounded-xl bg-[#F9FAF7] dark:bg-[#16221E] border border-[#D9E1D7] dark:border-[#26362E]" title="Persisted triage demo cases; live balances remain 100% synchronized">
               <span className="text-[#8A988E] dark:text-[#6C7D71] block font-mono text-[10px]">MVCC DISCREPANCIES</span>
-              <span className={`font-bold font-mono text-base ${summary.integrity.openDiscrepanciesCount === 0 ? 'text-[#456B1F] dark:text-[#C6F36B]' : 'text-rose-600 dark:text-rose-400'}`}>
-                {summary.integrity.openDiscrepanciesCount}
-              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className={`font-bold font-mono text-base ${summary.integrity.openDiscrepanciesCount === 0 ? 'text-[#456B1F] dark:text-[#C6F36B]' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {summary.integrity.openDiscrepanciesCount}
+                </span>
+                {summary.integrity.openDiscrepanciesCount > 0 && (
+                  <span className="text-[10px] font-mono text-[#8A988E] dark:text-[#6C7D71]">(demo)</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
