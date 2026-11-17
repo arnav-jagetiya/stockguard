@@ -1,7 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/common/Button';
-import { ArrowRight, Terminal, CheckCircle2, ShieldCheck, Cpu } from 'lucide-react';
+import { ArrowRight, Terminal, CheckCircle2, ShieldCheck, Cpu, Sparkles } from 'lucide-react';
 
 const WarehouseVisualizer = lazy(() =>
   import('../../components/3d/WarehouseVisualizer').then((m) => ({ default: m.WarehouseVisualizer }))
@@ -37,14 +37,19 @@ export const HeroSection: React.FC = () => {
 
         {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+          <Link to="/login?demo=true">
+            <Button size="lg" variant="primary" icon={<Sparkles className="w-4 h-4" />}>
+              Explore Live Demo
+            </Button>
+          </Link>
           <Link to="/register">
-            <Button size="lg" variant="primary" icon={<ArrowRight className="w-4 h-4" />}>
-              Create Your Organization
+            <Button size="lg" variant="secondary" icon={<ArrowRight className="w-4 h-4" />}>
+              Create Organization
             </Button>
           </Link>
           <Link to="/login">
-            <Button variant="secondary" size="lg">
-              Explore the Platform
+            <Button variant="ghost" size="lg">
+              Sign In
             </Button>
           </Link>
           <a href="#storytelling">

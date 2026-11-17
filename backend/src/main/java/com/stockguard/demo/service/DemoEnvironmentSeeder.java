@@ -227,7 +227,7 @@ public class DemoEnvironmentSeeder {
         }
         users.put("ADMIN", admin);
 
-        // 7 Synthetic Team Members
+        // 8 Synthetic Team Members (including public demo visitor)
         record SyntheticUserSpec(String key, String name, String email, Role role) {}
         List<SyntheticUserSpec> teamSpecs = List.of(
                 new SyntheticUserSpec("MANAGER_1", "Priya Sharma", "priya.sharma@acme-industrial.example.in", Role.MANAGER),
@@ -236,13 +236,17 @@ public class DemoEnvironmentSeeder {
                 new SyntheticUserSpec("OPERATOR_2", "Sunita Rao", "sunita.rao@acme-industrial.example.in", Role.OPERATOR),
                 new SyntheticUserSpec("OPERATOR_3", "Vikram Singh", "vikram.singh@acme-industrial.example.in", Role.OPERATOR),
                 new SyntheticUserSpec("VIEWER_1", "Deepa Nair", "deepa.nair@acme-industrial.example.in", Role.VIEWER),
-                new SyntheticUserSpec("VIEWER_2", "Manoj Verma", "manoj.verma@acme-industrial.example.in", Role.VIEWER)
+                new SyntheticUserSpec("VIEWER_2", "Manoj Verma", "manoj.verma@acme-industrial.example.in", Role.VIEWER),
+                new SyntheticUserSpec("DEMO_VISITOR", "Demo Visitor", "demo.visitor@stockguard.dev", Role.VIEWER)
         );
 
         for (SyntheticUserSpec spec : teamSpecs) {
             String normEmail = User.normalizeEmail(spec.email());
             User user = userRepository.findByNormalizedEmail(normEmail).orElseGet(() -> {
-                String securePass = passwordEncoder.encode("RedactedDemoSecret2026#" + spec.key());
+                String rawPass = "DEMO_VISITOR".equals(spec.key())
+                        ? UUID.randomUUID().toString() + UUID.randomUUID().toString()
+                        : "RedactedDemoSecret2026#" + spec.key();
+                String securePass = passwordEncoder.encode(rawPass);
                 User newUser = User.create(spec.email(), securePass);
                 return userRepository.saveAndFlush(newUser);
             });

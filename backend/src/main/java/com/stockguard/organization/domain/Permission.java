@@ -11,6 +11,7 @@ public enum Permission {
     INVENTORY_VIEW("inventory:view"),
     INVENTORY_RECEIVE("inventory:receive"),
     INVENTORY_ADJUST("inventory:adjust"),
+    INVENTORY_DISCREPANCY_VIEW("inventory:discrepancy:view"),
     INVENTORY_RECONCILE("inventory:reconcile"),
     PRODUCT_VIEW("product:view"),
     PRODUCT_MANAGE("product:manage"),

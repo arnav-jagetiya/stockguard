@@ -72,6 +72,7 @@ services:
       STOCKGUARD_TRUSTED_PROXIES: ${STOCKGUARD_TRUSTED_PROXIES:-172.28.0.0/16,127.0.0.1}
       STOCKGUARD_REGISTRATION_ENABLED: ${STOCKGUARD_REGISTRATION_ENABLED:-false}
       STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:-false}
+      STOCKGUARD_PUBLIC_DEMO_ENABLED: ${STOCKGUARD_PUBLIC_DEMO_ENABLED:-false}
     expose:
       - "8080"
       - "8081"
@@ -140,6 +141,9 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - stockguard-prometheus-data:/prometheus
+    secrets:
+      - source: prometheus_scraper_secret
+        target: /etc/prometheus/scraper_password
     networks:
       - stockguard-monitoring
     deploy:
@@ -172,3 +176,10 @@ volumes:
     name: stockguard-postgres-data
   stockguard-prometheus-data:
     name: stockguard-prometheus-data
+
+# ------------------------------------------------------------------------------
+# Secret Management
+# ------------------------------------------------------------------------------
+secrets:
+  prometheus_scraper_secret:
+    environment: "PROMETHEUS_SCRAPER_SECRET"

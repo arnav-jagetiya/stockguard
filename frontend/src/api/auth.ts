@@ -47,3 +47,9 @@ export interface DemoCredentialsResponse {
 export async function getDemoCredentialsApi(): Promise<DemoCredentialsResponse> {
   return apiClient<DemoCredentialsResponse>('/api/auth/demo-credentials');
 }
+
+export async function demoLoginApi(): Promise<AuthTokenResponse> {
+  return apiClient<AuthTokenResponse>('/api/auth/demo-login', {
+    method: 'POST',
+  });
+}

@@ -133,9 +133,9 @@ class DemoSeederIntegrationTest {
         assertThat(orgOpt).isPresent();
         assertThat(orgOpt.get().getName()).isEqualTo("Acme Industrial Supply Pvt. Ltd.");
 
-        // 2. Team verification (1 ADMIN, 2 MANAGERS, 3 OPERATORS, 2 VIEWERS = 8 total)
+        // 2. Team verification (1 ADMIN, 2 MANAGERS, 3 OPERATORS, 3 VIEWERS = 9 total including public demo visitor)
         List<OrganizationMembership> memberships = membershipRepository.findAllByOrganizationIdAndActiveTrue(orgId);
-        assertThat(memberships).hasSize(8);
+        assertThat(memberships).hasSize(9);
 
         long adminCount = memberships.stream().filter(m -> m.getRole() == Role.ADMIN).count();
         long managerCount = memberships.stream().filter(m -> m.getRole() == Role.MANAGER).count();
@@ -145,7 +145,7 @@ class DemoSeederIntegrationTest {
         assertThat(adminCount).isEqualTo(1);
         assertThat(managerCount).isEqualTo(2);
         assertThat(operatorCount).isEqualTo(3);
-        assertThat(viewerCount).isEqualTo(2);
+        assertThat(viewerCount).isEqualTo(3);
 
         // 3. Warehouse verification (3 facilities)
         List<Warehouse> warehouses = warehouseRepository.searchWarehouses(orgId, null, false);

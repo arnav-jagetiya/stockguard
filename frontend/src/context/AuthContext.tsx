@@ -6,6 +6,7 @@ import {
   logoutApi,
   refreshApi,
   switchOrgApi,
+  demoLoginApi,
 } from '../api/auth';
 import {
   setAuthToken,
@@ -21,9 +22,11 @@ export interface AuthContextType {
   role: Role | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isDemoVisitor: boolean;
   login: (email: string, pass: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
+  loginDemoVisitor: () => Promise<void>;
   switchOrganization: (orgId: string) => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
@@ -159,6 +162,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginDemoVisitor = async () => {
+    setIsLoading(true);
+    try {
+      const res = await demoLoginApi();
+      const orgs = res.availableOrganizations || res.organizations || [];
+      setAuthToken(res.accessToken);
+      setUser(res.user);
+      setOrganizations(orgs);
+
+      const savedOrgId = localStorage.getItem(ACTIVE_ORG_STORAGE_KEY);
+      const acmeOrg =
+        orgs.find((o) => o.name.toLowerCase().includes('acme')) ||
+        orgs.find((o) => o.id === savedOrgId) ||
+        orgs[0];
+
+      if (acmeOrg) {
+        await applyOrganization(acmeOrg);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const switchOrganization = async (orgId: string) => {
     const org = organizations.find((o) => o.id === orgId);
     if (!org) return;
@@ -171,6 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return permissions.has(permission);
   };
 
+  const isDemoVisitor = user?.email === 'demo.visitor@stockguard.dev';
+
   return (
     <AuthContext.Provider
       value={{
@@ -181,9 +209,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: currentOrg ? currentOrg.role : null,
         isAuthenticated: !!user && !!currentOrg,
         isLoading,
+        isDemoVisitor,
         login,
         register,
         logout,
+        loginDemoVisitor,
         switchOrganization,
         hasPermission,
       }}
@@ -208,6 +238,7 @@ function getDefaultPermissionsForRole(role: Role): Set<string> {
     'inventory:view',
     'inventory:receive',
     'inventory:adjust',
+    'inventory:discrepancy:view',
     'inventory:reconcile',
     'product:view',
     'product:manage',
@@ -259,11 +290,13 @@ function getDefaultPermissionsForRole(role: Role): Set<string> {
     'dashboard:view',
     'reports:view',
     'inventory:view',
+    'inventory:discrepancy:view',
     'product:view',
     'warehouse:view',
     'transfer:view',
     'order:view',
     'reservation:view',
     'membership:view',
+    'audit:view',
   ]);
 }

@@ -19,7 +19,10 @@ Every item in this checklist must be verified before declaring production readin
 - [x] **Demo Seeder Disabled:** `STOCKGUARD_DEMO_SEED_ENABLED=false` is enforced in production profile.
 - [x] **Secure Cookie Flags:** Refresh token cookie has `HttpOnly=true`, `Secure=true`, `SameSite=Strict`, `Path=/api/auth`.
 - [x] **Token Family Reuse Detection:** Refresh token reuse detection invalidates the entire session family and logs a security event.
-- [x] **Rate Limiting Active:** Rate limiting is enforced on `/api/auth/login` (5/min) and `/api/auth/refresh` (20/min).
+- [x] **Rate Limiting Active:** Rate limiting is enforced on `/api/auth/login` (5/min), `/api/auth/refresh` (20/min), and `/api/auth/demo-login` (10/min).
+- [x] **Public Demo Mode Safeguards:** Controlled via `STOCKGUARD_PUBLIC_DEMO_ENABLED` (default false in prod); demo visitor has an unguessable BCrypt password hash; server-side `DemoModeMutationGuardFilter` blocks all mutation HTTP methods (`POST`, `PUT`, `PATCH`, `DELETE`) with `DEMO_MODE_MUTATION_PROHIBITED`.
+- [x] **Prometheus Scraper Authentication:** Injected securely via Docker Compose secret and read from `/etc/prometheus/scraper_password` (`password_file`), avoiding unexpanded YAML variables.
+- [x] **Database Restore Script Safety:** `scripts/restore-db.sh` and `scripts/restore-db.ps1` require a mandatory database parameter with strict regex validation, and block accidental overwrites of existing production databases without explicit `--force` / `-Force` confirmation.
 - [x] **Container Non-Root Execution:** Backend runs as unprivileged user `stockguard` (UID 10001); Nginx runs as `nginx`.
 - [x] **Security Headers Active:** HSTS, CSP, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, and Permissions-Policy are returned on all responses.
 - [x] **Immutable Ledger Triggers:** PostgreSQL database triggers prohibit UPDATE, DELETE, or TRUNCATE on `inventory_ledger_entries` and `audit_logs`.

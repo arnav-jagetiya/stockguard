@@ -15,6 +15,6 @@ scrape_configs:
     scrape_interval: 15s
     basic_auth:
       username: "stockguard-prometheus"
-      password: "${PROMETHEUS_SCRAPER_SECRET:-dev-scrape-pass}"
+      password_file: "/etc/prometheus/scraper_password"
     static_configs:
       - targets: ["stockguard-app:8081"]

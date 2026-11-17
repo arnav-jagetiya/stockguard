@@ -155,4 +155,29 @@ class RateLimitingFilterTest {
         String resolved = filter.resolveClientIp(request);
         assertThat(resolved).isEqualTo("192.168.1.1");
     }
+
+    @Test
+    @DisplayName("Demo login requests exceeding threshold receive 429 Too Many Requests")
+    void demoLoginExceedingThresholdReceives429() throws Exception {
+        securityProperties.getRateLimit().setDemoLoginPermitsPerMinute(2);
+        AtomicInteger invocationCount = new AtomicInteger(0);
+        FilterChain filterChain = (req, res) -> invocationCount.incrementAndGet();
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/demo-login");
+            request.setRemoteAddr("10.0.0.1");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, filterChain);
+            assertThat(response.getStatus()).isEqualTo(HttpServletResponse.SC_OK);
+        }
+
+        MockHttpServletRequest blockedRequest = new MockHttpServletRequest("POST", "/api/auth/demo-login");
+        blockedRequest.setRemoteAddr("10.0.0.1");
+        MockHttpServletResponse blockedResponse = new MockHttpServletResponse();
+        filter.doFilter(blockedRequest, blockedResponse, filterChain);
+
+        assertThat(blockedResponse.getStatus()).isEqualTo(429);
+        assertThat(blockedResponse.getHeader("Retry-After")).isEqualTo("60");
+        assertThat(invocationCount.get()).isEqualTo(2);
+    }
 }

@@ -91,6 +91,10 @@ stockguard:
       allow-password-reset: false
     registration:
       enabled: ${STOCKGUARD_REGISTRATION_ENABLED:false}
+    public-demo:
+      enabled: ${STOCKGUARD_PUBLIC_DEMO_ENABLED:false}
+      demo-email: ${STOCKGUARD_PUBLIC_DEMO_EMAIL:demo.visitor@stockguard.dev}
+      demo-org-name: ${STOCKGUARD_PUBLIC_DEMO_ORG_NAME:Acme Industrial Supply Pvt. Ltd.}
   demo:
     seed-enabled: false
 

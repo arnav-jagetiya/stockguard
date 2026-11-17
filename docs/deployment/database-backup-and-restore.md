@@ -56,8 +56,18 @@ Restorations are performed using [scripts/restore-db.sh](../../scripts/restore-d
 
 ### Restoration Syntax:
 ```bash
-./scripts/restore-db.sh <path-to-dump-file> [target-database-name]
+# Linux / Bash
+./scripts/restore-db.sh <path-to-dump-file> <target-database-name> [--force]
+
+# Windows / PowerShell
+powershell -ExecutionPolicy Bypass -File "scripts/restore-db.ps1" -BackupFile <path-to-dump-file> -TargetDatabase <target-database-name> [-Force]
 ```
+
+> [!CAUTION]
+> **Production Overwrite Safeguards:**
+> - The target database parameter is **mandatory**. The script will fail fast if omitted.
+> - The database name is validated strictly against regex `^[a-zA-Z0-9_]+$`.
+> - If targeting the primary active database (`stockguard` or `$POSTGRES_DB`), the script demands either the explicit `--force` / `-Force` flag or interactive confirmation typing `OVERWRITE`. In non-interactive pipelines (e.g. CI/CD or cron), it immediately aborts with an error unless `--force` / `-Force` is passed.
 
 ### A. Isolated Disaster Recovery Verification Test (Non-Destructive)
 To test a backup archive without touching the live application database:
@@ -96,8 +106,8 @@ DROP DATABASE IF EXISTS stockguard;
 CREATE DATABASE stockguard OWNER stockguard;
 "
 
-# 3. Restore from latest verified backup archive
-./scripts/restore-db.sh ./backups/stockguard_backup_latest.dump stockguard
+# 3. Restore from latest verified backup archive with explicit --force
+./scripts/restore-db.sh ./backups/stockguard_backup_latest.dump stockguard --force
 
 # 4. Restart backend application
 docker compose -f docker-compose.prod.yml start stockguard-app

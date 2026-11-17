@@ -23,6 +23,7 @@ public final class RolePermissions {
                     Permission.INVENTORY_VIEW,
                     Permission.INVENTORY_RECEIVE,
                     Permission.INVENTORY_ADJUST,
+                    Permission.INVENTORY_DISCREPANCY_VIEW,
                     Permission.INVENTORY_RECONCILE,
                     Permission.PRODUCT_VIEW,
                     Permission.PRODUCT_MANAGE,
@@ -71,12 +72,14 @@ public final class RolePermissions {
                     Permission.DASHBOARD_VIEW,
                     Permission.REPORTS_VIEW,
                     Permission.INVENTORY_VIEW,
+                    Permission.INVENTORY_DISCREPANCY_VIEW,
                     Permission.PRODUCT_VIEW,
                     Permission.WAREHOUSE_VIEW,
                     Permission.TRANSFER_VIEW,
                     Permission.ORDER_VIEW,
                     Permission.RESERVATION_VIEW,
-                    Permission.MEMBERSHIP_VIEW
+                    Permission.MEMBERSHIP_VIEW,
+                    Permission.AUDIT_VIEW
             )
     );
 

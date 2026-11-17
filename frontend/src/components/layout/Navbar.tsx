@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, ArrowRight, Activity, UserPlus } from 'lucide-react';
+import { ShieldCheck, ArrowRight, Activity, UserPlus, Sparkles } from 'lucide-react';
 import { Button } from '../common/Button';
 import { ThemeTray } from '../common/ThemeTray';
 
@@ -67,6 +67,16 @@ export const Navbar: React.FC = () => {
             </Link>
           ) : (
             <div className="flex items-center gap-2">
+              <Link to="/login?demo=true">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  icon={<Sparkles className="w-3.5 h-3.5 text-[#456B1F] dark:text-[#C6F36B]" />}
+                  className="hidden sm:inline-flex border-[#456B1F]/30 dark:border-[#C6F36B]/30 text-[#456B1F] dark:text-[#C6F36B] hover:bg-[#E9EEE6] dark:hover:bg-[#C6F36B]/10 font-semibold"
+                >
+                  Explore Live Demo
+                </Button>
+              </Link>
               <Link to="/login">
                 <Button size="sm" variant="secondary">
                   Sign In

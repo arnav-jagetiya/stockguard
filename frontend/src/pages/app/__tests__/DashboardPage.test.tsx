@@ -33,9 +33,11 @@ const mockAuthContext: AuthContextType = {
   role: 'ADMIN',
   isAuthenticated: true,
   isLoading: false,
+  isDemoVisitor: false,
   login: vi.fn(),
   register: vi.fn(),
   logout: vi.fn(),
+  loginDemoVisitor: vi.fn(),
   switchOrganization: vi.fn(),
   hasPermission: () => true,
 };

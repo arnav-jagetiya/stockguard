@@ -37,6 +37,10 @@ Edit `.env` using your chosen secure editor. Replace all placeholders (`replace-
 # Set secure permissions
 chmod 600 .env
 ```
+Key production configurations to review:
+- **`PROMETHEUS_SCRAPER_SECRET`**: Password for Prometheus metric scraping. Injected into the Prometheus container via Docker Compose secret and read via `/etc/prometheus/scraper_password`.
+- **`STOCKGUARD_PUBLIC_DEMO_ENABLED`**: Disabled (`false`) by default for corporate environments. Set to `true` if deploying an unauthenticated public portfolio demonstration.
+
 
 ### Step 3: Configure TLS Certificates
 Mount your commercial or Let's Encrypt TLS certificates into `nginx/ssl/`:

@@ -354,13 +354,63 @@ class AuthControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
     }
 
+    @Test
+    @DisplayName("POST /api/auth/demo-login returns 403 when public demo is disabled")
+    void demoLoginReturns403WhenDisabled() {
+        properties.getPublicDemo().setEnabled(false);
+        controller.setSecurityProperties(properties);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/demo-login");
+        request.setRemoteAddr("127.0.0.1");
+
+        ResponseEntity<?> response = controller.demoLogin(request);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("POST /api/auth/demo-login succeeds, sets HttpOnly cookie and returns access token when enabled")
+    void demoLoginSucceedsWhenEnabled() {
+        properties.getPublicDemo().setEnabled(true);
+        controller.setSecurityProperties(properties);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/demo-login");
+        request.setRemoteAddr("127.0.0.1");
+
+        UUID demoUserId = UUID.randomUUID();
+        UUID orgId = UUID.randomUUID();
+        authService.nextDemoLoginResult = new LoginResult(
+                "demo.access.token",
+                "demo-refresh-token",
+                900L,
+                "Bearer",
+                demoUserId,
+                "demo.visitor@stockguard.dev",
+                UUID.randomUUID()
+        );
+        queryService.availableOrgs = List.of(new OrganizationSummaryDto(orgId, "Acme Industrial Supply Pvt. Ltd.", Role.VIEWER));
+
+        ResponseEntity<?> response = controller.demoLogin(request);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE)).isNotEmpty();
+        String cookieHeader = response.getHeaders().getFirst(HttpHeaders.SET_COOKIE);
+        assertThat(cookieHeader).contains("stockguard_test_refresh=demo-refresh-token");
+        assertThat(cookieHeader).contains("HttpOnly");
+
+        AuthTokenResponse body = (AuthTokenResponse) response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.accessToken()).isEqualTo("demo.access.token");
+        assertThat(body.user().email()).isEqualTo("demo.visitor@stockguard.dev");
+        assertThat(body.user().fullName()).isEqualTo("Demo Visitor");
+        assertThat(body.availableOrganizations()).hasSize(1);
+    }
+
     // --- Lightweight Stubs ---
 
     private static class StubAuthenticationService extends AuthenticationService {
         LoginResult nextLoginResult;
+        LoginResult nextDemoLoginResult;
         LoginResult nextRegisterResult;
         RefreshResult nextRefreshResult;
         RuntimeException throwOnLogin;
+        RuntimeException throwOnDemoLogin;
         RuntimeException throwOnRegister;
         RuntimeException throwOnRefresh;
         String loggedOutToken;
@@ -374,6 +424,12 @@ class AuthControllerTest {
         public LoginResult login(LoginCommand command) {
             if (throwOnLogin != null) throw throwOnLogin;
             return nextLoginResult;
+        }
+
+        @Override
+        public LoginResult loginDemoVisitor(String clientIp, String userAgent) {
+            if (throwOnDemoLogin != null) throw throwOnDemoLogin;
+            return nextDemoLoginResult;
         }
 
         @Override

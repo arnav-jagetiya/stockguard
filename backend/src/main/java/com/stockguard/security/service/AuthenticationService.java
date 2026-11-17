@@ -141,6 +141,55 @@ public class AuthenticationService {
     }
 
     /**
+     * Authenticates a public demo visitor session without user-supplied credentials.
+     * Guarded by public-demo feature flag.
+     *
+     * @param clientIp Client IP address for session audit tracking
+     * @param userAgent Client User-Agent header for session context
+     * @return LoginResult containing access token and raw refresh token
+     */
+    public LoginResult loginDemoVisitor(String clientIp, String userAgent) {
+        if (securityProperties == null || securityProperties.getPublicDemo() == null
+                || !securityProperties.getPublicDemo().isEnabled()) {
+            throw new org.springframework.security.access.AccessDeniedException("Public demo access is disabled");
+        }
+
+        String demoEmail = securityProperties.getPublicDemo().getDemoEmail();
+        String normalizedEmail = User.normalizeEmail(demoEmail);
+
+        User user = userRepository.findByNormalizedEmail(normalizedEmail)
+                .orElseThrow(() -> new AuthenticationFailedException("Demo visitor account is not provisioned"));
+
+        if (!user.isActive()) {
+            throw new AuthenticationFailedException("Demo visitor account is inactive");
+        }
+
+        RefreshTokenService.InitialSessionResult sessionResult = refreshTokenService.createInitialSession(
+                user.getId(),
+                clientIp,
+                userAgent
+        );
+
+        String accessToken = jwtService.generateAccessToken(
+                user.getId(),
+                user.getNormalizedEmail(),
+                sessionResult.session().getId()
+        );
+
+        long expiresInSeconds = (long) securityProperties.getJwt().getAccessTokenExpirationMinutes() * 60L;
+
+        return new LoginResult(
+                accessToken,
+                sessionResult.rawRefreshToken(),
+                expiresInSeconds,
+                TOKEN_TYPE_BEARER,
+                user.getId(),
+                user.getEmail(),
+                sessionResult.session().getId()
+        );
+    }
+
+    /**
      * Atomically registers a new user, creates their primary organization, assigns them
      * the initial ADMIN membership, creates an authenticated session, and returns
      * an access JWT with raw refresh token.

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getDemoCredentialsApi } from '../../api/auth';
 import { Button } from '../../components/common/Button';
@@ -27,14 +27,38 @@ export const LoginPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  const [isDemoVisitorLoading, setIsDemoVisitorLoading] = useState(false);
 
   const isDev = import.meta.env.DEV;
 
-  const { login } = useAuth();
+  const { login, loginDemoVisitor } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Load saved email on mount
+  const handleDemoVisitorLogin = async () => {
+    setErrorMessage(null);
+    setIsDemoVisitorLoading(true);
+    try {
+      await loginDemoVisitor();
+      navigate('/app/dashboard');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Failed to establish public demo session.');
+      }
+    } finally {
+      setIsDemoVisitorLoading(false);
+    }
+  };
+
+  // Auto-login if demo=true query parameter is present or load saved email
   useEffect(() => {
+    if (searchParams.get('demo') === 'true') {
+      handleDemoVisitorLogin();
+      return;
+    }
+
     const saved = localStorage.getItem(SAVED_EMAIL_KEY);
     if (saved) {
       setEmail(saved);
@@ -131,6 +155,41 @@ export const LoginPage: React.FC = () => {
               <span>{errorMessage}</span>
             </div>
           )}
+
+          {/* Public Demonstration Card */}
+          <div className="p-4 rounded-xl bg-gradient-to-br from-[#456B1F]/10 via-[#147C68]/05 to-[#456B1F]/10 dark:from-[#C6F36B]/15 dark:via-[#6CD8C0]/08 dark:to-[#C6F36B]/05 border border-[#456B1F]/30 dark:border-[#C6F36B]/30 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#18231D] dark:text-[#EEF3EA] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#456B1F] dark:text-[#C6F36B]" />
+                Public Demonstration
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#456B1F]/15 dark:bg-[#C6F36B]/20 text-[#456B1F] dark:text-[#C6F36B] font-bold border border-[#456B1F]/20 dark:border-[#C6F36B]/30">
+                READ-ONLY
+              </span>
+            </div>
+            <p className="text-[11px] text-[#657369] dark:text-[#9AA99E] leading-relaxed">
+              Explore Acme Industrial Supply Pvt. Ltd. with real inventory balances, 3 facilities, active orders, and immutable audit logs. No credentials required.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full border-[#456B1F]/40 dark:border-[#C6F36B]/40 text-[#456B1F] dark:text-[#C6F36B] hover:bg-[#E9EEE6] dark:hover:bg-[#C6F36B]/15 font-semibold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              onClick={handleDemoVisitorLogin}
+              isLoading={isDemoVisitorLoading}
+            >
+              <span>Explore as Demo Visitor</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+
+          <div className="relative flex items-center justify-center">
+            <div className="border-t border-[#D9E1D7] dark:border-[#26362E] w-full" />
+            <span className="bg-white dark:bg-[#111A17] px-2 text-[10px] text-[#8A988E] dark:text-[#6C7D71] font-mono uppercase tracking-wider shrink-0">
+              Or sign in with account
+            </span>
+            <div className="border-t border-[#D9E1D7] dark:border-[#26362E] w-full" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

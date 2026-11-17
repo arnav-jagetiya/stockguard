@@ -20,22 +20,37 @@ public final class SecurityErrorResponseUtils {
             String message,
             String path
     ) throws IOException {
+        writeJsonError(response, status, error, null, message, path);
+    }
+
+    public static void writeJsonError(
+            HttpServletResponse response,
+            int status,
+            String error,
+            String code,
+            String message,
+            String path
+    ) throws IOException {
         response.setStatus(status);
         response.setContentType("application/json;charset=UTF-8");
 
         String escapedError = error != null ? escapeJson(error) : "";
+        String escapedCode = code != null ? escapeJson(code) : "";
         String escapedMessage = message != null ? escapeJson(message) : "";
         String escapedPath = path != null ? escapeJson(path) : "";
 
-        String body = "{" +
-                "\"timestamp\":\"" + Instant.now() + "\"," +
-                "\"status\":" + status + "," +
-                "\"error\":\"" + escapedError + "\"," +
-                "\"message\":\"" + escapedMessage + "\"," +
-                "\"path\":\"" + escapedPath + "\"" +
-                "}";
+        StringBuilder sb = new StringBuilder("{");
+        sb.append("\"timestamp\":\"").append(Instant.now()).append("\",");
+        sb.append("\"status\":").append(status).append(",");
+        sb.append("\"error\":\"").append(escapedError).append("\",");
+        if (code != null && !code.isBlank()) {
+            sb.append("\"code\":\"").append(escapedCode).append("\",");
+        }
+        sb.append("\"message\":\"").append(escapedMessage).append("\",");
+        sb.append("\"path\":\"").append(escapedPath).append("\"");
+        sb.append("}");
 
-        response.getWriter().write(body);
+        response.getWriter().write(sb.toString());
     }
 
     private static String escapeJson(String raw) {

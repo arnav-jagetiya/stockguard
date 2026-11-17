@@ -2,6 +2,7 @@ package com.stockguard.security.config;
 
 import com.stockguard.infrastructure.metrics.MonitoringProperties;
 import com.stockguard.security.filter.CsrfProtectionFilter;
+import com.stockguard.security.filter.DemoModeMutationGuardFilter;
 import com.stockguard.security.filter.JwtAuthenticationFilter;
 import com.stockguard.security.filter.OrganizationContextFilter;
 import com.stockguard.security.filter.RateLimitingFilter;
@@ -88,6 +89,7 @@ public class SecurityConfig {
                 authenticationEntryPoint
         );
         OrganizationContextFilter organizationContextFilter = new OrganizationContextFilter(tenantMembershipValidator);
+        DemoModeMutationGuardFilter demoModeMutationGuardFilter = new DemoModeMutationGuardFilter(securityProperties);
 
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -106,7 +108,7 @@ public class SecurityConfig {
                         // Prometheus scrape endpoint requires machine-to-machine ROLE_MONITORING authority
                         .requestMatchers("/actuator/prometheus").hasAuthority("ROLE_MONITORING")
                         // Public authentication endpoints
-                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/register", "/api/auth/demo-credentials").permitAll()
+                        .requestMatchers("/api/auth/login", "/api/auth/refresh", "/api/auth/register", "/api/auth/demo-credentials", "/api/auth/demo-login").permitAll()
                         // User-scoped authenticated endpoints
                         .requestMatchers("/api/auth/logout", "/api/auth/me", "/api/auth/switch-org").authenticated()
                         // All other application routes require authentication by default
@@ -117,7 +119,8 @@ public class SecurityConfig {
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(csrfProtectionFilter, RateLimitingFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter, CsrfProtectionFilter.class)
-                .addFilterAfter(organizationContextFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(organizationContextFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(demoModeMutationGuardFilter, OrganizationContextFilter.class);
 
         return http.build();
     }

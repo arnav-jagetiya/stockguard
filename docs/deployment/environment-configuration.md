@@ -25,10 +25,14 @@ In production (`SPRING_PROFILES_ACTIVE=prod`), STOCKGUARD enforces strict fail-f
 | `STOCKGUARD_JWT_ACTIVE_KEY_ID` | No | `sg-prod-2026-v1` | String | Key ID for active signing key rotation. |
 | `STOCKGUARD_CORS_ALLOWED_ORIGINS` | **Yes** | `https://app.stockguard.com` | Comma-delimited URLs | Permitted frontend origins. Wildcards (`*`) strictly disallowed. |
 | `STOCKGUARD_TRUSTED_PROXIES` | **Yes** | `172.28.0.0/16,127.0.0.1` | CIDRs / IPs | Reverse proxy subnets for rate-limiting client IP resolution. |
-| `PROMETHEUS_SCRAPER_SECRET` | **Yes** | *None (Fail-Fast)* | Secure String | HTTP Basic auth password for `/actuator/prometheus`. |
+| `PROMETHEUS_SCRAPER_SECRET` | **Yes** | *None (Fail-Fast)* | Secure String | HTTP Basic auth password for `/actuator/prometheus`. Injected via Docker Compose secret and mounted at `/etc/prometheus/scraper_password`. |
 | `STOCKGUARD_REGISTRATION_ENABLED` | No | `false` | Boolean (`false`) | Public organization registration. Must be `false` in production. |
 | `STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED` | No | `false` | Boolean (`false`) | One-time bootstrap administrator provisioning. |
 | `STOCKGUARD_DEMO_SEED_ENABLED` | No | `false` | Boolean (`false`) | Synthetic demo data seeder. Strictly disabled in prod. |
+| `STOCKGUARD_PUBLIC_DEMO_ENABLED` | No | `false` | Boolean (`false`) | Enables public read-only demo access (`POST /api/auth/demo-login`) and visitor provisioning. |
+| `STOCKGUARD_PUBLIC_DEMO_EMAIL` | No | `demo.visitor@stockguard.dev` | Email String | Email identifier for the public demo visitor identity. |
+| `STOCKGUARD_PUBLIC_DEMO_ORG_NAME` | No | `Acme Industrial Supply Pvt. Ltd.` | String | Organization target for the public demo visitor session. |
+| `STOCKGUARD_RATE_LIMIT_DEMO_LOGIN` | No | `10` | Integer (> 0) | Rate limit in requests per minute per IP for `/api/auth/demo-login`. |
 
 ---
 
@@ -62,4 +66,5 @@ openssl rand -base64 32
 | Demo Seeder Runner | Optional (Acme Industrial) | **Disabled** | Disabled |
 | Cookie Secure Flag | `false` (HTTP) | `true` (HTTPS only) | `false` |
 | Registration Enabled | Configurable | `false` by default | `true` |
+| Public Demo Mode | `true` by default | `false` (Opt-In) | Disabled |
 | Public CORS | `http://localhost:5173` | Strict Domain Only | `*` |

@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       name: 'Reconciliation',
       path: '/app/reconciliation',
       icon: <ShieldAlert className="w-4 h-4" />,
-      permission: 'inventory:reconcile',
+      permission: 'inventory:discrepancy:view',
     },
     {
       name: 'Audit Trail',

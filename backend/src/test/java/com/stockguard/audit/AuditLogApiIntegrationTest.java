@@ -211,13 +211,15 @@ class AuditLogApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("VIEWER role lacks audit:view and is rejected with 403 Forbidden")
-    void viewerRoleForbidden() throws Exception {
+    @DisplayName("VIEWER role possesses audit:view and is allowed (200 OK)")
+    void viewerRoleAllowed() throws Exception {
         mockMvc.perform(get("/api/audit-logs")
                         .header("Authorization", "Bearer " + viewerJwt)
                         .header("X-Organization-Id", orgAId.toString()))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("Forbidden"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
     }
 
     @Test

@@ -46,6 +46,10 @@ public class SecurityProperties {
     @NotNull
     private Registration registration = new Registration();
 
+    @Valid
+    @NotNull
+    private PublicDemo publicDemo = new PublicDemo();
+
     @Min(4)
     @Max(31)
     private int passwordEncoderCost = 12;
@@ -56,6 +60,14 @@ public class SecurityProperties {
 
     public void setRegistration(Registration registration) {
         this.registration = registration;
+    }
+
+    public PublicDemo getPublicDemo() {
+        return publicDemo;
+    }
+
+    public void setPublicDemo(PublicDemo publicDemo) {
+        this.publicDemo = publicDemo;
     }
 
     public Bootstrap getBootstrap() {
@@ -287,6 +299,9 @@ public class SecurityProperties {
         @Min(1)
         private int refreshPermitsPerMinute = 20;
 
+        @Min(1)
+        private int demoLoginPermitsPerMinute = 10;
+
         /**
          * Optional list of trusted upstream proxy IP addresses (e.g. reverse proxy / load balancer).
          * If empty, X-Forwarded-For headers are never trusted and request.getRemoteAddr() is used.
@@ -315,6 +330,14 @@ public class SecurityProperties {
 
         public void setRefreshPermitsPerMinute(int refreshPermitsPerMinute) {
             this.refreshPermitsPerMinute = refreshPermitsPerMinute;
+        }
+
+        public int getDemoLoginPermitsPerMinute() {
+            return demoLoginPermitsPerMinute;
+        }
+
+        public void setDemoLoginPermitsPerMinute(int demoLoginPermitsPerMinute) {
+            this.demoLoginPermitsPerMinute = demoLoginPermitsPerMinute;
         }
     }
 
@@ -405,6 +428,49 @@ public class SecurityProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+    }
+
+    public static class PublicDemo {
+
+        private boolean enabled = false;
+
+        private String demoEmail = "demo.visitor@stockguard.dev";
+
+        private String demoOrgName = "Acme Industrial Supply Pvt. Ltd.";
+
+        private String demoUserFullName = "Demo Visitor";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getDemoEmail() {
+            return demoEmail;
+        }
+
+        public void setDemoEmail(String demoEmail) {
+            this.demoEmail = demoEmail;
+        }
+
+        public String getDemoOrgName() {
+            return demoOrgName;
+        }
+
+        public void setDemoOrgName(String demoOrgName) {
+            this.demoOrgName = demoOrgName;
+        }
+
+        public String getDemoUserFullName() {
+            return demoUserFullName;
+        }
+
+        public void setDemoUserFullName(String demoUserFullName) {
+            this.demoUserFullName = demoUserFullName;
         }
     }
 }

@@ -312,11 +312,11 @@ export const ReconciliationPage: React.FC = () => {
                   <TableCell className="text-right">
                     <Button
                       size="sm"
-                      variant={d.status === 'OPEN' ? 'primary' : 'outline'}
+                      variant={d.status === 'OPEN' && canReconcile ? 'primary' : 'outline'}
                       onClick={() => openTriage(d)}
                       icon={<Eye className="w-3.5 h-3.5" />}
                     >
-                      {d.status === 'OPEN' ? 'Triage' : 'Inspect'}
+                      {d.status === 'OPEN' && canReconcile ? 'Triage' : 'Inspect'}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -363,7 +363,7 @@ export const ReconciliationPage: React.FC = () => {
             </div>
 
             {/* State & Assignment Controls */}
-            {!isTerminal ? (
+            {!isTerminal && canReconcile ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Select
@@ -417,23 +417,38 @@ export const ReconciliationPage: React.FC = () => {
                 </div>
               </>
             ) : (
-              /* Read-only Terminal State */
+              /* Read-only / Terminal State */
               <div className="space-y-3 pt-2">
+                {!canReconcile && !isTerminal && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-800 dark:text-amber-200">
+                    <span className="font-semibold">Read-Only Inspection:</span> Discrepancy triage modifications require operator reconciliation privileges (disabled in demo mode).
+                  </div>
+                )}
                 <div className="p-3 rounded-xl bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-xs space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[#657369] dark:text-[#9AA99E]">Terminal Status:</span>
+                    <span className="text-[#657369] dark:text-[#9AA99E]">Current Status:</span>
                     {getStatusBadge(activeDiscrepancy.status)}
                   </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[#657369] dark:text-[#9AA99E]">Resolution Source:</span>
-                    <span className="text-[#147C68] dark:text-[#6CD8C0]">{activeDiscrepancy.resolutionSource || 'OPERATOR_OVERRIDE'}</span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[#657369] dark:text-[#9AA99E]">Resolved At:</span>
-                    <span className="text-[#18231D] dark:text-[#EEF3EA]">
-                      {activeDiscrepancy.resolvedAt ? new Date(activeDiscrepancy.resolvedAt).toLocaleString() : 'N/A'}
-                    </span>
-                  </div>
+                  {activeDiscrepancy.assignedToUserId && (
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[#657369] dark:text-[#9AA99E]">Assigned To:</span>
+                      <span className="text-[#147C68] dark:text-[#6CD8C0]">{activeDiscrepancy.assignedToUserId}</span>
+                    </div>
+                  )}
+                  {activeDiscrepancy.resolutionSource && (
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[#657369] dark:text-[#9AA99E]">Resolution Source:</span>
+                      <span className="text-[#147C68] dark:text-[#6CD8C0]">{activeDiscrepancy.resolutionSource}</span>
+                    </div>
+                  )}
+                  {activeDiscrepancy.resolvedAt && (
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[#657369] dark:text-[#9AA99E]">Resolved At:</span>
+                      <span className="text-[#18231D] dark:text-[#EEF3EA]">
+                        {new Date(activeDiscrepancy.resolvedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   {activeDiscrepancy.resolutionReason && (
                     <div className="pt-2 border-t border-[#D9E1D7] dark:border-[#26362E]">
                       <span className="text-[#657369] dark:text-[#9AA99E] block text-[11px]">Reason:</span>

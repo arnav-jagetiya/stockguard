@@ -91,6 +91,9 @@ class AuthenticationIntegrationTest {
     @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private com.stockguard.security.config.SecurityProperties securityProperties;
+
     private JdbcTemplate privilegedJdbcTemplate;
 
     @BeforeEach
@@ -510,5 +513,36 @@ class AuthenticationIntegrationTest {
                 )
         )).isInstanceOf(com.stockguard.shared.exception.DuplicateResourceException.class)
           .hasMessageContaining("already exists");
+    }
+
+    @Test
+    @DisplayName("loginDemoVisitor throws AccessDeniedException when public demo is disabled")
+    void loginDemoVisitorThrowsWhenDisabled() {
+        securityProperties.getPublicDemo().setEnabled(false);
+
+        assertThatThrownBy(() -> authenticationService.loginDemoVisitor("127.0.0.1", "TestAgent"))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("Public demo access is disabled");
+    }
+
+    @Test
+    @DisplayName("loginDemoVisitor succeeds when enabled and visitor is provisioned")
+    void loginDemoVisitorSucceedsWhenEnabled() {
+        securityProperties.getPublicDemo().setEnabled(true);
+        securityProperties.getPublicDemo().setDemoEmail("demo.visitor@stockguard.dev");
+
+        String demoEmail = "demo.visitor@stockguard.dev";
+        userRepository.findByNormalizedEmail(demoEmail.toLowerCase()).orElseGet(() -> {
+            User newUser = User.create(demoEmail, passwordEncoder.encode(UUID.randomUUID().toString()));
+            return userRepository.saveAndFlush(newUser);
+        });
+
+        LoginResult result = authenticationService.loginDemoVisitor("127.0.0.1", "TestAgent");
+
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo(demoEmail);
+        assertThat(result.accessToken()).isNotBlank();
+        assertThat(result.rawRefreshToken()).isNotBlank();
+        assertThat(result.tokenType()).isEqualTo("Bearer");
     }
 }

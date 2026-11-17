@@ -32,6 +32,7 @@ STOCKGUARD is a production-oriented platform built to solve inventory discrepanc
 | **Milestone 8** | MVCC Snapshot Reconciliation, Discrepancy Triage & Decision Audit | ✅ Complete |
 | **Milestone 9A** | Realistic Demo Environment (Acme Industrial Supply Pvt. Ltd.) | ✅ Complete |
 | **Milestone 9B** | Production Readiness, Docker Stack, SLIs, Backup/Recovery & Release Runbook | ✅ Complete |
+| **Milestone 10** | Public Demo Experience, Portfolio Showcase & Final Release Hardening | ✅ Complete |
 
 ---
 
@@ -90,6 +91,16 @@ Initial root tenant setup is managed via the idempotent `AdminBootstrapRunner`.
   ```
 * **Security & Invariants:** Password recovery is disabled by default in all profiles, strictly forbidden in `prod` (fails fast on startup), uses BCrypt hashing, logs zero plaintext credentials, and records an immutable audit record in `audit_logs`.
 
+### 5. Public Demonstration Mode (Portfolio Showcase)
+
+STOCKGUARD includes an unauthenticated public exploration journey for portfolio and technical evaluation:
+* **One-Click Exploration:** Visitors click **"Explore Live Demo"** on the landing page or login view to enter the synthetic **Acme Industrial Supply Pvt. Ltd.** enterprise tenant immediately without creating an account.
+* **Full Read-Only Access:** Visitors hold the `VIEWER` role with visibility across all 10 operational modules, the Living Warehouse 3D digital twin, multi-warehouse inventory, double-entry ledger transactions, MVCC reconciliations, and immutable audit logs.
+* **Server-Side Protection:** The backend `DemoModeMutationGuardFilter` interceptor enforces strict read-only access by rejecting all HTTP mutations (`POST`, `PUT`, `PATCH`, `DELETE`) with `403 Forbidden` (`DEMO_MODE_MUTATION_PROHIBITED`).
+* **Rate-Limited Authentication:** The `POST /api/auth/demo-login` endpoint is rate-limited to 10 requests per minute per IP.
+* **Controlled Activation:** Governed by `STOCKGUARD_PUBLIC_DEMO_ENABLED` (enabled by default in `dev`, disabled by default in `prod`).
+
+
 ---
 
 ## Configuration Reference
@@ -116,6 +127,7 @@ Initial root tenant setup is managed via the idempotent `AdminBootstrapRunner`.
 | `STOCKGUARD_COOKIE_SAME_SITE` | Cookie SameSite policy | `Lax` (in dev) | **`Strict`** |
 | `STOCKGUARD_CORS_ALLOWED_ORIGINS` | Comma-separated CORS allowed origins | `http://localhost:5173` | **Strict exact origins** |
 | `STOCKGUARD_TRUSTED_PROXIES` | Upstream reverse proxy IPs / CIDR blocks | Empty (rejects forwarding) | Required if behind proxy |
+| `STOCKGUARD_PUBLIC_DEMO_ENABLED` | Public read-only demo access toggle | `true` (in dev) | Optional (`false` by default) |
 | `PORT` | HTTP server port | `8080` | Optional |
 
 ---

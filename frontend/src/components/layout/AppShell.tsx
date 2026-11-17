@@ -8,7 +8,7 @@ import { LoadingSpinner } from '../common/LoadingSpinner';
 import { LogOut, User as UserIcon, Menu } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, logout, isDemoVisitor } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   if (isLoading) {
@@ -30,6 +30,27 @@ export const AppShell: React.FC = () => {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Persistent Public Demo Read-Only Banner */}
+        {isDemoVisitor && (
+          <div
+            data-testid="demo-visitor-banner"
+            className="shrink-0 bg-amber-500/10 dark:bg-amber-400/10 border-b border-amber-500/30 px-4 sm:px-6 py-2 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span className="font-bold">Public Demo Mode (Read-Only)</span>
+              <span className="hidden md:inline text-amber-800/80 dark:text-amber-300/80">
+                — Exploring Acme Industrial Supply Pvt. Ltd. with live seeded business data. State mutations are prohibited.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 font-bold uppercase tracking-wider">
+                VIEWER ROLE
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Top Header */}
         <header className="h-16 shrink-0 bg-white/90 dark:bg-[#111A17]/90 backdrop-blur border-b border-[#D9E1D7] dark:border-[#26362E] flex items-center justify-between px-4 sm:px-6 z-10 transition-colors">
           <div className="flex items-center gap-3">

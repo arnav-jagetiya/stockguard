@@ -54,7 +54,7 @@ public class DiscrepancyController {
      * Lists discrepancies with deterministic ordering, filtering, and pagination.
      */
     @GetMapping("/discrepancies")
-    @PreAuthorize("hasAuthority('inventory:reconcile')")
+    @PreAuthorize("hasAuthority('inventory:discrepancy:view')")
     public ResponseEntity<DiscrepancyPageResponse> listDiscrepancies(
             @RequestParam(name = "status", required = false) DiscrepancyStatus status,
             @RequestParam(name = "productId", required = false) UUID productId,
@@ -74,7 +74,7 @@ public class DiscrepancyController {
      * Retrieves a single discrepancy by its identifier within the tenant boundary.
      */
     @GetMapping("/discrepancies/{id}")
-    @PreAuthorize("hasAuthority('inventory:reconcile')")
+    @PreAuthorize("hasAuthority('inventory:discrepancy:view')")
     public ResponseEntity<DiscrepancyResponse> getDiscrepancy(@PathVariable("id") UUID id) {
         OrganizationContext context = OrganizationContextHolder.requireContext();
         DiscrepancyResponse response = discrepancyManagementService.getDiscrepancy(context.organizationId(), id);

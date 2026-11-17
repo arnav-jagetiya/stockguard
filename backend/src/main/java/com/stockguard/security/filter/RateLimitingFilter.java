@@ -36,6 +36,7 @@ public class RateLimitingFilter extends OncePerRequestFilter {
     private static final String LOGIN_PATH = "/api/auth/login";
     private static final String REGISTER_PATH = "/api/auth/register";
     private static final String REFRESH_PATH = "/api/auth/refresh";
+    private static final String DEMO_LOGIN_PATH = "/api/auth/demo-login";
     private static final long WINDOW_MILLIS = 60_000L; // 1 minute sliding bucket
 
     private final SecurityProperties securityProperties;
@@ -68,6 +69,9 @@ public class RateLimitingFilter extends OncePerRequestFilter {
             } else if (REFRESH_PATH.equals(path)) {
                 limit = securityProperties.getRateLimit().getRefreshPermitsPerMinute();
                 endpointKey = "refresh";
+            } else if (DEMO_LOGIN_PATH.equals(path)) {
+                limit = securityProperties.getRateLimit().getDemoLoginPermitsPerMinute();
+                endpointKey = "demo-login";
             }
 
             if (endpointKey != null && limit > 0) {

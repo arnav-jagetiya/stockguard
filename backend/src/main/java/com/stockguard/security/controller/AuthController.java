@@ -200,6 +200,74 @@ public class AuthController {
     }
 
     /**
+     * Authenticates a public demo visitor without credentials, returning an access token
+     * and setting an HttpOnly refresh cookie.
+     * Guarded by public-demo.enabled property and rate-limited.
+     */
+    @PostMapping("/demo-login")
+    public ResponseEntity<?> demoLogin(HttpServletRequest servletRequest) {
+        if (securityProperties == null || securityProperties.getPublicDemo() == null || !securityProperties.getPublicDemo().isEnabled()) {
+            securityAuditLog.warn("Demo login rejected: public demo is disabled (IP: {})", servletRequest.getRemoteAddr());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", "Public demo access is disabled."));
+        }
+
+        String clientIp = servletRequest.getRemoteAddr();
+        String userAgent = servletRequest.getHeader(HttpHeaders.USER_AGENT);
+
+        LoginResult result;
+        try {
+            result = authenticationService.loginDemoVisitor(clientIp, userAgent);
+        } catch (AccessDeniedException ex) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Forbidden", "message", ex.getMessage()));
+        } catch (AuthenticationFailedException ex) {
+            log.error("Demo visitor login failed: {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("error", "Service Unavailable", "message", "Demo visitor account is currently unavailable."));
+        }
+
+        List<OrganizationSummaryDto> organizations =
+                userContextQueryService.getUserAvailableOrganizations(result.userId());
+
+        if (organizations.isEmpty()) {
+            authenticationService.revokeSession(result.sessionId(), "NO_ACTIVE_MEMBERSHIPS");
+            ResponseCookie clearCookie = cookieHelper.buildClearRefreshCookie();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .header(HttpHeaders.SET_COOKIE, clearCookie.toString())
+                    .body(Map.of("error", "Forbidden", "message", "No active organization memberships found for demo visitor"));
+        }
+
+        ResponseCookie refreshCookie = cookieHelper.buildRefreshCookie(result.rawRefreshToken());
+
+        String fullName = securityProperties.getPublicDemo().getDemoUserFullName();
+        if (fullName == null || fullName.isBlank()) {
+            fullName = "Demo Visitor";
+        }
+
+        UserSummaryDto userSummary = new UserSummaryDto(
+                result.userId(),
+                result.email(),
+                fullName,
+                true
+        );
+
+        AuthTokenResponse responseBody = new AuthTokenResponse(
+                result.accessToken(),
+                result.tokenType(),
+                result.expiresInSeconds(),
+                userSummary,
+                organizations
+        );
+
+        securityAuditLog.info("Public demo session established for visitor from IP: {}", clientIp);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(responseBody);
+    }
+
+    /**
      * Rotates a single-use opaque refresh token read from the HttpOnly cookie.
      */
     @PostMapping("/refresh")
