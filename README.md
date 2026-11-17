@@ -63,7 +63,7 @@ The database container will start on port `5433` (or configured `DB_PORT`) and a
 ### 2. Run the Verification Suites
 
 #### Backend Test Suite (JUnit 5 + Testcontainers + Spring MVC Test)
-Run all 342 unit, integration, and security filter tests against a fresh PostgreSQL Testcontainer:
+Run the complete unit, integration, and security filter test suite against a fresh PostgreSQL Testcontainer:
 
 ```bash
 cd backend
@@ -73,7 +73,7 @@ cd backend
 *(On Windows, use `mvnw.cmd clean verify -DDB_PORT=5433` if port 5432 is bound to local PostgreSQL).*
 
 #### Frontend Test Suite (Vitest + React Testing Library)
-Run all 237 frontend component and unit tests:
+Run the component and unit test suite:
 
 ```bash
 cd frontend
@@ -85,10 +85,10 @@ With backend and frontend running, execute the automated browser acceptance and 
 
 ```bash
 cd frontend
-# 1. End-to-end user workflows, 10-module exploration, and demo mode enforcement (28 assertions)
+# 1. End-to-end user workflows, 10-module exploration, and demo mode enforcement
 node scripts/run-acceptance.mjs
 
-# 2. 3D Living Warehouse WebGL context, camera transitions, and theme persistence (16 assertions)
+# 2. 3D Living Warehouse WebGL context, camera transitions, and theme persistence
 node scripts/verify-3d-warehouse.mjs
 ```
 
@@ -421,10 +421,10 @@ cd frontend
 node scripts/verify-3d-warehouse.mjs
 ```
 
-* **Backend Test Suite:** 342 automated tests across 72 test classes covering JWT token lifecycle, key rotation, claims extraction, rate limit window counters, CIDR subnet matching, password hashing, Flyway schema migrations, MVCC snapshot reconciliations, two-phase reservation allocations, and concurrent last-admin protection.
-* **Frontend Test Suite:** 237 unit and component tests across 35 test suites verifying navigation, auth state restoration, inventory ledger views, order management, theme switching, and responsive design.
-* **Acceptance Suite:** 28 end-to-end browser assertions exercising the complete 10-module user journey, demo mode mutation protection, and state synchronization.
-* **3D Visual Suite:** 16 browser assertions confirming zero WebGL context loss during theme toggles, raycast hit detection, and camera perspective transitions.
+* **Backend Test Suite:** Comprehensive unit, integration, and security test coverage across domain modules, covering JWT token lifecycle, key rotation, claims extraction, rate limit window counters, CIDR subnet matching, password hashing, Flyway schema migrations, MVCC snapshot reconciliations, atomic reservation allocation and lifecycle management, and concurrent last-admin protection.
+* **Frontend Test Suite:** Unit and component tests verifying navigation, auth state restoration, inventory ledger views, order management, theme switching, and responsive design.
+* **Acceptance Suite:** End-to-end browser test runner exercising the complete 10-module user journey, demo mode mutation protection, and state synchronization.
+* **3D Visual Suite:** Visual verification runner confirming zero WebGL context loss during theme toggles, raycast hit detection, and camera perspective transitions.
 
 ---
 
@@ -457,11 +457,11 @@ stockguard/
 │   │   │   │   ├── transfer/         # Multi-item inter-warehouse transfers
 │   │   │   │   └── warehouse/        # Facility management, priority routing, codes
 │   │   │   └── resources/
-│   │   │       ├── db/migration/     # Flyway immutable migrations (V1 through V13)
+│   │   │       ├── db/migration/     # Flyway immutable migrations (V1 through V4)
 │   │   │       ├── application.yml   # Base application configuration
 │   │   │       ├── application-dev.yml # Local development overrides
 │   │   │       └── application-prod.yml # Hardened production configuration
-│   │   └── test/                     # 342 automated unit, integration, and security tests
+│   │   └── test/                     # Unit, integration, and security test suites
 │   └── docker-compose.yml            # Local PostgreSQL 16 container definition
 ├── docs/                             # Architecture Decision Records (ADR 001-014), specs, and runbooks
 │   ├── api/                          # OpenAPI 3.0 specification (openapi.yaml)
@@ -477,8 +477,8 @@ stockguard/
 │   ├── nginx.conf                    # Nginx reverse proxy, security headers & SPA routing
 │   ├── package.json / package-lock.json # React 19, Vite 8, Tailwind CSS v4, Three.js 0.187
 │   ├── scripts/                      # Active browser test runners & legacy archive
-│   │   ├── run-acceptance.mjs        # 28-assertion browser acceptance runner
-│   │   ├── verify-3d-warehouse.mjs   # 16-assertion 3D Living Warehouse runner
+│   │   ├── run-acceptance.mjs        # Browser acceptance test runner
+│   │   ├── verify-3d-warehouse.mjs   # 3D Living Warehouse visual verification runner
 │   │   └── legacy/                   # Archived historical acceptance test scripts
 │   ├── src/                          # React 19 SPA, 3D Warehouse canvas, pages, components
 │   └── verification_evidence/        # Historical audit screenshots (M8, M9A, M10)
