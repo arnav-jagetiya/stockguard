@@ -497,8 +497,29 @@ stockguard/
 ├── .dockerignore                     # Root Docker build ignore specification
 ├── .env.example                      # Production environment variable template
 ├── .gitignore                        # Root Git ignore specification
+├── CODE_OF_CONDUCT.md                # Community standards and code of conduct
 ├── docker-compose.prod.yml           # Production multi-container topology (3-network isolation)
 ├── LICENSE                           # MIT License
 ├── README.md                         # Primary project documentation
 └── SECURITY.md                       # Security policy and vulnerability disclosure protocol
 ```
+
+---
+
+## Security Policy
+
+STOCKGUARD prioritizes platform integrity, data consistency, and responsible disclosure. If you identify a potential security vulnerability or invariant violation, please review our [Security Policy](SECURITY.md) for supported versions, reporting guidelines, and private disclosure coordination via GitHub Private Vulnerability Reporting.
+
+---
+
+## Community & Contributing
+
+We welcome constructive technical contributions, architectural discussions, and issue reports. All participants are expected to adhere to the standards outlined in our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+---
+
+## License
+
+STOCKGUARD is open-source software licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Arnav Jagetiya.
