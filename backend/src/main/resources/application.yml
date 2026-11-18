@@ -104,7 +104,7 @@ stockguard:
   demo:
     seed-enabled: ${STOCKGUARD_DEMO_SEED_ENABLED:false}
     admin-email: ${STOCKGUARD_DEMO_ADMIN_EMAIL:acme-admin@stockguard.dev}
-    admin-password: ${STOCKGUARD_DEMO_ADMIN_PASSWORD:RedactedAdminSecret2026!}
+    admin-password: ${STOCKGUARD_DEMO_ADMIN_PASSWORD:}
     admin-full-name: ${STOCKGUARD_DEMO_ADMIN_FULL_NAME:Aarav Mehta}
     org-name: ${STOCKGUARD_DEMO_ORG_NAME:Acme Industrial Supply Pvt. Ltd.}
   reservation:

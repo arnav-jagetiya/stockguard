@@ -23,6 +23,7 @@ import com.stockguard.product.repository.ProductRepository;
 import com.stockguard.reservation.domain.Reservation;
 import com.stockguard.reservation.domain.ReservationStatus;
 import com.stockguard.reservation.repository.ReservationRepository;
+import com.stockguard.security.bootstrap.AdminBootstrapRunner;
 import com.stockguard.security.domain.User;
 import com.stockguard.security.repository.UserRepository;
 import com.stockguard.transfer.dto.TransferResponse;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -83,6 +85,9 @@ class DemoSeederIntegrationTest {
     private UserRepository userRepository;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private OrganizationMembershipRepository membershipRepository;
 
     @Autowired
@@ -115,11 +120,12 @@ class DemoSeederIntegrationTest {
     @Test
     @DisplayName("Comprehensive seed creates realistic Acme Industrial Supply organization with valid domain data")
     void seedsRealisticDemoEnvironment() {
+        String testAdminPassword = AdminBootstrapRunner.generateSecure256BitHexCredential();
         DemoProperties properties = new DemoProperties();
         properties.setSeedEnabled(true);
         properties.setOrgName("Acme Industrial Supply Pvt. Ltd.");
         properties.setAdminEmail("acme-admin@stockguard.dev");
-        properties.setAdminPassword("RedactedAdminSecret2026!");
+        properties.setAdminPassword(testAdminPassword);
         properties.setAdminFullName("Aarav Mehta");
 
         DemoSeedResult result = demoEnvironmentSeeder.seedDemoEnvironment(properties);
@@ -146,6 +152,9 @@ class DemoSeederIntegrationTest {
         assertThat(managerCount).isEqualTo(2);
         assertThat(operatorCount).isEqualTo(3);
         assertThat(viewerCount).isEqualTo(3);
+
+        User adminUser = userRepository.findByNormalizedEmail(User.normalizeEmail("acme-admin@stockguard.dev")).orElseThrow();
+        assertThat(passwordEncoder.matches(testAdminPassword, adminUser.getPasswordHash())).isTrue();
 
         // 3. Warehouse verification (3 facilities)
         List<Warehouse> warehouses = warehouseRepository.searchWarehouses(orgId, null, false);

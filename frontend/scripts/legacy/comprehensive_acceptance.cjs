@@ -65,23 +65,15 @@ async function run() {
     });
 
     // -------------------------------------------------------------------------
-    // 3. Demo Admin Credentials Flow (Dev-only endpoint verification)
+    // 3. Administrator Authentication Configuration Verification
     // -------------------------------------------------------------------------
-    console.log('\n--- 3. Testing Demo Admin Credentials API ---');
-    const demoBtn = await page.$('button[title*="bootstrap credentials"]');
-    if (demoBtn) {
-      console.log('  Clicking Fill Demo Admin (calls /api/auth/demo-credentials)...');
-      await demoBtn.click();
-      await new Promise(r => setTimeout(r, 600));
-      const filledEmail = await page.$eval('input[type="email"]', el => el.value);
-      console.log(`  Dynamically populated email: ${filledEmail}`);
-      await page.screenshot({ path: path.join(EVIDENCE_DIR, '04_demo_admin_fill.png') });
-      console.log('  Saved 04_demo_admin_fill.png');
-    } else {
-      console.log('  Demo button not present (production mode)');
-      await page.type('input[type="email"]', 'admin@stockguard.dev');
-      await page.type('input[type="password"]', 'replace-with-secure-admin-password');
+    console.log('\n--- 3. Verifying Administrator Authentication Configuration ---');
+    const bootstrapAdminPass = process.env.STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD;
+    if (!bootstrapAdminPass) {
+      throw new Error('STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD environment variable is required');
     }
+    await page.type('input[type="email"]', 'admin@stockguard.dev');
+    await page.type('input[type="password"]', bootstrapAdminPass);
 
     // -------------------------------------------------------------------------
     // 4. Successful Authentication & Operations Dashboard (Dark Mode)

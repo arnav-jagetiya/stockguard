@@ -61,6 +61,17 @@ import java.util.*;
 public class DemoEnvironmentSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DemoEnvironmentSeeder.class);
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
+
+    /**
+     * Generates an unguessable 256-bit cryptographically secure random credential (64 hex characters).
+     * Complies strictly with BCrypt's 72-byte ceiling (64 bytes in ASCII/UTF-8).
+     */
+    public static String generateSecure256BitHexCredential() {
+        byte[] randomBytes = new byte[32]; // 32 bytes = 256 bits of cryptographic entropy
+        SECURE_RANDOM.nextBytes(randomBytes);
+        return java.util.HexFormat.of().formatHex(randomBytes);
+    }
 
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
@@ -214,9 +225,16 @@ public class DemoEnvironmentSeeder {
 
         // Admin User
         String adminEmail = properties.getAdminEmail() != null ? properties.getAdminEmail().trim() : "acme-admin@stockguard.dev";
-        String adminPassword = properties.getAdminPassword() != null ? properties.getAdminPassword() : "RedactedAdminSecret2026!";
         User admin = userRepository.findByNormalizedEmail(User.normalizeEmail(adminEmail)).orElseGet(() -> {
-            User newUser = User.create(adminEmail, passwordEncoder.encode(adminPassword));
+            String effectiveAdminPassword;
+            if (properties.getAdminPassword() != null && !properties.getAdminPassword().isBlank()) {
+                effectiveAdminPassword = properties.getAdminPassword();
+                log.info("Provisioning initial demo administrator [{}] with explicitly configured credential.", adminEmail);
+            } else {
+                effectiveAdminPassword = generateSecure256BitHexCredential();
+                log.warn("Demo administrator password is unset; initial demo administrator [{}] provisioned with unguessable random credential.", adminEmail);
+            }
+            User newUser = User.create(adminEmail, passwordEncoder.encode(effectiveAdminPassword));
             return userRepository.saveAndFlush(newUser);
         });
 
@@ -243,9 +261,7 @@ public class DemoEnvironmentSeeder {
         for (SyntheticUserSpec spec : teamSpecs) {
             String normEmail = User.normalizeEmail(spec.email());
             User user = userRepository.findByNormalizedEmail(normEmail).orElseGet(() -> {
-                String rawPass = "DEMO_VISITOR".equals(spec.key())
-                        ? UUID.randomUUID().toString() + UUID.randomUUID().toString()
-                        : "RedactedDemoSecret2026#" + spec.key();
+                String rawPass = generateSecure256BitHexCredential();
                 String securePass = passwordEncoder.encode(rawPass);
                 User newUser = User.create(spec.email(), securePass);
                 return userRepository.saveAndFlush(newUser);

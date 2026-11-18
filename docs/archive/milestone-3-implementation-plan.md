@@ -2,7 +2,7 @@
 
 > **Document Status:** PROPOSED IMPLEMENTATION PLAN (FINAL TECHNICAL SIGN-OFF REVISIONS)
 > **Target Release:** Milestone 3 (Identity, Authentication & Organization Access Foundation)
-> **Authoritative References:** [ADR-010](../architecture/adr/ADR-010-authentication-and-session-management.md), [ADR-011](../architecture/adr/ADR-011-authorization-and-organization-access-control.md), [Security Architecture](security-architecture.md), [V3 Schema Proposal](v3-auth-schema-proposal.md)
+> **Authoritative References:** [ADR-010](../architecture/adr/ADR-010-authentication-and-session-management.md), [ADR-011](../architecture/adr/ADR-011-authorization-and-organization-access-control.md), [Security Architecture](../security/security-architecture.md), [V3 Schema Proposal](v3-auth-schema-proposal.md)
 
 ---
 

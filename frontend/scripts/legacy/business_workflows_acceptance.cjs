@@ -45,7 +45,10 @@ async function run() {
   const timestamp = Date.now();
   const testEmail = `val.admin.${timestamp}@stockguard.test`;
   const testOrgName = `Validation Logistics ${timestamp}`;
-  const testPassword = 'Password123!';
+  const testPassword = process.env.STOCKGUARD_TEST_USER_PASSWORD;
+  if (!testPassword) {
+    throw new Error('STOCKGUARD_TEST_USER_PASSWORD environment variable is required');
+  }
 
   // --- STAGE C & WORKFLOW 1: INITIAL PROVISIONING ---
   console.log('[Workflow 1] Step 1: Register organization and admin account...');
@@ -344,7 +347,7 @@ async function run() {
     body: {
       fullName: 'Viewer User',
       email: viewerEmail,
-      password: 'ViewerPassword123!',
+      password: testPassword,
       organizationName: `Viewer Personal Org ${timestamp}`,
     },
   });

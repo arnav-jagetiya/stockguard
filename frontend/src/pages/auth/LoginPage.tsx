@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getDemoCredentialsApi } from '../../api/auth';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { ThemeTray } from '../../components/common/ThemeTray';
@@ -26,10 +25,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [isDemoVisitorLoading, setIsDemoVisitorLoading] = useState(false);
-
-  const isDev = import.meta.env.DEV;
 
   const { login, loginDemoVisitor } = useAuth();
   const navigate = useNavigate();
@@ -93,24 +89,6 @@ export const LoginPage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleFetchDemoCredentials = async () => {
-    setIsDemoLoading(true);
-    setErrorMessage(null);
-    try {
-      const demo = await getDemoCredentialsApi();
-      if (demo && demo.email) {
-        setEmail(demo.email);
-        if (demo.password) {
-          setPassword(demo.password);
-        }
-      }
-    } catch {
-      setErrorMessage('Development demo credentials are only available when the backend dev profile is active.');
-    } finally {
-      setIsDemoLoading(false);
     }
   };
 
@@ -244,18 +222,6 @@ export const LoginPage: React.FC = () => {
                 />
                 <span>Remember work email</span>
               </label>
-
-              {isDev && (
-                <button
-                  type="button"
-                  onClick={handleFetchDemoCredentials}
-                  disabled={isDemoLoading}
-                  className="text-[11px] font-medium text-[#147C68] dark:text-[#6CD8C0] hover:underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                  title="Populate development bootstrap credentials via dev API"
-                >
-                  <Sparkles className="w-3 h-3" /> {isDemoLoading ? 'Loading Demo...' : 'Fill Demo Admin'}
-                </button>
-              )}
             </div>
 
             <Button

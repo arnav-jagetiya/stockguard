@@ -39,7 +39,11 @@ async function run() {
     // 3. Admin Login Execution
     console.log('3. Executing Administrator login (admin@stockguard.dev)...');
     await page.type('input[type="email"]', 'admin@stockguard.dev');
-    await page.type('input[type="password"]', 'replace-with-secure-admin-password');
+    const bootstrapAdminPass = process.env.STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD;
+    if (!bootstrapAdminPass) {
+      throw new Error('STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD environment variable is required');
+    }
+    await page.type('input[type="password"]', bootstrapAdminPass);
     await page.click('button[type="submit"]');
 
     // Wait for dashboard to load

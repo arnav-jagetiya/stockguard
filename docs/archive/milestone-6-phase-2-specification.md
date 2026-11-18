@@ -4,7 +4,7 @@
 > **Document Status:** AUTHORITATIVE ARCHITECTURE & IMPLEMENTATION SPECIFICATION (FINAL V4 RESOLUTION INTEGRITY ALIGNMENT)
 > **Release Target:** Milestone 6 Phase 2
 > **Repository Baseline:** Commit `1491cd9` (`feat: implement audit logging, security events and audit retrieval`)
-> **Authoritative References:** [ADR-001](adr/ADR-001-modular-monolith.md), [ADR-002](adr/ADR-002-postgresql-source-of-truth.md), [ADR-004](adr/ADR-004-inventory-ledger.md), [ADR-008](adr/ADR-008-persistence-strategy.md), [ADR-009](adr/ADR-009-reservation-expiration.md), [ADR-010](adr/ADR-010-authentication-and-session-management.md), [ADR-011](adr/ADR-011-authorization-and-organization-access-control.md), [ADR-012](adr/ADR-012-periodic-inventory-reconciliation-and-discrepancy-management.md), [ADR-013](adr/ADR-013-operational-dashboard-aggregation-architecture.md), [ADR-014](adr/ADR-014-observability-prometheus-metrics-and-security.md), [Milestone 6 Implementation Plan](milestone-6-implementation-plan.md)
+> **Authoritative References:** [ADR-001](../architecture/adr/ADR-001-modular-monolith.md), [ADR-002](../architecture/adr/ADR-002-postgresql-source-of-truth.md), [ADR-004](../architecture/adr/ADR-004-inventory-ledger.md), [ADR-008](../architecture/adr/ADR-008-persistence-strategy.md), [ADR-009](../architecture/adr/ADR-009-reservation-expiration.md), [ADR-010](../architecture/adr/ADR-010-authentication-and-session-management.md), [ADR-011](../architecture/adr/ADR-011-authorization-and-organization-access-control.md), [ADR-012](../architecture/adr/ADR-012-periodic-inventory-reconciliation-and-discrepancy-management.md), [ADR-013](../architecture/adr/ADR-013-operational-dashboard-aggregation-architecture.md), [ADR-014](../architecture/adr/ADR-014-observability-prometheus-metrics-and-security.md), [Milestone 6 Implementation Plan](milestone-6-implementation-plan.md)
 
 ---
 
@@ -384,7 +384,7 @@ Every reconciliation and dashboard query must be profiled using `EXPLAIN (ANALYZ
 
 ### 3.1 Modular Monolith Architecture Blueprint
 
-StockGuard adheres strictly to the modular monolith pattern ([ADR-001](adr/ADR-001-modular-monolith.md)). All reconciliation, discrepancy, dashboard, and observability capabilities reside within clean Spring module packages:
+StockGuard adheres strictly to the modular monolith pattern ([ADR-001](../architecture/adr/ADR-001-modular-monolith.md)). All reconciliation, discrepancy, dashboard, and observability capabilities reside within clean Spring module packages:
 - `com.stockguard.inventory.reconciliation`: Reconciliation engine, CTE queries, advisory lock coordinator, scheduled worker.
 - `com.stockguard.inventory.discrepancy`: Discrepancy persistence entity, lifecycle state service, repository, and controller.
 - `com.stockguard.dashboard`: Dashboard aggregation service, JDBC operations, DTOs, and controller.

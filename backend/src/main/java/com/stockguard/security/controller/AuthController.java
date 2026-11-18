@@ -410,49 +410,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * Development-only endpoint providing demo administrator credentials for quick login.
-     * Strictly blocked in production profiles, restricted to loopback IP addresses,
-     * and unavailable when bootstrap is disabled. Never logs secrets.
-     */
-    @GetMapping("/demo-credentials")
-    public ResponseEntity<?> getDemoCredentials(HttpServletRequest servletRequest) {
-        if (environment != null && (environment.acceptsProfiles(Profiles.of("prod")) || !environment.acceptsProfiles(Profiles.of("dev")))) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        if (servletRequest != null && !isLoopbackAddress(servletRequest.getRemoteAddr())) {
-            securityAuditLog.warn("Access to demo credentials rejected from non-loopback IP: {}", servletRequest.getRemoteAddr());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("error", "Forbidden", "message", "Demo credentials discovery is only permitted from local host."));
-        }
-        if (demoProperties != null && demoProperties.isSeedEnabled()
-                && demoProperties.getAdminEmail() != null && !demoProperties.getAdminEmail().isBlank()
-                && demoProperties.getAdminPassword() != null && !demoProperties.getAdminPassword().isBlank()) {
-            return ResponseEntity.ok(Map.of(
-                    "available", true,
-                    "email", demoProperties.getAdminEmail(),
-                    "password", demoProperties.getAdminPassword()
-            ));
-        }
-        if (securityProperties == null || securityProperties.getBootstrap() == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        SecurityProperties.Bootstrap bootstrap = securityProperties.getBootstrap();
-        if (!bootstrap.isEnabled() || bootstrap.getAdminPassword() == null || bootstrap.getAdminPassword().isBlank()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        return ResponseEntity.ok(Map.of(
-                "available", true,
-                "email", bootstrap.getAdminEmail(),
-                "password", bootstrap.getAdminPassword()
-        ));
-    }
-
-    private boolean isLoopbackAddress(String ip) {
-        if (ip == null || ip.isBlank()) return false;
-        return "127.0.0.1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip) || "::1".equals(ip) || "localhost".equalsIgnoreCase(ip);
-    }
-
     public void setSecurityProperties(SecurityProperties securityProperties) {
         this.securityProperties = securityProperties;
     }

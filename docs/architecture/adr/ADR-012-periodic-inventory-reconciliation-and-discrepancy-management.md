@@ -5,7 +5,7 @@
 | **Status** | Accepted (Final V4 Resolution Integrity Alignment) |
 | **Date** | 2026-11-14 |
 | **Applies To** | Milestone 6 Phase 2 |
-| **Authoritative References** | [ADR-004](ADR-004-inventory-ledger.md), [ADR-008](ADR-008-persistence-strategy.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan](../milestone-6-implementation-plan.md), [Phase 2 Specification](../milestone-6-phase-2-specification.md) |
+| **Authoritative References** | [ADR-004](ADR-004-inventory-ledger.md), [ADR-008](ADR-008-persistence-strategy.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan](../../archive/milestone-6-implementation-plan.md), [Phase 2 Specification](../../archive/milestone-6-phase-2-specification.md) |
 
 > [!IMPORTANT]
 > This architectural decision record formalizes the snapshot semantics, background coordination, organization-scoped membership integrity, discrepancy persistence model, comprehensive resolution CHECK constraint, complete lifecycle transition matrix, deduplication rules, atomic discrepancy-audit transaction boundaries, and zero-auto-repair policy for StockGuard's inventory reconciliation subsystem.

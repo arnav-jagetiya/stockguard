@@ -41,12 +41,12 @@ stockguard:
       allowed-origins:
         - "http://localhost:5173"
     bootstrap:
-      enabled: true
-      admin-email: "admin@stockguard.dev"
-      admin-password: "replace-with-secure-admin-password"
-      admin-full-name: "StockGuard Administrator"
-      org-name: "StockGuard Demo Organization"
-      allow-password-reset: ${STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET:false}
+      enabled: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:false}
+      admin-email: ${STOCKGUARD_BOOTSTRAP_ADMIN_EMAIL:admin@stockguard.dev}
+      admin-password: ${STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD:}
+      admin-full-name: ${STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME:StockGuard Administrator}
+      org-name: ${STOCKGUARD_BOOTSTRAP_ORG_NAME:StockGuard Demo Organization}
+      allow-password-reset: false
     rate-limit:
       login-permits-per-minute: 60
       refresh-permits-per-minute: 120
@@ -55,7 +55,7 @@ stockguard:
   demo:
     seed-enabled: ${STOCKGUARD_DEMO_SEED_ENABLED:false}
     admin-email: "acme-admin@stockguard.dev"
-    admin-password: "RedactedAdminSecret2026!"
+    admin-password: ${STOCKGUARD_DEMO_ADMIN_PASSWORD:}
     admin-full-name: "Aarav Mehta"
     org-name: "Acme Industrial Supply Pvt. Ltd."
 

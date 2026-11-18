@@ -104,12 +104,12 @@ class AdminBootstrapIntegrationTest {
 
     @Test
     @Order(2)
-    @DisplayName("bootstrap fails closed if enabled but credentials incomplete")
-    void bootstrapFailsClosedOnIncompleteCredentials() {
+    @DisplayName("bootstrap fails closed if enabled but configured password is under 8 characters")
+    void bootstrapFailsClosedOnShortPassword() {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
         config.setEnabled(true);
         config.setAdminEmail("admin@stockguard.io");
-        config.setAdminPassword(""); // blank
+        config.setAdminPassword("short"); // under 8 characters
         config.setAdminFullName("System Administrator");
         config.setOrgName("Initial Org");
 
@@ -120,6 +120,37 @@ class AdminBootstrapIntegrationTest {
 
     @Test
     @Order(3)
+    @DisplayName("bootstrap fails closed in production when password is not explicitly configured")
+    void bootstrapFailsClosedInProdWhenPasswordUnset() {
+        SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
+        config.setEnabled(true);
+        config.setAdminEmail("admin-prod@stockguard.io");
+        config.setAdminPassword(""); // blank
+        config.setAdminFullName("System Administrator");
+        config.setOrgName("Prod Org");
+
+        MockEnvironment prodEnv = new MockEnvironment();
+        prodEnv.setActiveProfiles("prod");
+
+        AdminBootstrapRunner prodRunner = new AdminBootstrapRunner(
+                securityProperties,
+                userRepository,
+                organizationRepository,
+                membershipRepository,
+                passwordEncoder,
+                jdbcOperations,
+                jdbcTemplate,
+                transactionManager,
+                prodEnv
+        );
+
+        assertThatThrownBy(() -> prodRunner.run(null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Bootstrap admin-password must be explicitly configured when bootstrap is enabled in production");
+    }
+
+    @Test
+    @Order(4)
     @DisplayName("bootstrap fails closed if admin exists without corresponding organization membership")
     void bootstrapFailsClosedOnPartialInconsistentState() {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
@@ -145,7 +176,7 @@ class AdminBootstrapIntegrationTest {
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     @DisplayName("bootstrap provisions admin entities and handles recovery lifecycle")
     void bootstrapProvisionsAndHandlesRecoveryLifecycle() throws Exception {
         SecurityProperties.Bootstrap config = securityProperties.getBootstrap();
@@ -229,5 +260,23 @@ class AdminBootstrapIntegrationTest {
         assertThatThrownBy(() -> prodRunner.run(null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Bootstrap password reset is strictly forbidden in production");
+    }
+
+    @Test
+    @Order(6)
+    @DisplayName("bootstrap random credential generator produces 64-char hex string with full 256-bit entropy under BCrypt ceiling")
+    void bootstrapRandomCredentialGenerates256BitEntropy() {
+        String cred1 = AdminBootstrapRunner.generateSecure256BitHexCredential();
+        String cred2 = AdminBootstrapRunner.generateSecure256BitHexCredential();
+
+        assertThat(cred1)
+                .isNotNull()
+                .hasSize(64)
+                .matches("^[0-9a-f]{64}$")
+                .isNotEqualTo(cred2);
+
+        assertThat(cred1.getBytes(java.nio.charset.StandardCharsets.UTF_8).length)
+                .isEqualTo(64)
+                .isLessThanOrEqualTo(72);
     }
 }

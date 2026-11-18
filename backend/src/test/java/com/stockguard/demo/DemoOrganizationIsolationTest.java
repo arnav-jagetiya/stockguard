@@ -12,6 +12,7 @@ import com.stockguard.product.domain.Product;
 import com.stockguard.product.dto.CreateProductRequest;
 import com.stockguard.product.repository.ProductRepository;
 import com.stockguard.product.service.ProductService;
+import com.stockguard.security.bootstrap.AdminBootstrapRunner;
 import com.stockguard.security.context.OrganizationContext;
 import com.stockguard.security.context.OrganizationContextHolder;
 import com.stockguard.security.domain.User;
@@ -95,7 +96,7 @@ class DemoOrganizationIsolationTest {
         properties.setSeedEnabled(true);
         properties.setOrgName("Acme Industrial Supply Pvt. Ltd.");
         properties.setAdminEmail("acme-admin-iso@stockguard.dev");
-        properties.setAdminPassword("RedactedAdminSecret2026!");
+        properties.setAdminPassword(AdminBootstrapRunner.generateSecure256BitHexCredential());
         properties.setAdminFullName("Aarav Mehta");
 
         DemoSeedResult result = demoEnvironmentSeeder.seedDemoEnvironment(properties);

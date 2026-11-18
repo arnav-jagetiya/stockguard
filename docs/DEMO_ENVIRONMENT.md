@@ -28,7 +28,7 @@ Demo environment seeding is strictly opt-in and safeguarded against accidental a
 |---|---|---|---|
 | `stockguard.demo.seed-enabled` | `false` | **FORBIDDEN (Throws `IllegalStateException`)** | Opt-in flag to trigger demo environment seeding on startup. |
 | `stockguard.demo.admin-email` | `acme-admin@stockguard.dev` | Disallowed | Initial demo administrator email address. |
-| `stockguard.demo.admin-password` | `RedactedAdminSecret2026!` | Disallowed | Initial demo administrator password (BCrypt hashed). |
+| `stockguard.demo.admin-password` | None (Randomized if unset) | Disallowed | Initial demo administrator password (BCrypt hashed; generated as high-entropy random string if unset). |
 | `stockguard.demo.admin-full-name` | `Aarav Mehta` | Disallowed | Demo administrator display name. |
 | `stockguard.demo.org-name` | `Acme Industrial Supply Pvt. Ltd.` | Disallowed | Target demonstration organization name. |
 
@@ -38,14 +38,21 @@ Set the environment variable or command-line parameter when starting the backend
 
 ```powershell
 $env:STOCKGUARD_DEMO_SEED_ENABLED="true"
+$env:STOCKGUARD_DEMO_ADMIN_PASSWORD="<replace-with-secure-local-password>"  # Optional: randomized if omitted
 cd backend
 .\mvnw.cmd spring-boot:run -DDB_PORT=5433
 ```
 
 Or pass via Spring Boot property:
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.arguments="--stockguard.demo.seed-enabled=true"
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--stockguard.demo.seed-enabled=true --stockguard.demo.admin-password=<secure-password>"
 ```
+
+> [!IMPORTANT]
+> **Credential Safety & Public Demo Independence:**
+> - When `STOCKGUARD_DEMO_ADMIN_PASSWORD` is unset or blank, initial administrator provisioning generates an unguessable high-entropy UUID string. No static or dictionary default credential exists in the codebase.
+> - Seeding is strictly non-destructive: if the administrator account already exists, its existing password is preserved and never overwritten on restart.
+> - The public one-click demo experience (`POST /api/auth/demo-login`) does **not** use the administrator account or password. It issues restricted viewer sessions for `demo.visitor@stockguard.dev` guarded by `DemoModeMutationGuardFilter`.
 
 ### Safety & Concurrency Protections
 1. **Production Rejection:** `DemoSeedRunner` inspects the active Spring environment. If the `prod` profile is active, an `IllegalStateException` is thrown immediately, halting initialization.

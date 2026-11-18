@@ -297,46 +297,11 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/auth/demo-credentials returns 404 when bootstrap is disabled")
-    void demoCredentialsReturns404WhenDisabled() {
-        controller.setSecurityProperties(properties);
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRemoteAddr("127.0.0.1");
-        ResponseEntity<?> response = controller.getDemoCredentials(request);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("GET /api/auth/demo-credentials returns credentials when bootstrap is enabled and local loopback")
-    void demoCredentialsReturnsCredentialsWhenEnabled() {
-        properties.getBootstrap().setEnabled(true);
-        properties.getBootstrap().setAdminEmail("admin@stockguard.dev");
-        properties.getBootstrap().setAdminPassword("replace-with-secure-admin-password");
-        controller.setSecurityProperties(properties);
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRemoteAddr("127.0.0.1");
-
-        ResponseEntity<?> response = controller.getDemoCredentials(request);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> body = (Map<String, Object>) response.getBody();
-        assertThat(body.get("available")).isEqualTo(true);
-        assertThat(body.get("email")).isEqualTo("admin@stockguard.dev");
-        assertThat(body.get("password")).isEqualTo("replace-with-secure-admin-password");
-    }
-
-    @Test
-    @DisplayName("GET /api/auth/demo-credentials returns 403 when request originates from non-loopback IP")
-    void demoCredentialsReturns403WhenNonLoopback() {
-        properties.getBootstrap().setEnabled(true);
-        properties.getBootstrap().setAdminEmail("admin@stockguard.dev");
-        properties.getBootstrap().setAdminPassword("replace-with-secure-admin-password");
-        controller.setSecurityProperties(properties);
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setRemoteAddr("198.51.100.25");
-
-        ResponseEntity<?> response = controller.getDemoCredentials(request);
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    @DisplayName("AuthController does not expose any endpoint returning passwords over HTTP")
+    void noEndpointExposesPasswords() {
+        boolean hasDemoCredentials = java.util.Arrays.stream(AuthController.class.getDeclaredMethods())
+                .anyMatch(m -> m.getName().toLowerCase().contains("democredentials"));
+        assertThat(hasDemoCredentials).isFalse();
     }
 
     @Test

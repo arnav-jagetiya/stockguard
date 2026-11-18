@@ -65,7 +65,11 @@ async function run() {
     await page.goto('http://localhost:5173/login', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('input[type="email"]', { timeout: 10000 });
     await page.type('input[type="email"]', 'admin@stockguard.dev');
-    await page.type('input[type="password"]', 'replace-with-secure-admin-password');
+    const bootstrapAdminPass = process.env.STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD;
+    if (!bootstrapAdminPass) {
+      throw new Error('STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD environment variable is required');
+    }
+    await page.type('input[type="password"]', bootstrapAdminPass);
     await page.click('button[type="submit"]');
     await page.waitForSelector('button[data-testid="theme-tray-trigger"]', { timeout: 10000 });
     await new Promise(r => setTimeout(r, 1000));

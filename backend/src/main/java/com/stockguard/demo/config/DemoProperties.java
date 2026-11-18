@@ -25,8 +25,9 @@ public class DemoProperties {
 
     /**
      * Demo administrator password for local development access.
+     * When unset or null, seeder generates an unpredictable high-entropy credential.
      */
-    private String adminPassword = "RedactedAdminSecret2026!";
+    private String adminPassword;
 
     /**
      * Demo administrator full name.

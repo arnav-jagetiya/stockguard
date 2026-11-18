@@ -5,7 +5,7 @@
 | **Status** | Accepted (Final Three-Network Architecture Alignment) |
 | **Date** | 2026-11-14 |
 | **Applies To** | Milestone 6 Phase 2 & Phase 3 |
-| **Authoritative References** | [ADR-001](ADR-001-modular-monolith.md), [ADR-010](ADR-010-authentication-and-session-management.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan §3.7](../milestone-6-implementation-plan.md), [Phase 2 Specification](../milestone-6-phase-2-specification.md) |
+| **Authoritative References** | [ADR-001](ADR-001-modular-monolith.md), [ADR-010](ADR-010-authentication-and-session-management.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan §3.7](../../archive/milestone-6-implementation-plan.md), [Phase 2 Specification](../../archive/milestone-6-phase-2-specification.md) |
 
 > [!IMPORTANT]
 > This architectural decision record formalizes the Prometheus metrics architecture, low-cardinality tag governance, and three-network Docker deployment security topology for StockGuard's management endpoints.

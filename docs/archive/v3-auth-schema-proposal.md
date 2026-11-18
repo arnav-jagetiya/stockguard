@@ -2,7 +2,7 @@
 
 > **Document Status:** PROPOSED DATABASE SPECIFICATION FOR MILESTONE 3 (FINAL TECHNICAL SIGN-OFF REVISIONS)
 > **Target Version:** Milestone 3 (`V3__create_auth_and_session_tables.sql`)
-> **Authoritative References:** [DATABASE_SCHEMA_SPECIFICATION.md](../database/DATABASE_SCHEMA_SPECIFICATION.md), [ADR-010](../architecture/adr/ADR-010-authentication-and-session-management.md), [Security Architecture](security-architecture.md)
+> **Authoritative References:** [DATABASE_SCHEMA_SPECIFICATION.md](../database/DATABASE_SCHEMA_SPECIFICATION.md), [ADR-010](../architecture/adr/ADR-010-authentication-and-session-management.md), [Security Architecture](../security/security-architecture.md)
 
 ---
 

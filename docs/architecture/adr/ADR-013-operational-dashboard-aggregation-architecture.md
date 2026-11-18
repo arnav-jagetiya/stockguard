@@ -5,7 +5,7 @@
 | **Status** | Accepted (Refined for Evidence-Based Performance Validation) |
 | **Date** | 2026-11-14 |
 | **Applies To** | Milestone 6 Phase 2 |
-| **Authoritative References** | [ADR-001](ADR-001-modular-monolith.md), [ADR-002](ADR-002-postgresql-source-of-truth.md), [ADR-008](ADR-008-persistence-strategy.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan](../milestone-6-implementation-plan.md), [Phase 2 Specification](../milestone-6-phase-2-specification.md) |
+| **Authoritative References** | [ADR-001](ADR-001-modular-monolith.md), [ADR-002](ADR-002-postgresql-source-of-truth.md), [ADR-008](ADR-008-persistence-strategy.md), [ADR-011](ADR-011-authorization-and-organization-access-control.md), [Milestone 6 Implementation Plan](../../archive/milestone-6-implementation-plan.md), [Phase 2 Specification](../../archive/milestone-6-phase-2-specification.md) |
 
 > [!IMPORTANT]
 > This architectural decision record defines the query design, isolation level, anti-Cartesian aggregation principles, and evidence-based performance validation for the Operational Dashboard subsystem (`com.stockguard.dashboard`).

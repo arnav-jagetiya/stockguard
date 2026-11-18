@@ -43,7 +43,18 @@ import java.util.UUID;
 public class AdminBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrapRunner.class);
+    private static final java.security.SecureRandom SECURE_RANDOM = new java.security.SecureRandom();
     public static final long BOOTSTRAP_ADVISORY_LOCK_KEY = 0x53544F434B475541L; // 'STOCKGUA'
+
+    /**
+     * Generates an unguessable 256-bit cryptographically secure random credential (64 hex characters).
+     * Complies strictly with BCrypt's 72-byte ceiling (64 bytes in ASCII/UTF-8).
+     */
+    public static String generateSecure256BitHexCredential() {
+        byte[] randomBytes = new byte[32]; // 32 bytes = 256 bits of cryptographic entropy
+        SECURE_RANDOM.nextBytes(randomBytes);
+        return java.util.HexFormat.of().formatHex(randomBytes);
+    }
 
     private final SecurityProperties securityProperties;
     private final UserRepository userRepository;
@@ -119,8 +130,11 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         if (config.getAdminEmail() == null || config.getAdminEmail().isBlank()) {
             throw new IllegalStateException("Bootstrap admin-email must not be blank when bootstrap is enabled");
         }
-        if (config.getAdminPassword() == null || config.getAdminPassword().length() < 8) {
-            throw new IllegalStateException("Bootstrap admin-password must be at least 8 characters");
+        if (config.getAdminPassword() != null && !config.getAdminPassword().isBlank() && config.getAdminPassword().length() < 8) {
+            throw new IllegalStateException("Bootstrap admin-password must be at least 8 characters when configured");
+        }
+        if ((config.getAdminPassword() == null || config.getAdminPassword().isBlank()) && environment != null && environment.matchesProfiles("prod")) {
+            throw new IllegalStateException("Bootstrap admin-password must be explicitly configured when bootstrap is enabled in production");
         }
         if (config.getAdminFullName() == null || config.getAdminFullName().isBlank()) {
             throw new IllegalStateException("Bootstrap admin-full-name must not be blank when bootstrap is enabled");
@@ -201,7 +215,16 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         Organization org = Organization.create(config.getOrgName().trim());
         org = organizationRepository.saveAndFlush(org);
 
-        String hashedPassword = passwordEncoder.encode(config.getAdminPassword());
+        String effectivePassword;
+        if (config.getAdminPassword() != null && !config.getAdminPassword().isBlank()) {
+            effectivePassword = config.getAdminPassword();
+            log.info("Administrator bootstrap: Using explicitly configured credential for '{}'.", config.getAdminEmail());
+        } else {
+            effectivePassword = generateSecure256BitHexCredential();
+            log.warn("Administrator bootstrap: No password configured for '{}'; generated unguessable 256-bit random credential.", config.getAdminEmail());
+        }
+
+        String hashedPassword = passwordEncoder.encode(effectivePassword);
         User user = User.create(config.getAdminEmail(), hashedPassword);
         user = userRepository.saveAndFlush(user);
 

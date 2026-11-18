@@ -40,32 +40,25 @@ async function run() {
     console.log('======================================================');
     await page.goto('http://localhost:5173/login', { waitUntil: 'networkidle0' });
 
-    // Look for "Fill Demo Admin" button
-    const demoBtn = await page.$('button[title*="bootstrap credentials"]');
-    if (demoBtn) {
-      console.log('  Found "Fill Demo Admin" button, clicking to populate credentials...');
-      await demoBtn.click();
-      await delay(1000);
+    const demoAdminPass = process.env.STOCKGUARD_DEMO_ADMIN_PASSWORD || process.env.STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD;
+    if (!demoAdminPass) {
+      throw new Error('STOCKGUARD_DEMO_ADMIN_PASSWORD or STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD environment variable is required');
     }
 
-    // Verify or type credentials if empty
-    const emailVal = await page.$eval('input[type="email"]', el => el.value).catch(() => '');
-    if (!emailVal || !emailVal.includes('acme')) {
-      console.log('  Typing Acme demo credentials directly...');
-      await page.focus('input[type="email"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('A');
-      await page.keyboard.up('Control');
-      await page.keyboard.press('Backspace');
-      await page.type('input[type="email"]', 'acme-admin@stockguard.dev');
+    console.log('  Typing administrator credentials...');
+    await page.focus('input[type="email"]');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('A');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Backspace');
+    await page.type('input[type="email"]', 'acme-admin@stockguard.dev');
 
-      await page.focus('input[type="password"]');
-      await page.keyboard.down('Control');
-      await page.keyboard.press('A');
-      await page.keyboard.up('Control');
-      await page.keyboard.press('Backspace');
-      await page.type('input[type="password"]', 'RedactedAdminSecret2026!');
-    }
+    await page.focus('input[type="password"]');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('A');
+    await page.keyboard.up('Control');
+    await page.keyboard.press('Backspace');
+    await page.type('input[type="password"]', demoAdminPass);
 
     const currentEmail = await page.$eval('input[type="email"]', el => el.value);
     console.log(`  Form populated with: ${currentEmail}`);

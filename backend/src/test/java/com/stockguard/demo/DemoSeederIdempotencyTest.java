@@ -10,6 +10,7 @@ import com.stockguard.organization.repository.OrganizationMembershipRepository;
 import com.stockguard.organization.repository.OrganizationRepository;
 import com.stockguard.product.repository.ProductRepository;
 import com.stockguard.reservation.repository.ReservationRepository;
+import com.stockguard.security.bootstrap.AdminBootstrapRunner;
 import com.stockguard.warehouse.repository.WarehouseRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -87,7 +88,7 @@ class DemoSeederIdempotencyTest {
         properties.setSeedEnabled(true);
         properties.setOrgName("Acme Industrial Supply Pvt. Ltd.");
         properties.setAdminEmail("acme-admin-idemp@stockguard.dev");
-        properties.setAdminPassword("RedactedAdminSecret2026!");
+        properties.setAdminPassword(AdminBootstrapRunner.generateSecure256BitHexCredential());
         properties.setAdminFullName("Aarav Mehta");
 
         // Run 1: Initial seed
