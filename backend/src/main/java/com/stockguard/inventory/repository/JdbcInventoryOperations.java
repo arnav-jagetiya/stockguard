@@ -555,12 +555,13 @@ public class JdbcInventoryOperations {
             sql = """
                     SELECT t.id, t.organization_id, t.source_warehouse_id, t.destination_warehouse_id,
                            t.notes, t.actor_user_id, t.created_at, t.completed_at,
-                           tx.id AS transaction_id
+                           (SELECT tx.id FROM inventory_transactions tx
+                            WHERE tx.organization_id = t.organization_id
+                              AND tx.reference_type = 'TRANSFER'
+                              AND tx.reference_id = t.id
+                            ORDER BY tx.created_at ASC
+                            LIMIT 1) AS transaction_id
                     FROM transfers t
-                    LEFT JOIN inventory_transactions tx
-                      ON t.organization_id = tx.organization_id
-                     AND tx.reference_type = 'TRANSFER'
-                     AND tx.reference_id = t.id
                     WHERE t.organization_id = ?
                       AND (t.source_warehouse_id = ? OR t.destination_warehouse_id = ?)
                     ORDER BY t.created_at DESC
@@ -573,12 +574,13 @@ public class JdbcInventoryOperations {
             sql = """
                     SELECT t.id, t.organization_id, t.source_warehouse_id, t.destination_warehouse_id,
                            t.notes, t.actor_user_id, t.created_at, t.completed_at,
-                           tx.id AS transaction_id
+                           (SELECT tx.id FROM inventory_transactions tx
+                            WHERE tx.organization_id = t.organization_id
+                              AND tx.reference_type = 'TRANSFER'
+                              AND tx.reference_id = t.id
+                            ORDER BY tx.created_at ASC
+                            LIMIT 1) AS transaction_id
                     FROM transfers t
-                    LEFT JOIN inventory_transactions tx
-                      ON t.organization_id = tx.organization_id
-                     AND tx.reference_type = 'TRANSFER'
-                     AND tx.reference_id = t.id
                     WHERE t.organization_id = ?
                     ORDER BY t.created_at DESC
                     LIMIT ?;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { 
   Users, 
   UserPlus, 
@@ -9,6 +9,9 @@ import {
   Check, 
   Copy, 
   Info,
+  Search,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -58,11 +61,36 @@ export const TeamPage: React.FC = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | Role>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+
   // Deactivate State
   const [deactivatingMember, setDeactivatingMember] = useState<OrganizationMember | null>(null);
   const [deactivateLoading, setDeactivateLoading] = useState(false);
 
   const canManageUsers = hasPermission('membership:manage') || currentOrg?.role === 'ADMIN';
+
+  const filteredMembers = useMemo(() => {
+    return members.filter((m) => {
+      if (searchQuery.trim() && !m.userId.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
+        return false;
+      }
+      if (roleFilter !== 'ALL' && m.role !== roleFilter) {
+        return false;
+      }
+      if (statusFilter === 'ACTIVE' && !m.active) return false;
+      if (statusFilter === 'INACTIVE' && m.active) return false;
+      return true;
+    });
+  }, [members, searchQuery, roleFilter, statusFilter]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setRoleFilter('ALL');
+    setStatusFilter('ALL');
+  };
 
   const fetchMembers = useCallback(async () => {
     setLoading(true);
@@ -248,6 +276,80 @@ export const TeamPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Filter Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white dark:bg-[#111A17] rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+          {/* Search by User ID */}
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
+            <input
+              type="text"
+              aria-label="Search members by user ID"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by User ID / Principal..."
+              className="w-full pl-8 pr-8 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono caret-[#18231D] dark:caret-[#EEF3EA]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
+                aria-label="Clear member search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Role Filter */}
+          <div className="w-full sm:w-44">
+            <select
+              aria-label="Filter by role"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value as 'ALL' | Role)}
+              className="w-full py-1.5 px-2.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B]"
+            >
+              <option value="ALL">All Roles</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="MANAGER">MANAGER</option>
+              <option value="OPERATOR">OPERATOR</option>
+              <option value="VIEWER">VIEWER</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="w-full sm:w-36">
+            <select
+              aria-label="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+              className="w-full py-1.5 px-2.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B]"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="ACTIVE">Active Only</option>
+              <option value="INACTIVE">Inactive Only</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+            Showing {filteredMembers.length} of {members.length} member(s)
+          </span>
+          {(searchQuery || roleFilter !== 'ALL' || statusFilter !== 'ALL') && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Members Table */}
       <Card className="border-[#D9E1D7] dark:border-[#26362E] overflow-hidden shadow-sm">
         {loading && members.length === 0 ? (
@@ -257,6 +359,14 @@ export const TeamPage: React.FC = () => {
             icon={<Users className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
             title="No members registered"
             description="No active memberships found for the current organization context."
+          />
+        ) : filteredMembers.length === 0 ? (
+          <EmptyState
+            icon={<Users className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
+            title="No matching members"
+            description="No members match the selected search query or role filter."
+            actionLabel="Reset Filters"
+            onAction={handleResetFilters}
           />
         ) : (
           <div className="overflow-x-auto">
@@ -271,7 +381,7 @@ export const TeamPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D9E1D7] dark:divide-[#26362E] text-[#18231D] dark:text-[#EEF3EA]">
-                {members.map((m) => {
+                {filteredMembers.map((m) => {
                   const isCurrentUser = user?.id === m.userId;
                   return (
                     <tr key={m.id} className="hover:bg-[#E9EEE6]/50 dark:hover:bg-[#1B2922]/50 transition-colors group">

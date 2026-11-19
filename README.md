@@ -56,7 +56,7 @@ cd backend
 docker-compose up -d
 ```
 
-The database container will start on port `5433` (or configured `DB_PORT`) and automatically execute `init-db/init-roles.sql` to establish:
+The database container will start on port `5433` (or configured `DB_PORT`) and automatically execute `init-db/01-init-roles.sh` to establish:
 * `stockguard_owner` (migration credentials)
 * `stockguard_app` (runtime DML credentials)
 
@@ -438,7 +438,7 @@ stockguard/
 ├── backend/
 │   ├── Dockerfile                    # Multi-stage production container build (Java 21 Alpine)
 │   ├── init-db/
-│   │   └── init-roles.sql            # PostgreSQL dual-role privilege initialization
+│   │   └── 01-init-roles.sh          # PostgreSQL dual-role privilege initialization (secure environment-driven)
 │   ├── mvnw / mvnw.cmd / .mvn/       # Maven build wrapper
 │   ├── pom.xml                       # Maven build descriptor (Java 21, Spring Boot 4.1.2)
 │   ├── src/
@@ -473,7 +473,7 @@ stockguard/
 │   └── runbooks/                     # Operational runbooks (deployment, DR, monitoring)
 ├── frontend/
 │   ├── Dockerfile                    # Multi-stage production container build (Vite + Nginx Alpine)
-│   ├── entrypoint.sh                 # Unified container entrypoint & fallback TLS generator
+│   ├── entrypoint.sh                 # Production fail-closed TLS verification entrypoint
 │   ├── nginx.conf                    # Nginx reverse proxy, security headers & SPA routing
 │   ├── package.json / package-lock.json # React 19, Vite 8, Tailwind CSS v4, Three.js 0.187
 │   ├── scripts/                      # Active browser test runners & legacy archive
@@ -490,9 +490,12 @@ stockguard/
 │   ├── prometheus.env.example        # Environment variable template for Prometheus
 │   └── prometheus.yml                # Scrape configuration for Spring Boot actuator metrics
 ├── scripts/
-│   ├── backup_db.sh                  # Non-destructive database backup utility
-│   ├── health_check.sh               # Health check verification script
-│   ├── restore_db.sh                 # Database restore utility with safety pre-checks
+│   ├── backup-db.sh                  # Non-destructive database backup utility (Bash)
+│   ├── backup-db.ps1                 # Non-destructive database backup utility (PowerShell)
+│   ├── generate-dev-certs.sh         # Development self-signed TLS cert generator (Bash)
+│   ├── generate-dev-certs.ps1        # Development self-signed TLS cert generator (PowerShell)
+│   ├── restore-db.sh                 # Database restore utility with safety pre-checks (Bash)
+│   └── restore-db.ps1                # Database restore utility with safety pre-checks (PowerShell)
 │   └── seed_demo.sh                  # Acme Industrial Supply demo seeder runner
 ├── .dockerignore                     # Root Docker build ignore specification
 ├── .env.example                      # Production environment variable template

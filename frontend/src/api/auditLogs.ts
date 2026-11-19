@@ -10,6 +10,7 @@ export interface AuditLogFilterParams {
   endDate?: string;
   page?: number;
   size?: number;
+  signal?: AbortSignal;
 }
 
 export async function getAuditLogsApi(params: AuditLogFilterParams = {}): Promise<AuditLogPageResponse> {
@@ -23,5 +24,5 @@ export async function getAuditLogsApi(params: AuditLogFilterParams = {}): Promis
   if (params.page !== undefined) q.append('page', params.page.toString());
   if (params.size !== undefined) q.append('size', params.size.toString());
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return apiClient<AuditLogPageResponse>(`/api/audit-logs${qs}`);
+  return apiClient<AuditLogPageResponse>(`/api/audit-logs${qs}`, { signal: params.signal });
 }

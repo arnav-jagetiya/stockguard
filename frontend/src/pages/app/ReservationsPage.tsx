@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getReservationApi, getReservationByOrderIdApi } from '../../api/reservations';
+import { listOrdersApi } from '../../api/orders';
 import type { Reservation } from '../../types/reservation';
+import type { Order } from '../../types/order';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
@@ -10,6 +12,8 @@ import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '.
 import { TableSkeleton } from '../../components/common/Skeleton';
 import { BookmarkCheck, Search } from 'lucide-react';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const ReservationsPage: React.FC = () => {
   const [searchId, setSearchId] = useState('');
   const [searchType, setSearchType] = useState<'order' | 'reservation'>('order');
@@ -17,18 +21,43 @@ export const ReservationsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchId.trim()) return;
+  // Recent orders helper to prevent mandatory manual UUID copying
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [selectedOrderPicker, setSelectedOrderPicker] = useState<string>('');
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRecentOrders = async () => {
+      try {
+        const orderList = await listOrdersApi(undefined, 30);
+        if (isMounted) setRecentOrders(orderList);
+      } catch {
+        // Non-blocking helper fetch
+      }
+    };
+    fetchRecentOrders();
+    return () => { isMounted = false; };
+  }, []);
+
+  const executeLookup = async (id: string, type: 'order' | 'reservation') => {
+    const trimmed = id.trim();
+    if (!trimmed) return;
+
+    if (!UUID_REGEX.test(trimmed)) {
+      setError(`Invalid UUID format. Expected a 36-character hexadecimal UUID, but received: "${trimmed}". Select an order from the list or verify the identifier.`);
+      setReservation(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setReservation(null);
     try {
       let res: Reservation;
-      if (searchType === 'order') {
-        res = await getReservationByOrderIdApi(searchId.trim());
+      if (type === 'order') {
+        res = await getReservationByOrderIdApi(trimmed);
       } else {
-        res = await getReservationApi(searchId.trim());
+        res = await getReservationApi(trimmed);
       }
       setReservation(res);
     } catch (err: unknown) {
@@ -39,6 +68,20 @@ export const ReservationsPage: React.FC = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    executeLookup(searchId, searchType);
+  };
+
+  const handleOrderPickerChange = (orderId: string) => {
+    setSelectedOrderPicker(orderId);
+    if (orderId) {
+      setSearchType('order');
+      setSearchId(orderId);
+      executeLookup(orderId, 'order');
     }
   };
 
@@ -68,8 +111,25 @@ export const ReservationsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Search Bar */}
+      {/* Lookup Controls */}
       <Card className="space-y-4">
+        {recentOrders.length > 0 && (
+          <div className="pb-3 border-b border-[#D9E1D7] dark:border-[#26362E]">
+            <Select
+              label="Quick Picker — Select From Active / Recent Orders"
+              value={selectedOrderPicker}
+              onChange={(e) => handleOrderPickerChange(e.target.value)}
+              options={[
+                { value: '', label: 'Select an order to inspect its stock allocations...' },
+                ...recentOrders.map((o) => ({
+                  value: o.id,
+                  label: `${o.orderNumber} (${o.status}) — ${o.customerReference || 'No customer ref'}`,
+                })),
+              ]}
+            />
+          </div>
+        )}
+
         <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-end gap-3">
           <div className="w-full sm:w-48">
             <Select

@@ -27,6 +27,9 @@ import {
   SlidersHorizontal,
   BookmarkPlus,
   History,
+  Search,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 
 export const InventoryPage: React.FC = () => {
@@ -44,6 +47,9 @@ export const InventoryPage: React.FC = () => {
   // Filter states
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedWarehouse, setSelectedWarehouse] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [txTypeFilter, setTxTypeFilter] = useState('');
+  const [txSearch, setTxSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals
@@ -61,21 +67,36 @@ export const InventoryPage: React.FC = () => {
   const [modalReason, setModalReason] = useState('');
   const [modalNotes, setModalNotes] = useState('');
 
+  // 1. Fetch catalogs (products & warehouses) once on component mount
+  useEffect(() => {
+    let isMounted = true;
+    const loadCatalogs = async () => {
+      try {
+        const [prods, whs] = await Promise.all([
+          listProductsApi(undefined, true),
+          listWarehousesApi(undefined, true),
+        ]);
+        if (isMounted) {
+          setProducts(prods);
+          setWarehouses(whs);
+        }
+      } catch (err: unknown) {
+        if (isMounted && err instanceof Error) toast.error('Failed to load catalogs', err.message);
+      }
+    };
+    loadCatalogs();
+    return () => { isMounted = false; };
+  }, [toast]);
+
+  // 2. Load tab-specific inventory data when activeTab or server filters change
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [prods, whs] = await Promise.all([
-        listProductsApi(undefined, true),
-        listWarehousesApi(undefined, true),
-      ]);
-      setProducts(prods);
-      setWarehouses(whs);
-
       if (activeTab === 'balances') {
         const balData = await getBalancesApi(selectedProduct || undefined, selectedWarehouse || undefined);
         setBalances(balData);
       } else {
-        const txData = await listTransactionsApi(50);
+        const txData = await listTransactionsApi(100);
         setTransactions(txData);
       }
     } catch (err: unknown) {
@@ -161,6 +182,34 @@ export const InventoryPage: React.FC = () => {
     const w = warehouses.find((x) => x.id === id);
     return w ? `${w.code} (${w.name})` : id;
   };
+
+  const filteredBalances = balances.filter((b) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const prod = products.find((p) => p.id === b.productId);
+    const wh = warehouses.find((w) => w.id === b.warehouseId);
+    return Boolean(
+      (prod?.name.toLowerCase().includes(q)) ||
+      (prod?.sku.toLowerCase().includes(q)) ||
+      (wh?.name.toLowerCase().includes(q)) ||
+      (wh?.code.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredTransactions = transactions.filter((tx) => {
+    if (txTypeFilter && tx.transactionType !== txTypeFilter) return false;
+    if (txSearch.trim()) {
+      const q = txSearch.toLowerCase().trim();
+      const matchesId = tx.id.toLowerCase().includes(q);
+      const matchesRef = Boolean(
+        (tx.referenceId && tx.referenceId.toLowerCase().includes(q)) ||
+        (tx.referenceType && tx.referenceType.toLowerCase().includes(q))
+      );
+      const matchesNotes = Boolean(tx.notes && tx.notes.toLowerCase().includes(q));
+      return matchesId || matchesRef || matchesNotes;
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -248,25 +297,135 @@ export const InventoryPage: React.FC = () => {
 
       {/* Filters (for balances) */}
       {activeTab === 'balances' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-white dark:bg-[#111A17] border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
-          <Select
-            label="Filter by Product"
-            value={selectedProduct}
-            onChange={(e) => setSelectedProduct(e.target.value)}
-            options={[
-              { value: '', label: 'All Products' },
-              ...products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
-            ]}
-          />
-          <Select
-            label="Filter by Warehouse"
-            value={selectedWarehouse}
-            onChange={(e) => setSelectedWarehouse(e.target.value)}
-            options={[
-              { value: '', label: 'All Facilities' },
-              ...warehouses.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
-            ]}
-          />
+        <div className="space-y-3 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative">
+              <label htmlFor="inventory-search" className="block text-xs font-semibold text-[#18231D] dark:text-[#EEF3EA] mb-1.5">
+                Quick Search
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="inventory-search"
+                  type="text"
+                  placeholder="Filter by SKU or name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Select
+              label="Filter by Product"
+              value={selectedProduct}
+              onChange={(e) => setSelectedProduct(e.target.value)}
+              options={[
+                { value: '', label: 'All Products' },
+                ...products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
+              ]}
+            />
+
+            <Select
+              label="Filter by Warehouse"
+              value={selectedWarehouse}
+              onChange={(e) => setSelectedWarehouse(e.target.value)}
+              options={[
+                { value: '', label: 'All Facilities' },
+                ...warehouses.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
+              ]}
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-[#D9E1D7] dark:border-[#26362E] text-xs">
+            <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+              Showing {filteredBalances.length} of {balances.length} balance record(s)
+            </span>
+            {(selectedProduct || selectedWarehouse || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => { setSelectedProduct(''); setSelectedWarehouse(''); setSearchQuery(''); }}
+                className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset Balances Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Filters (for ledger transactions) */}
+      {activeTab === 'transactions' && (
+        <div className="space-y-3 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="relative">
+              <label htmlFor="tx-search" className="block text-xs font-semibold text-[#18231D] dark:text-[#EEF3EA] mb-1.5">
+                Reference / Notes Search
+              </label>
+              <div className="relative">
+                <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="tx-search"
+                  type="text"
+                  placeholder="Search reference, transaction ID, or notes..."
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
+                />
+                {txSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTxSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <Select
+              label="Transaction Type"
+              value={txTypeFilter}
+              onChange={(e) => setTxTypeFilter(e.target.value)}
+              options={[
+                { value: '', label: 'All Transaction Types' },
+                { value: 'RECEIPT', label: 'RECEIPT — Supplier Stock Receipt' },
+                { value: 'ADJUSTMENT', label: 'ADJUSTMENT — Cycle Count / Discrepancy Correction' },
+                { value: 'TRANSFER', label: 'TRANSFER — Inter-Warehouse Stock Relocation' },
+                { value: 'RESERVATION_ALLOCATION', label: 'RESERVATION_ALLOCATION — Two-Phase Lock' },
+                { value: 'RESERVATION_RELEASE', label: 'RESERVATION_RELEASE — Expiry / Cancellation' },
+                { value: 'ORDER_FULFILLMENT', label: 'ORDER_FULFILLMENT — Shipment Depletion' },
+                { value: 'OPENING_BALANCE', label: 'OPENING_BALANCE — Initial Facility Stock' },
+              ]}
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-[#D9E1D7] dark:border-[#26362E] text-xs">
+            <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+              Showing {filteredTransactions.length} of {transactions.length} ledger transaction(s)
+            </span>
+            {(txTypeFilter || txSearch) && (
+              <button
+                type="button"
+                onClick={() => { setTxTypeFilter(''); setTxSearch(''); }}
+                className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset Ledger Filters
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -274,11 +433,11 @@ export const InventoryPage: React.FC = () => {
       {isLoading ? (
         <TableSkeleton rows={5} cols={6} />
       ) : activeTab === 'balances' ? (
-        balances.length === 0 ? (
+        filteredBalances.length === 0 ? (
           <EmptyState
             icon={<Boxes className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
             title="No Balances Found"
-            description="No inventory balances have been established yet for these filters."
+            description={searchQuery || selectedProduct || selectedWarehouse ? "No inventory balances matched your active filter criteria." : "No inventory balances have been established yet for these filters."}
             actionLabel={canReceive ? 'Record Opening Stock' : undefined}
             onAction={() => {
               if (products[0]) setModalProduct(products[0].id);
@@ -299,7 +458,7 @@ export const InventoryPage: React.FC = () => {
               </tr>
             </TableHead>
             <TableBody>
-              {balances.map((b) => (
+              {filteredBalances.map((b) => (
                 <TableRow key={b.id}>
                   <TableCell className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">
                     {getProductName(b.productId)}
@@ -320,11 +479,11 @@ export const InventoryPage: React.FC = () => {
         )
       ) : (
         /* Ledger Transactions Table */
-        transactions.length === 0 ? (
+        filteredTransactions.length === 0 ? (
           <EmptyState
             icon={<History className="w-8 h-8" />}
-            title="No Ledger Transactions"
-            description="The immutable inventory transaction ledger is currently empty."
+            title="No Ledger Transactions Found"
+            description={txTypeFilter || txSearch ? "No ledger transactions matched your filter criteria." : "The immutable inventory transaction ledger is currently empty."}
           />
         ) : (
           <Table>
@@ -339,7 +498,7 @@ export const InventoryPage: React.FC = () => {
               </tr>
             </TableHead>
             <TableBody>
-              {transactions.map((tx) => (
+              {filteredTransactions.map((tx) => (
                 <TableRow key={tx.id}>
                   <TableCell className="font-mono text-xs text-[#657369] dark:text-[#9AA99E] truncate max-w-[120px]">
                     {tx.id}

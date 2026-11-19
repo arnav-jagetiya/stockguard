@@ -78,6 +78,18 @@
     transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
+  /* Universal Form Control Caret Visibility & Styling (M12D-1C) */
+  input, textarea, select {
+    caret-color: var(--text-primary);
+    accent-color: var(--signal-primary);
+  }
+
+  /* High-Contrast Accessible Form Placeholders */
+  ::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
   /* Precision Typography Scale & Negative Letter-Spacing */
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.028em;

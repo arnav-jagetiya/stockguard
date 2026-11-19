@@ -1,12 +1,16 @@
 import { apiClient } from './client';
 import type { CreateWarehouseRequest, UpdateWarehouseRequest, Warehouse } from '../types/warehouse';
 
-export async function getWarehousesApi(search?: string, activeOnly: boolean = false): Promise<Warehouse[]> {
+export async function getWarehousesApi(
+  search?: string,
+  activeOnly: boolean = false,
+  signal?: AbortSignal
+): Promise<Warehouse[]> {
   const q = new URLSearchParams();
   if (search) q.append('search', search);
   if (activeOnly) q.append('activeOnly', 'true');
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return apiClient<Warehouse[]>(`/api/warehouses${qs}`);
+  return apiClient<Warehouse[]>(`/api/warehouses${qs}`, { signal });
 }
 
 export const listWarehousesApi = getWarehousesApi;

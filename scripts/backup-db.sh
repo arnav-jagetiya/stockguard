@@ -11,7 +11,7 @@ set -euo pipefail
 # Configuration with environment defaults
 CONTAINER_NAME="${PG_CONTAINER_NAME:-stockguard-postgres}"
 DB_NAME="${POSTGRES_DB:-stockguard}"
-DB_USER="${POSTGRES_USER:-stockguard}"
+DB_USER="${POSTGRES_USER:-postgres}"
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-7}"
 

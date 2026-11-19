@@ -19,6 +19,8 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const errorId = inputId ? `${inputId}-error` : undefined;
+  const helperId = inputId ? `${inputId}-helper` : undefined;
 
   return (
     <div className="w-full space-y-1.5">
@@ -38,14 +40,16 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           id={inputId}
-          className={`w-full bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA] text-sm rounded-lg py-2 border transition-colors outline-none placeholder:text-[#8A988E] dark:placeholder:text-[#6C7D71] shadow-xs ${
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : helperText ? helperId : undefined}
+          className={`w-full bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] text-sm rounded-lg py-2 border transition-colors outline-none placeholder:text-[#8A988E] dark:placeholder:text-[#6C7D71] shadow-xs disabled:opacity-50 disabled:cursor-not-allowed ${
             icon ? 'pl-9 pr-3.5' : 'px-3.5'
           } ${
             rightElement ? 'pr-10' : ''
           } ${
             error
-              ? 'border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-              : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-1 focus:ring-[#456B1F]/30 dark:focus:ring-[#C6F36B]/30'
+              ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+              : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20'
           } ${className}`}
           {...props}
         />
@@ -55,9 +59,9 @@ export const Input: React.FC<InputProps> = ({
           </div>
         )}
       </div>
-      {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
+      {error && <p id={errorId} className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
       {!error && helperText && (
-        <p className="text-xs text-[#657369] dark:text-[#9AA99E]">{helperText}</p>
+        <p id={helperId} className="text-xs text-[#657369] dark:text-[#9AA99E]">{helperText}</p>
       )}
     </div>
   );

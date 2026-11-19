@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OrdersPage } from '../OrdersPage';
 import * as ordersApi from '../../../api/orders';
@@ -117,9 +117,62 @@ describe('OrdersPage Domain Lifecycle & State Mapping', () => {
     expect(screen.getByText('FULFILLED')).toBeInTheDocument();
     expect(screen.getByText('EXPIRED')).toBeInTheDocument();
 
-    // Verify filter options include Expired
+    // Verify filter options include Expired and Fulfilling
     const filterSelect = screen.getByLabelText(/filter by status/i);
     expect(filterSelect).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Expired' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Fulfilling' })).toBeInTheDocument();
+  });
+
+  it('renders FULFILLING badge and filters orders correctly', async () => {
+    const mockOrders: Order[] = [
+      {
+        id: 'ord-10',
+        organizationId: 'org-1',
+        orderNumber: 'ORD-2026-010',
+        customerReference: 'CUST-ABC',
+        status: 'FULFILLING',
+        currency: 'USD',
+        totalAmount: 120.0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: 'ord-11',
+        organizationId: 'org-1',
+        orderNumber: 'ORD-2026-011',
+        customerReference: 'CUST-XYZ',
+        status: 'CONFIRMED',
+        currency: 'USD',
+        totalAmount: 300.0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.mocked(ordersApi.listOrdersApi).mockResolvedValue(mockOrders);
+    vi.mocked(productsApi.listProductsApi).mockResolvedValue([]);
+
+    render(
+      <MemoryRouter>
+        <AuthContext.Provider value={mockAuthContext}>
+          <ToastProvider>
+            <OrdersPage />
+          </ToastProvider>
+        </AuthContext.Provider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('ORD-2026-010')).toBeInTheDocument();
+      expect(screen.getByText('FULFILLING')).toBeInTheDocument();
+    });
+
+    // Test text search filtering
+    const searchInput = screen.getByPlaceholderText(/Search by order number or customer ref/i);
+    fireEvent.change(searchInput, { target: { value: 'CUST-ABC' } });
+
+    expect(screen.getByText('ORD-2026-010')).toBeInTheDocument();
+    expect(screen.queryByText('ORD-2026-011')).not.toBeInTheDocument();
   });
 });

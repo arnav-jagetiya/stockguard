@@ -157,6 +157,59 @@ class RateLimitingFilterTest {
     }
 
     @Test
+    @DisplayName("Dedicated static Nginx proxy (172.28.0.10) resolves client IP from X-Forwarded-For")
+    void staticNginxProxyResolvesClientIpFromForwardedHeader() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("172.28.0.10", "127.0.0.1"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("172.28.0.10"); // Matches pinned Nginx IP
+        request.addHeader("X-Forwarded-For", "203.0.113.42");
+
+        String resolved = filter.resolveClientIp(request);
+        assertThat(resolved).isEqualTo("203.0.113.42");
+    }
+
+    @Test
+    @DisplayName("Untrusted remote address attempting spoofing with multiple X-Forwarded-For is rejected")
+    void untrustedRemoteAddressSpoofingMultipleForwardedForIsRejected() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("172.28.0.10"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("172.28.0.99"); // Different container on network, NOT trusted Nginx
+        request.addHeader("X-Forwarded-For", "1.2.3.4, 5.6.7.8, 172.28.0.99");
+
+        String resolved = filter.resolveClientIp(request);
+        // Fails closed to socket remote address
+        assertThat(resolved).isEqualTo("172.28.0.99");
+    }
+
+    @Test
+    @DisplayName("Trusted proxy correctly handles IPv6 client addresses")
+    void trustedProxyResolvesIpv6ClientAddress() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("172.28.0.10"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("172.28.0.10");
+        request.addHeader("X-Forwarded-For", "2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+
+        String resolved = filter.resolveClientIp(request);
+        assertThat(resolved).isEqualTo("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
+    }
+
+    @Test
+    @DisplayName("Empty or whitespace-only X-Forwarded-For from trusted proxy falls back to remote address")
+    void emptyForwardedHeaderFallsBackToRemoteAddress() {
+        securityProperties.getRateLimit().setTrustedProxies(java.util.List.of("172.28.0.10"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/auth/login");
+        request.setRemoteAddr("172.28.0.10");
+        request.addHeader("X-Forwarded-For", "   ");
+
+        String resolved = filter.resolveClientIp(request);
+        assertThat(resolved).isEqualTo("172.28.0.10");
+    }
+
+    @Test
     @DisplayName("Demo login requests exceeding threshold receive 429 Too Many Requests")
     void demoLoginExceedingThresholdReceives429() throws Exception {
         securityProperties.getRateLimit().setDemoLoginPermitsPerMinute(2);

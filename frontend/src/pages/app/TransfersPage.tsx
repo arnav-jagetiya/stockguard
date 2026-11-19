@@ -15,7 +15,7 @@ import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
 import { TableSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
-import { ArrowLeftRight, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Plus, Trash2, RotateCcw } from 'lucide-react';
 
 export const TransfersPage: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -80,6 +80,13 @@ export const TransfersPage: React.FC = () => {
       return;
     }
 
+    const productIds = items.map((it) => it.productId);
+    const hasDuplicates = new Set(productIds).size !== productIds.length;
+    if (hasDuplicates) {
+      setFormError('Transfer cannot contain duplicate products. Please consolidate quantities into a single line item.');
+      return;
+    }
+
     setFormError(null);
     setIsSubmitting(true);
     try {
@@ -100,9 +107,14 @@ export const TransfersPage: React.FC = () => {
     }
   };
 
+  const availableProducts = products.filter(
+    (p) => !items.some((item) => item.productId === p.id)
+  );
+  const canAddItem = availableProducts.length > 0;
+
   const addItem = () => {
-    if (products.length === 0) return;
-    setItems((prev) => [...prev, { productId: products[0].id, quantity: 1 }]);
+    if (!canAddItem) return;
+    setItems((prev) => [...prev, { productId: availableProducts[0].id, quantity: 1 }]);
   };
 
   const removeItem = (idx: number) => {
@@ -147,8 +159,8 @@ export const TransfersPage: React.FC = () => {
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
-        <div className="w-64">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+        <div className="w-full sm:w-64">
           <Select
             label="Filter by Facility"
             value={selectedWarehouse}
@@ -158,6 +170,22 @@ export const TransfersPage: React.FC = () => {
               ...warehouses.map((w) => ({ value: w.id, label: `${w.code} (${w.name})` })),
             ]}
           />
+        </div>
+
+        <div className="flex items-center gap-3 self-start sm:self-auto pt-1 sm:pt-4 text-xs">
+          <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+            Showing {transfers.length} transfer(s)
+          </span>
+          {selectedWarehouse && (
+            <button
+              type="button"
+              onClick={() => setSelectedWarehouse('')}
+              className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Facility Filter
+            </button>
+          )}
         </div>
       </div>
 
@@ -255,45 +283,65 @@ export const TransfersPage: React.FC = () => {
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[#18231D] dark:text-[#EEF3EA]">Transfer Items</span>
-              <button
-                type="button"
-                onClick={addItem}
-                className="text-xs text-[#147C68] dark:text-[#6CD8C0] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Product
-              </button>
+              <div className="flex items-center gap-2">
+                {!canAddItem && products.length > 0 && (
+                  <span className="text-[11px] text-[#8A988E] dark:text-[#6C7D71]">All products added</span>
+                )}
+                <button
+                  type="button"
+                  onClick={addItem}
+                  disabled={!canAddItem}
+                  aria-disabled={!canAddItem}
+                  className={`text-xs flex items-center gap-1 ${
+                    canAddItem
+                      ? 'text-[#147C68] dark:text-[#6CD8C0] hover:underline cursor-pointer'
+                      : 'text-[#8A988E] dark:text-[#6C7D71] cursor-not-allowed opacity-60'
+                  }`}
+                  title={canAddItem ? 'Add another product line item' : 'All available products have already been added'}
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Product
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-              {items.map((it, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E]">
-                  <div className="flex-1">
-                    <Select
-                      value={it.productId}
-                      onChange={(e) => updateItem(idx, 'productId', e.target.value)}
-                      options={products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }))}
-                    />
+              {items.map((it, idx) => {
+                const selectableProducts = products.filter(
+                  (p) => p.id === it.productId || !items.some((other, oIdx) => oIdx !== idx && other.productId === p.id)
+                );
+                return (
+                  <div key={idx} className="flex items-center gap-2 p-2.5 rounded-xl bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E]">
+                    <div className="flex-1">
+                      <Select
+                        aria-label={`Product for line ${idx + 1}`}
+                        value={it.productId}
+                        onChange={(e) => updateItem(idx, 'productId', e.target.value)}
+                        options={selectableProducts.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` }))}
+                      />
+                    </div>
+                    <div className="w-28">
+                      <Input
+                        aria-label={`Quantity for line ${idx + 1}`}
+                        type="number"
+                        min="1"
+                        value={it.quantity}
+                        onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value, 10) || 1)}
+                        required
+                      />
+                    </div>
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        aria-label={`Remove product line ${idx + 1}`}
+                        className="p-2 text-[#8A988E] hover:text-rose-500 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  <div className="w-28">
-                    <Input
-                      type="number"
-                      min="1"
-                      value={it.quantity}
-                      onChange={(e) => updateItem(idx, 'quantity', parseInt(e.target.value, 10) || 1)}
-                      required
-                    />
-                  </div>
-                  {items.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeItem(idx)}
-                      className="p-2 text-[#8A988E] hover:text-rose-500 transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

@@ -404,4 +404,53 @@ class TransferAuthorizationAndApiIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(itemCount).isEqualTo(1);
         org.assertj.core.api.Assertions.assertThat(ledgerCount).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("Transfers list query does not duplicate rows when multiple inventory transactions reference the transfer")
+    void transfersListQueryDoesNotDuplicateRowsWithMultipleTransactions() throws Exception {
+        // 1. Execute an authorized transfer
+        CreateTransferRequest request = new CreateTransferRequest(
+                warehouse1.getId(),
+                warehouse2.getId(),
+                List.of(new TransferItemRequest(product.getId(), 10L)),
+                "Multi-tx duplicate regression test"
+        );
+
+        String responseBody = mockMvc.perform(post("/api/transfers")
+                        .header("Authorization", "Bearer " + operatorJwt)
+                        .header("X-Organization-Id", orgId.toString())
+                        .header("Idempotency-Key", "MULTI-TX-REGRESSION-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        com.stockguard.transfer.dto.TransferResponse transfer = objectMapper.readValue(
+                responseBody, com.stockguard.transfer.dto.TransferResponse.class
+        );
+
+        // 2. Insert a second inventory transaction referencing the same transfer ID
+        UUID secondTxId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO inventory_transactions
+                (id, organization_id, transaction_type, reference_type, reference_id, notes, actor_user_id, created_at)
+                VALUES (?, ?, 'TRANSFER', 'TRANSFER', ?, 'Synthetic second transaction for transfer', ?, ?)
+                """,
+                secondTxId, orgId, transfer.id(), operatorUserId, java.sql.Timestamp.from(Instant.now().plusSeconds(1))
+        );
+
+        // 3. Query GET /api/transfers and verify the transfer appears exactly once
+        String listResponse = mockMvc.perform(get("/api/transfers")
+                        .header("Authorization", "Bearer " + operatorJwt)
+                        .header("X-Organization-Id", orgId.toString()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        List<com.stockguard.transfer.dto.TransferResponse> allTransfers = objectMapper.readValue(
+                listResponse,
+                new com.fasterxml.jackson.core.type.TypeReference<List<com.stockguard.transfer.dto.TransferResponse>>() {}
+        );
+        long matchingCount = allTransfers.stream().filter(t -> t.id().equals(transfer.id())).count();
+        org.assertj.core.api.Assertions.assertThat(matchingCount).isEqualTo(1);
+    }
 }

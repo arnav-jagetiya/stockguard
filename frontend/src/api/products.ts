@@ -1,12 +1,16 @@
 import { apiClient } from './client';
 import type { CreateProductRequest, Product, UpdateProductRequest } from '../types/product';
 
-export async function getProductsApi(search?: string, activeOnly: boolean = false): Promise<Product[]> {
+export async function getProductsApi(
+  search?: string,
+  activeOnly: boolean = false,
+  signal?: AbortSignal
+): Promise<Product[]> {
   const q = new URLSearchParams();
   if (search) q.append('search', search);
   if (activeOnly) q.append('activeOnly', 'true');
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return apiClient<Product[]>(`/api/products${qs}`);
+  return apiClient<Product[]>(`/api/products${qs}`, { signal });
 }
 
 export const listProductsApi = getProductsApi;

@@ -15,6 +15,7 @@ export const Select: React.FC<SelectProps> = ({
   ...props
 }) => {
   const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+  const errorId = selectId ? `${selectId}-error` : undefined;
 
   return (
     <div className="w-full space-y-1.5">
@@ -28,10 +29,12 @@ export const Select: React.FC<SelectProps> = ({
       )}
       <select
         id={selectId}
-        className={`w-full bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA] text-sm rounded-lg px-3.5 py-2 border transition-colors outline-none cursor-pointer shadow-xs ${
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
+        className={`w-full bg-white dark:bg-[#111A17] text-[#18231D] dark:text-[#EEF3EA] text-sm rounded-lg px-3.5 py-2 border transition-colors outline-none cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed ${
           error
-            ? 'border-rose-500 focus:border-rose-500'
-            : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-1 focus:ring-[#456B1F]/30 dark:focus:ring-[#C6F36B]/30'
+            ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+            : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20'
         } ${className}`}
         {...props}
       >
@@ -41,7 +44,7 @@ export const Select: React.FC<SelectProps> = ({
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
+      {error && <p id={errorId} className="text-xs text-rose-600 dark:text-rose-400 font-medium">{error}</p>}
     </div>
   );
 };

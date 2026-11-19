@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
@@ -16,7 +16,9 @@ import { Badge } from '../../components/common/Badge';
 import { Table, TableHead, TableHeader, TableBody, TableRow, TableCell } from '../../components/common/Table';
 import { TableSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Package, Plus, Search, Edit2, Ban } from 'lucide-react';
+import { Package, Plus, Search, Edit2, Ban, X, RotateCcw } from 'lucide-react';
+import { useDebounce } from '../../hooks/useDebounce';
+import { isAbortError } from '../../api/client';
 
 export const ProductsPage: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -41,22 +43,27 @@ export const ProductsPage: React.FC = () => {
   const [formDesc, setFormDesc] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchProducts = async () => {
+  const debouncedSearch = useDebounce(search, 300);
+
+  const fetchProducts = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await listProductsApi(search || undefined, activeOnly);
+      const data = await listProductsApi(debouncedSearch.trim() || undefined, activeOnly, signal);
       setProducts(data);
     } catch (err: unknown) {
+      if (isAbortError(err)) return;
       if (err instanceof Error) setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [debouncedSearch, activeOnly]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [search, activeOnly]);
+    const controller = new AbortController();
+    fetchProducts(controller.signal);
+    return () => controller.abort();
+  }, [fetchProducts]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,25 +169,50 @@ export const ProductsPage: React.FC = () => {
       {/* Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-xs">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2" />
+          <label htmlFor="product-search" className="sr-only">Search products by SKU or name</label>
+          <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
+            id="product-search"
             type="text"
             placeholder="Filter by SKU or name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] rounded-lg pl-9 pr-3.5 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B]"
+            className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-[#657369] dark:text-[#9AA99E] cursor-pointer select-none self-start sm:self-auto font-medium">
-          <input
-            type="checkbox"
-            checked={activeOnly}
-            onChange={(e) => setActiveOnly(e.target.checked)}
-            className="rounded border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] text-[#456B1F] dark:text-[#C6F36B] focus:ring-0"
-          />
-          Show Active Only
-        </label>
+        <div className="flex items-center gap-4 self-start sm:self-auto">
+          <label className="flex items-center gap-2 text-xs text-[#657369] dark:text-[#9AA99E] cursor-pointer select-none font-medium">
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={(e) => setActiveOnly(e.target.checked)}
+              className="rounded border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] text-[#456B1F] dark:text-[#C6F36B] focus:ring-0 cursor-pointer"
+            />
+            Show Active Only
+          </label>
+
+          {(search || activeOnly) && (
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setActiveOnly(false); }}
+              className="inline-flex items-center gap-1 text-xs text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Product Table */}

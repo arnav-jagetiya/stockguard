@@ -28,6 +28,9 @@ import {
   Trash2,
   XCircle,
   Eye,
+  Search,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 
 export const OrdersPage: React.FC = () => {
@@ -41,6 +44,7 @@ export const OrdersPage: React.FC = () => {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -205,6 +209,15 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
+  const filteredOrders = orders.filter((o) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesNumber = o.orderNumber.toLowerCase().includes(q);
+    const matchesRef = Boolean(o.customerReference && o.customerReference.toLowerCase().includes(q));
+    const matchesId = o.id.toLowerCase().includes(q);
+    return matchesNumber || matchesRef || matchesId;
+  });
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -230,8 +243,34 @@ export const OrdersPage: React.FC = () => {
       </div>
 
       {/* Filter */}
-      <div className="flex items-center gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
-        <div className="w-60">
+      <div className="space-y-3 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="order-search" className="block text-xs font-semibold text-[#18231D] dark:text-[#EEF3EA] mb-1.5">
+              Search Orders
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 text-[#8A988E] dark:text-[#6C7D71] absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="order-search"
+                type="text"
+                placeholder="Search by order number or customer ref..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
           <Select
             label="Filter by Status"
             value={selectedStatus}
@@ -240,23 +279,40 @@ export const OrdersPage: React.FC = () => {
               { value: '', label: 'All Lifecycle States' },
               { value: 'PENDING', label: 'Pending' },
               { value: 'CONFIRMED', label: 'Confirmed' },
+              { value: 'FULFILLING', label: 'Fulfilling' },
               { value: 'FULFILLED', label: 'Fulfilled' },
               { value: 'CANCELLED', label: 'Cancelled' },
               { value: 'EXPIRED', label: 'Expired' },
             ]}
           />
         </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-[#D9E1D7] dark:border-[#26362E] text-xs">
+          <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+            Showing {filteredOrders.length} of {orders.length} order(s)
+          </span>
+          {(selectedStatus || searchQuery) && (
+            <button
+              type="button"
+              onClick={() => { setSelectedStatus(''); setSearchQuery(''); }}
+              className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset Order Filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
       {isLoading ? (
         <TableSkeleton rows={5} cols={6} />
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <EmptyState
           icon={<ShoppingCart className="w-8 h-8 text-[#456B1F] dark:text-[#C6F36B]" />}
           title="No Orders Found"
-          description={selectedStatus ? `No orders found in '${selectedStatus}' state.` : 'No customer orders placed yet.'}
-          actionLabel={canCreate && !selectedStatus ? 'Create New Order' : undefined}
+          description={selectedStatus || searchQuery ? "No orders matched your active filter criteria." : "No customer orders placed yet."}
+          actionLabel={canCreate && !selectedStatus && !searchQuery ? 'Create New Order' : undefined}
           onAction={() => setIsCreateOpen(true)}
         />
       ) : (
@@ -272,7 +328,7 @@ export const OrdersPage: React.FC = () => {
             </tr>
           </TableHead>
           <TableBody>
-            {orders.map((o) => (
+            {filteredOrders.map((o) => (
               <TableRow key={o.id}>
                 <TableCell className="font-mono font-semibold text-[#147C68] dark:text-[#6CD8C0]">
                   {o.orderNumber}

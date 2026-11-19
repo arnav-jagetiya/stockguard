@@ -5,7 +5,7 @@
 param(
     [string]$ContainerName = $(if ($env:PG_CONTAINER_NAME) { $env:PG_CONTAINER_NAME } else { "stockguard-postgres" }),
     [string]$Database = $(if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "stockguard" }),
-    [string]$User = $(if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "stockguard" }),
+    [string]$User = $(if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "postgres" }),
     [string]$BackupDir = $(if ($env:BACKUP_DIR) { $env:BACKUP_DIR } else { "./backups" }),
     [int]$RetentionDays = 7
 )

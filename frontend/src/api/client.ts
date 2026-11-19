@@ -28,6 +28,16 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Checks if an error is a deliberate client-side request cancellation via AbortController.
+ */
+export function isAbortError(err: unknown): boolean {
+  return (
+    (err instanceof DOMException && err.name === 'AbortError') ||
+    (err instanceof Error && err.name === 'AbortError')
+  );
+}
+
 let activeAccessToken: string | null = null;
 let activeOrganizationId: string | null = null;
 let onUnauthorizedHandler: (() => Promise<boolean>) | null = null;

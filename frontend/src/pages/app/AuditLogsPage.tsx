@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   FileText, 
   Search, 
@@ -12,7 +12,9 @@ import {
   Hash, 
   Layers,
   Copy,
-  Check
+  Check,
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
@@ -23,6 +25,10 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { getAuditLogsApi } from '../../api/auditLogs';
 import type { AuditLogFilterParams } from '../../api/auditLogs';
 import type { AuditLog, AuditLogPageResponse } from '../../types/audit';
+import { useDebounce } from '../../hooks/useDebounce';
+import { isAbortError } from '../../api/client';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const AuditLogsPage: React.FC = () => {
   const [data, setData] = useState<AuditLogPageResponse | null>(null);
@@ -39,37 +45,87 @@ export const AuditLogsPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(20);
 
+  const debouncedAction = useDebounce(actionFilter, 300);
+  const debouncedEntityType = useDebounce(entityTypeFilter, 300);
+  const debouncedEntityId = useDebounce(entityIdFilter, 300);
+  const debouncedActorUserId = useDebounce(actorUserIdFilter, 300);
+
+  const isEntityIdValid = !entityIdFilter.trim() || UUID_REGEX.test(entityIdFilter.trim());
+  const isActorUserIdValid = !actorUserIdFilter.trim() || UUID_REGEX.test(actorUserIdFilter.trim());
+  const isDateRangeValid = !(startDateFilter && endDateFilter) || (new Date(startDateFilter) <= new Date(endDateFilter));
+
   // Inspect Modal
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const fetchLogs = useCallback(async () => {
+    // If entered UUIDs or date range are invalid, prevent sending bad requests to backend
+    if (entityIdFilter.trim() && !UUID_REGEX.test(entityIdFilter.trim())) {
+      return;
+    }
+    if (actorUserIdFilter.trim() && !UUID_REGEX.test(actorUserIdFilter.trim())) {
+      return;
+    }
+    if (!isDateRangeValid) {
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
       const params: AuditLogFilterParams = {
         page,
         size,
+        signal: controller.signal,
       };
-      if (actionFilter.trim()) params.action = actionFilter.trim();
-      if (entityTypeFilter.trim()) params.entityType = entityTypeFilter.trim();
-      if (entityIdFilter.trim()) params.entityId = entityIdFilter.trim();
-      if (actorUserIdFilter.trim()) params.actorUserId = actorUserIdFilter.trim();
-      if (startDateFilter) params.startDate = new Date(startDateFilter).toISOString();
-      if (endDateFilter) params.endDate = new Date(endDateFilter).toISOString();
+      if (debouncedAction.trim()) params.action = debouncedAction.trim();
+      if (debouncedEntityType.trim()) params.entityType = debouncedEntityType.trim();
+      if (debouncedEntityId.trim() && UUID_REGEX.test(debouncedEntityId.trim())) {
+        params.entityId = debouncedEntityId.trim();
+      }
+      if (debouncedActorUserId.trim() && UUID_REGEX.test(debouncedActorUserId.trim())) {
+        params.actorUserId = debouncedActorUserId.trim();
+      }
+      if (startDateFilter) {
+        const d = new Date(startDateFilter);
+        if (!isNaN(d.getTime())) params.startDate = d.toISOString();
+      }
+      if (endDateFilter) {
+        const d = new Date(endDateFilter);
+        if (!isNaN(d.getTime())) params.endDate = d.toISOString();
+      }
 
       const res = await getAuditLogsApi(params);
       setData(res);
     } catch (err: unknown) {
+      if (isAbortError(err)) return;
       setError(err instanceof Error ? err.message : 'Failed to retrieve audit log entries');
     } finally {
       setLoading(false);
     }
-  }, [page, size, actionFilter, entityTypeFilter, entityIdFilter, actorUserIdFilter, startDateFilter, endDateFilter]);
+  }, [page, size, debouncedAction, debouncedEntityType, debouncedEntityId, debouncedActorUserId, startDateFilter, endDateFilter, isDateRangeValid, entityIdFilter, actorUserIdFilter]);
 
   useEffect(() => {
     fetchLogs();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchLogs]);
+
+  // Reset page when search filters change
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedAction, debouncedEntityType, debouncedEntityId, debouncedActorUserId, startDateFilter, endDateFilter]);
 
   const handleResetFilters = () => {
     setActionFilter('');
@@ -148,18 +204,29 @@ export const AuditLogsPage: React.FC = () => {
 
       {/* Filter Toolbar */}
       <Card className="p-4 border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           <div>
             <label className="block text-xs font-medium text-[#657369] dark:text-[#9AA99E] mb-1">Action</label>
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
+                aria-label="Filter by action"
                 value={actionFilter}
-                onChange={(e) => { setActionFilter(e.target.value); setPage(0); }}
+                onChange={(e) => setActionFilter(e.target.value)}
                 placeholder="e.g. CREATE_ORDER"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono caret-[#18231D] dark:caret-[#EEF3EA]"
               />
+              {actionFilter && (
+                <button
+                  type="button"
+                  onClick={() => setActionFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
+                  aria-label="Clear action filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -169,11 +236,22 @@ export const AuditLogsPage: React.FC = () => {
               <Layers className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
+                aria-label="Filter by entity type"
                 value={entityTypeFilter}
-                onChange={(e) => { setEntityTypeFilter(e.target.value); setPage(0); }}
+                onChange={(e) => setEntityTypeFilter(e.target.value)}
                 placeholder="e.g. INVENTORY_BALANCE"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                className="w-full pl-8 pr-7 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono caret-[#18231D] dark:caret-[#EEF3EA]"
               />
+              {entityTypeFilter && (
+                <button
+                  type="button"
+                  onClick={() => setEntityTypeFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
+                  aria-label="Clear entity type filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -183,12 +261,28 @@ export const AuditLogsPage: React.FC = () => {
               <Hash className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
+                aria-label="Filter by entity ID"
                 value={entityIdFilter}
-                onChange={(e) => { setEntityIdFilter(e.target.value); setPage(0); }}
+                onChange={(e) => setEntityIdFilter(e.target.value)}
                 placeholder="UUID"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                className={`w-full pl-8 pr-7 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border ${!isEntityIdValid ? 'border-rose-500 focus:border-rose-500' : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B]'} text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none font-mono caret-[#18231D] dark:caret-[#EEF3EA]`}
               />
+              {entityIdFilter && (
+                <button
+                  type="button"
+                  onClick={() => setEntityIdFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
+                  aria-label="Clear entity ID filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
+            {!isEntityIdValid && (
+              <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-0.5 flex items-center gap-1 font-mono">
+                <AlertCircle className="w-2.5 h-2.5 shrink-0" /> Invalid UUID format
+              </p>
+            )}
           </div>
 
           <div>
@@ -197,12 +291,28 @@ export const AuditLogsPage: React.FC = () => {
               <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="text"
+                aria-label="Filter by actor user ID"
                 value={actorUserIdFilter}
-                onChange={(e) => { setActorUserIdFilter(e.target.value); setPage(0); }}
+                onChange={(e) => setActorUserIdFilter(e.target.value)}
                 placeholder="UUID"
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                className={`w-full pl-8 pr-7 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border ${!isActorUserIdValid ? 'border-rose-500 focus:border-rose-500' : 'border-[#D9E1D7] dark:border-[#26362E] focus:border-[#456B1F] dark:focus:border-[#C6F36B]'} text-[#18231D] dark:text-[#EEF3EA] placeholder-[#8A988E] dark:placeholder-[#6C7D71] focus:outline-none font-mono caret-[#18231D] dark:caret-[#EEF3EA]`}
               />
+              {actorUserIdFilter && (
+                <button
+                  type="button"
+                  onClick={() => setActorUserIdFilter('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA]"
+                  aria-label="Clear actor user ID filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
+            {!isActorUserIdValid && (
+              <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-0.5 flex items-center gap-1 font-mono">
+                <AlertCircle className="w-2.5 h-2.5 shrink-0" /> Invalid UUID format
+              </p>
+            )}
           </div>
 
           <div>
@@ -211,9 +321,10 @@ export const AuditLogsPage: React.FC = () => {
               <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="datetime-local"
+                aria-label="Filter from date"
                 value={startDateFilter}
-                onChange={(e) => { setStartDateFilter(e.target.value); setPage(0); }}
-                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className={`w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border ${!isDateRangeValid ? 'border-rose-500' : 'border-[#D9E1D7] dark:border-[#26362E]'} text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono`}
               />
             </div>
           </div>
@@ -224,11 +335,17 @@ export const AuditLogsPage: React.FC = () => {
               <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8A988E] dark:text-[#6C7D71] pointer-events-none" />
               <input
                 type="datetime-local"
+                aria-label="Filter to date"
                 value={endDateFilter}
-                onChange={(e) => { setEndDateFilter(e.target.value); setPage(0); }}
-                className="w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border border-[#D9E1D7] dark:border-[#26362E] text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono"
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className={`w-full pl-8 pr-2 py-1.5 text-xs rounded-md bg-[#E9EEE6]/50 dark:bg-[#1B2922]/50 border ${!isDateRangeValid ? 'border-rose-500' : 'border-[#D9E1D7] dark:border-[#26362E]'} text-[#18231D] dark:text-[#EEF3EA] focus:outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] font-mono`}
               />
             </div>
+            {!isDateRangeValid && (
+              <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-0.5 flex items-center gap-1 font-mono">
+                <AlertCircle className="w-2.5 h-2.5 shrink-0" /> From date must be before To date
+              </p>
+            )}
           </div>
         </div>
 

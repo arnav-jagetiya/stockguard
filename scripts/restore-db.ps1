@@ -7,7 +7,7 @@ param(
     [string]$TargetDatabase,
     [switch]$Force,
     [string]$ContainerName = $(if ($env:PG_CONTAINER_NAME) { $env:PG_CONTAINER_NAME } else { "stockguard-postgres" }),
-    [string]$User = $(if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "stockguard" })
+    [string]$User = $(if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "postgres" })
 )
 
 $ErrorActionPreference = "Stop"

@@ -32,6 +32,9 @@ import {
   Eye,
   CheckCircle2,
   Info,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export const ReconciliationPage: React.FC = () => {
@@ -42,6 +45,8 @@ export const ReconciliationPage: React.FC = () => {
   const [discrepancies, setDiscrepancies] = useState<Discrepancy[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [selectedStatus, setSelectedStatus] = useState<string>('OPEN');
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<WarehouseType[]>([]);
   const [members, setMembers] = useState<OrganizationMember[]>([]);
@@ -68,8 +73,8 @@ export const ReconciliationPage: React.FC = () => {
       const [discPage, prodList, whList, memList] = await Promise.all([
         listDiscrepanciesApi({
           status: (selectedStatus as DiscrepancyStatus) || undefined,
-          limit: 50,
-          offset: 0,
+          limit: pageSize,
+          offset: page * pageSize,
         }),
         listProductsApi(undefined, true),
         listWarehousesApi(undefined, true),
@@ -89,7 +94,7 @@ export const ReconciliationPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [selectedStatus]);
+  }, [selectedStatus, page]);
 
   const handleTriggerSweep = async () => {
     setIsSweepConfirmOpen(false);
@@ -233,16 +238,19 @@ export const ReconciliationPage: React.FC = () => {
         </div>
       )}
 
-      {/* Filter */}
-      <div className="flex items-center gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
-        <div className="w-64">
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#111A17] p-3.5 rounded-xl border border-[#D9E1D7] dark:border-[#26362E] shadow-sm">
+        <div className="w-full sm:w-72">
           <Select
-            label="Filter by Status"
+            label="Filter by Discrepancy Status"
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => {
+              setSelectedStatus(e.target.value);
+              setPage(0);
+            }}
             options={[
-              { value: '', label: 'All Discrepancies' },
-              { value: 'OPEN', label: 'Active (Open)' },
+              { value: 'OPEN', label: 'Active (Open) — Default View' },
+              { value: '', label: 'All Discrepancies (All Lifecycle States)' },
               { value: 'ACKNOWLEDGED', label: 'Acknowledged' },
               { value: 'INVESTIGATING', label: 'Investigating' },
               { value: 'RESOLVED', label: 'Resolved (Terminal)' },
@@ -250,8 +258,21 @@ export const ReconciliationPage: React.FC = () => {
             ]}
           />
         </div>
-        <div className="text-xs text-[#657369] dark:text-[#9AA99E] font-mono pt-5">
-          Showing {discrepancies.length} of {totalElements} record(s)
+
+        <div className="flex items-center gap-3 self-start sm:self-auto pt-1 sm:pt-4 text-xs">
+          <span className="text-[#657369] dark:text-[#9AA99E] font-mono">
+            Showing {discrepancies.length} of {totalElements} record(s)
+          </span>
+          {selectedStatus !== 'OPEN' && (
+            <button
+              type="button"
+              onClick={() => { setSelectedStatus('OPEN'); setPage(0); }}
+              className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" />
+              Reset to Active (Open)
+            </button>
+          )}
         </div>
       </div>
 
@@ -324,6 +345,38 @@ export const ReconciliationPage: React.FC = () => {
             })}
           </TableBody>
         </Table>
+      )}
+
+      {/* Pagination Controls */}
+      {totalElements > pageSize && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 bg-white dark:bg-[#111A17] rounded-xl border border-[#D9E1D7] dark:border-[#26362E] text-xs text-[#657369] dark:text-[#9AA99E]">
+          <div>
+            Showing page <span className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">{page + 1}</span> of{' '}
+            <span className="font-semibold text-[#18231D] dark:text-[#EEF3EA]">{Math.max(1, Math.ceil(totalElements / pageSize))}</span>{' '}
+            ({totalElements} total records)
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 0 || isLoading}
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              icon={<ChevronLeft className="w-3.5 h-3.5" />}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={(page + 1) * pageSize >= totalElements || isLoading}
+              onClick={() => setPage((p) => p + 1)}
+              icon={<ChevronRight className="w-3.5 h-3.5" />}
+              className="flex-row-reverse"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Triage / Resolution Modal */}

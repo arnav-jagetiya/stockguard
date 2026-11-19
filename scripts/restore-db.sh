@@ -21,7 +21,7 @@ BACKUP_FILE="$1"
 TARGET_DB="$2"
 FORCE_FLAG="${3:-}"
 CONTAINER_NAME="${PG_CONTAINER_NAME:-stockguard-postgres}"
-DB_USER="${POSTGRES_USER:-stockguard}"
+DB_USER="${POSTGRES_USER:-postgres}"
 ACTIVE_DB="${POSTGRES_DB:-stockguard}"
 
 # 1. Assert backup file exists
