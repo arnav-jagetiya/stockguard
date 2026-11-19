@@ -1,4 +1,4 @@
-﻿﻿# ==============================================================================
+﻿# ==============================================================================
 # STOCKGUARD — Development Self-Signed TLS Certificate Generator (PowerShell)
 # ==============================================================================
 # Generates local self-signed TLS certificates for development and local testing.
@@ -28,7 +28,7 @@ $KeyFile = Join-Path $TargetDir "key.pem"
 
 if ((Test-Path $CertFile) -or (Test-Path $KeyFile)) {
     if (-not $Force) {
-        Write-Warning "Existing TLS certificate files detected in $TargetDir:"
+        Write-Warning "Existing TLS certificate files detected in ${TargetDir}:"
         if (Test-Path $CertFile) { Write-Host "  - $CertFile" }
         if (Test-Path $KeyFile) { Write-Host "  - $KeyFile" }
         Write-Error "Refusing to overwrite existing certificates without -Force parameter."
@@ -40,6 +40,9 @@ if ((Test-Path $CertFile) -or (Test-Path $KeyFile)) {
 
 # Check for OpenSSL
 $opensslCmd = Get-Command openssl -ErrorAction SilentlyContinue
+if (-not $opensslCmd -and (Test-Path "C:\Program Files\Git\usr\bin\openssl.exe")) {
+    $opensslCmd = Get-Command "C:\Program Files\Git\usr\bin\openssl.exe" -ErrorAction SilentlyContinue
+}
 
 if ($opensslCmd) {
     Write-Host "Generating development self-signed TLS certificates using OpenSSL..." -ForegroundColor Cyan
@@ -77,12 +80,15 @@ IP.2 = ::1
 "@
     Set-Content -Path $tempConfigFile -Value $configContent -Encoding Ascii
 
+    $oldEap = $ErrorActionPreference
     try {
-        & openssl req -x509 -nodes -days 365 -newkey rsa:2048 `
+        $ErrorActionPreference = "Continue"
+        & $opensslCmd.Source req -x509 -nodes -days 365 -newkey rsa:2048 `
             -keyout "$KeyFile" `
             -out "$CertFile" `
             -config "$tempConfigFile" 2>$null
     } finally {
+        $ErrorActionPreference = $oldEap
         if (Test-Path $tempConfigFile) {
             Remove-Item -Path $tempConfigFile -Force -ErrorAction SilentlyContinue
         }

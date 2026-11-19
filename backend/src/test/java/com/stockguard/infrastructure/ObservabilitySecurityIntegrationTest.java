@@ -155,6 +155,50 @@ class ObservabilitySecurityIntegrationTest {
         assertThat(content).contains("stockguard_db_deadlock_retries_total");
     }
 
+    @Test
+    @DisplayName("H-1 Regression: Consecutive Prometheus scrapes on the same application context succeed without credential erasure failure")
+    void consecutivePrometheusScrapesSucceedWithoutCredentialErasureFailure() throws Exception {
+        // Assertion 1: First authenticated /actuator/prometheus request succeeds
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", basicAuth(SCRAPER_USER, SCRAPER_PASS)))
+                .andExpect(status().isOk());
+
+        // Assertion 2: Second authenticated request succeeds (verifies credential erasure did not mutate UserDetails)
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", basicAuth(SCRAPER_USER, SCRAPER_PASS)))
+                .andExpect(status().isOk());
+
+        // Assertion 3: At least five consecutive authenticated scrape requests succeed (testing total 6 consecutive)
+        for (int i = 3; i <= 6; i++) {
+            MvcResult result = mockMvc.perform(get("/actuator/prometheus")
+                            .header("Authorization", basicAuth(SCRAPER_USER, SCRAPER_PASS)))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            String content = result.getResponse().getContentAsString();
+            assertThat(content)
+                    .as("Scrape request %d must return valid metrics", i)
+                    .isNotBlank()
+                    .contains("stockguard_reconciliation_executions_total");
+        }
+
+        // Assertion 5: Incorrect scraper credentials are rejected
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", basicAuth(SCRAPER_USER, "wrong-password")))
+                .andExpect(status().isUnauthorized());
+
+        // Assertion 6: Requests without credentials are rejected
+        mockMvc.perform(get("/actuator/prometheus"))
+                .andExpect(status().isUnauthorized());
+
+        // Assertion 4: Authentication continues working after credential erasure and failed attempts
+        MvcResult finalResult = mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", basicAuth(SCRAPER_USER, SCRAPER_PASS)))
+                .andExpect(status().isOk())
+                .andReturn();
+        assertThat(finalResult.getResponse().getContentAsString()).isNotBlank();
+    }
+
     // =========================================================================
     // 2. PUBLIC OPERATIONAL HEALTH AND READINESS PROBES
     // =========================================================================

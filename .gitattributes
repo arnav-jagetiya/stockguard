@@ -1,0 +1,29 @@
+# ==============================================================================
+# STOCKGUARD — Git Line-Ending & Attribute Configuration
+# ==============================================================================
+
+# Auto detect text files and perform LF normalization on checkin
+* text=auto
+
+# Operational and build shell scripts must strictly use LF line endings
+*.sh text eol=lf
+**/mvnw text eol=lf
+mvnw text eol=lf
+
+# Windows command and PowerShell scripts
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+**/mvnw.cmd text eol=crlf
+mvnw.cmd text eol=crlf
+
+# Binary file formats
+*.dump binary
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

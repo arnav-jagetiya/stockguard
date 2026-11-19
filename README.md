@@ -1,430 +1,260 @@
 # STOCKGUARD
 
-> **A high-concurrency inventory integrity and order reservation platform.**
-
-STOCKGUARD is a production-oriented platform built to solve inventory discrepancies, stock-outs, and reservation conflicts for multi-facility retail and distribution enterprises. Built from the ground up on transactional rigor, mathematical ledger reconciliation, deterministic lock ordering, and strict multi-tenant boundary isolation.
+STOCKGUARD is an inventory management and order reservation platform built with Java, Spring Boot, PostgreSQL, and React. It tracks stock across multiple warehouses, records inventory changes in an append-only transaction ledger, and manages reservations while protecting inventory consistency under concurrent operations.
 
 ---
 
-## Architecture Highlights
+## What STOCKGUARD Does
 
-* **Modular Monolith:** Clean domain boundaries without distributed transaction complexity (ADR-001).
-* **PostgreSQL as Authoritative Source of Truth:** Database constraints, row-level locks, and append-only ledgers enforce consistency (ADR-002).
-* **Dual-Persistence Strategy:** Spring Data JPA for declarative domain management alongside Spring JDBC for high-throughput concurrency and locking (ADR-008).
-* **Cryptographic Token Lifecycle:** Short-lived JWT access tokens (15-minute expiry) signed with HMAC-SHA256, paired with opaque, database-backed rotating refresh tokens stored in `HttpOnly`, `SameSite=Strict` cookies (ADR-010).
-* **Zero-Downtime Key Rotation:** Dynamic key registry supporting an active signing key alongside multiple retiring verification keys.
-* **Database-Enforced Session & Tenant Validation:** Every authenticated request verifies active session status and dynamic organization membership directly against PostgreSQL (< 1 ms index lookup).
-* **Principle of Least Privilege (Dual DB Roles):** Migration owner (`stockguard_owner`) owns schema and executes DDL via Flyway; runtime application (`stockguard_app`) is restricted strictly to least-privilege DML with table- and column-level protections.
+STOCKGUARD provides an operations command center for multi-facility inventory tracking:
 
----
-
-## Implementation & Milestone Status
-
-| Milestone | Scope | Status |
-|---|---|:---:|
-| **Milestone 1** | Scaffolding, Spring Boot 4.1.2, Java 21, Maven, Testcontainers | ✅ Complete |
-| **Milestone 2** | Database Schema, V1 Core Tables, V2 Append-Only Triggers, V3 Auth Schema | ✅ Complete |
-| **Milestone 3** | Identity Persistence, Organization Membership, Last-Admin Protection | ✅ Complete |
-| **Milestone 4** | JWT Signing, Key Rotation, Session Lifecycle, RBAC, Security Hardening | ✅ Complete |
-| **Milestone 5** | Product Catalog, Warehouses, Core Inventory & Inter-Facility Transfers | ✅ Complete |
-| **Milestone 6** | Order Engine, Line Items, Status Progression & Cancellation | ✅ Complete |
-| **Milestone 7** | Two-Phase Reservations, Allocation Invariants & Background Expiration | ✅ Complete |
-| **Milestone 8** | MVCC Snapshot Reconciliation, Discrepancy Triage & Decision Audit | ✅ Complete |
-| **Milestone 9A** | Realistic Demo Environment (Acme Industrial Supply Pvt. Ltd.) | ✅ Complete |
-| **Milestone 9B** | Production Readiness, Docker Stack, SLIs, Backup/Recovery & Release Runbook | ✅ Complete |
-| **Milestone 10** | Public Demo Experience, Portfolio Showcase & Final Release Hardening | ✅ Complete |
-| **Milestone 11A** | Product Experience Refinement, 3D Theme Integration & Comprehensive Acceptance | ✅ Complete |
-| **Milestone 11B** | Repository Hygiene, CI Hardening & Public GitHub Preparation | ✅ Complete |
+* **Catalog and facility management:** Organizes products with normalized SKUs and warehouses with geographic locations and priority routing.
+* **Stock movements:** Ingests inbound receipts and records cycle-count or shrinkage adjustments with mandatory reason codes.
+* **Inter-facility transfers:** Moves inventory directly between warehouses within a single transaction, ensuring physical stock conservation ($\Delta \text{OnHand} = 0$).
+* **Order reservations:** Holds inventory for customer orders with time-to-live (TTL) expiration, preventing overselling during checkout.
+* **Mathematical reconciliation:** Compares materialized balance tables against historical ledger entries to detect and flag any accounting drift.
+* **Spatial warehouse visualization:** Renders an interactive 3D model of warehouse racks, capacities, and item locations in the browser using WebGL and Three.js.
 
 ---
 
-## Getting Started
+## Main Features
+
+* **Append-only ledger:** Every balance change writes an immutable row to `inventory_ledger_entries`. Database triggers block `UPDATE`, `DELETE`, and `TRUNCATE` operations on ledger tables.
+* **Deterministic lock ordering:** Multi-item write operations acquire row-level locks on inventory balances in ascending order (`product_id ASC, warehouse_id ASC`) to prevent deadlocks.
+* **Two-phase reservations:** Orders allocate stock in an initial pending phase. A background worker periodically scans for expired reservations and restores stock to available inventory.
+* **Mathematical reconciliation:** An on-demand and scheduled reconciliation engine compares live balances ($Available = OnHand - Reserved$) against cumulative sums from the transaction ledger.
+* **Multi-tenant access control:** Supports four tenant roles (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`) across 23 permissions. Row locks prevent demoting or deactivating an organization's last administrator.
+* **Cryptographic session tokens:** 15-minute HMAC-SHA256 JWT access tokens paired with rotating refresh tokens stored in `HttpOnly`, `SameSite=Strict` cookies.
+* **3D warehouse visualizer:** Interactive browser canvas showing warehouse layout, rack utilization heatmaps, camera presets, and inventory flow simulations.
+* **Public demonstration mode:** Optional read-only visitor mode (`demo.visitor@stockguard.dev`) with server-side mutation guards rejecting write requests.
+
+---
+
+## Architecture and Technology Stack
+
+The application is structured as a modular monolith. Domain boundaries are organized into distinct modules within a single Spring Boot deployable artifact, sharing a single PostgreSQL database:
+
+```
+src/main/java/com/stockguard/
+├── audit/           # Operational and security event logging
+├── demo/            # Synthetic demonstration data generator and visitor mode
+├── inventory/       # Stock balances, transactions, ledger entries, and reconciliation
+├── order/           # Customer orders, status progression, and line items
+├── organization/    # Tenants, memberships, and last-admin protections
+├── product/         # Product catalog and normalized SKU indexing
+├── reservation/     # Stock allocations and background expiration workers
+├── security/        # JWT issuance, key rotation, session tracking, and RBAC
+├── shared/          # Idempotency engine and common exceptions
+├── transfer/        # Multi-item inter-warehouse inventory transfers
+└── warehouse/       # Warehouse facilities, codes, and priority sorting
+```
+
+### Technology Stack
+* **Backend:** Java 21, Spring Boot 4.1.2, Spring Security, Spring Data JPA, Spring JDBC (for row-level locking), Flyway, JJWT 0.12.6, Micrometer Prometheus.
+* **Frontend:** React 19, TypeScript, Vite, Tailwind CSS v4, Three.js (WebGL 3D visualizer), Lucide React.
+* **Database:** PostgreSQL 16 with separate schema migration (`stockguard_owner`) and runtime application (`stockguard_app`) roles.
+* **Ingress & TLS:** Nginx reverse proxy providing TLS termination, static SPA hosting, and security headers.
+* **Observability:** Prometheus metric scrapers polling `/actuator/prometheus` via HTTP Basic Auth.
+
+---
+
+## Important Engineering Decisions
+
+Key Architecture Decision Records (ADRs) document the system design:
+
+* **Modular monolith (ADR-001):** Avoids distributed transactions, network partitioning failure modes, and operational overhead of microservices while keeping domain logic cleanly separated.
+* **PostgreSQL as authoritative source of truth (ADR-002):** Enforces data consistency using database check constraints, unique indexes, foreign keys, row-level locks, and trigger-enforced append-only tables rather than distributed caches.
+* **Canonical lock ordering (ADR-003):** Ensures all operations touching multiple products or warehouses acquire locks in a globally consistent order (`product_id ASC, warehouse_id ASC`) to reduce deadlock risk.
+* **Dual persistence with JPA and JDBC (ADR-008):** Uses Spring Data JPA for domain modeling and relationship mapping, combined with Spring JDBC for row-level locking (`SELECT ... FOR UPDATE`) and high-throughput batch operations.
+* **Rotating refresh tokens and dynamic key registry (ADR-010):** Issues short-lived access tokens alongside rotating refresh tokens stored in secure cookies. Supports zero-downtime JWT signing key rotation with retiring verification keys.
+* **Three-network Docker isolation (ADR-014):** In Compose deployments, containers communicate over three isolated bridge networks: public ingress (`nginx`), internal database (`postgres` and `app`), and monitoring (`prometheus` and `app`).
+
+---
+
+## Screenshots
+
+Visual captures taken from the local isolated staging deployment (`https://localhost:8443`):
+
+| View | Screenshot | Description |
+|---|---|---|
+| **3D Spatial Digital Twin** | ![3D Warehouse](docs/screenshots/m13/01_landing_page_3d_spatial_twin.png) | WebGL rendering of warehouse racks, camera presets, and interactive simulation. |
+| **Theme System (Light Mode)** | ![Light Theme](docs/screenshots/m13/02_theme_light_mode.png) | Light and dark mode support with preserved WebGL context. |
+| **Authentication & Errors** | ![Login Form](docs/screenshots/m13/03_login_invalid_credentials_error.png) | Form validation, rate limiting, and server error handling. |
+| **Command Center Dashboard** | ![Dashboard](docs/screenshots/m13/04_dashboard_overview_dark.png) | KPI summary cards for inventory valuation, active reservations, and discrepancies. |
+| **Product Catalog** | ![Products](docs/screenshots/m13/05_product_catalog_and_search.png) | Product listing with debounced SKU search and filtering. |
+| **Warehouse Facilities** | ![Warehouses](docs/screenshots/m13/06_warehouses_management.png) | Facility list ordered by dispatch priority. |
+| **Balances & Ledger History** | ![Inventory Balances](docs/screenshots/m13/07_inventory_balances_and_ledger.png) | Live inventory balances and tabbed double-entry ledger history. |
+| **Order Lifecycle** | ![Orders](docs/screenshots/m13/08_order_reservation_lifecycle.png) | Order creation, reservation status, and status progression. |
+| **Inter-Warehouse Transfers** | ![Transfers](docs/screenshots/m13/09_inter_warehouse_transfer.png) | Multi-item transfer modal with stock availability checks. |
+| **Reconciliation Audit** | ![Reconciliation](docs/screenshots/m13/10_reconciliation_audit.png) | On-demand MVCC sweep comparing balance rows with ledger sums. |
+| **Audit Logs** | ![Audit Logs](docs/screenshots/m13/11_immutable_audit_logs.png) | Filterable log of operational and administrative actions. |
+| **Team Governance** | ![Team](docs/screenshots/m13/12_team_and_role_matrix.png) | Member list with role assignments and last-admin protection. |
+| **Staging Demo Protection** | ![Staging Lockdown](docs/screenshots/m13/13_public_demo_security_enforcement.png) | Verification that demo login returns 403 Forbidden in staging. |
+| **Public Portfolio Demo** | ![Demo Visitor](docs/screenshots/m13/13_public_demo_viewer_experience.png) | Read-only visitor mode with viewer permissions and mutation guards. |
+| **Tablet Viewport** | ![Tablet](docs/screenshots/m13/14_tablet_dashboard.png) | Responsive dashboard layout on a 768x1024 tablet screen. |
+| **Mobile Viewport** | ![Mobile](docs/screenshots/m13/15_mobile_dashboard.png) | Mobile navigation and single-column layout on a 390x844 mobile screen. |
+
+---
+
+## Local Setup and Development
 
 ### Prerequisites
-
 * **Java 21** (JDK 21+)
-* **Node.js 22+** and **npm** (for frontend development)
-* **Docker & Docker Compose** (for PostgreSQL database and container orchestration)
-* **Maven Wrapper** (included in repository: `./mvnw` or `mvnw.cmd`)
+* **Node.js 22+** and **npm**
+* **Docker & Docker Compose**
+* **Maven Wrapper** (included: `./mvnw` or `mvnw.cmd`)
 
-### 1. Start Database Infrastructure
-
-Launch the PostgreSQL 16 container with dual-role initialization:
-
+### 1. Start Local Database
+Start the PostgreSQL 16 container with dual-role initialization:
 ```bash
 cd backend
-docker-compose up -d
+docker compose up -d
 ```
+The database starts on port `5433` (or configured `DB_PORT`) and executes `backend/init-db/01-init-roles.sh` to configure `stockguard_owner` and `stockguard_app`.
 
-The database container will start on port `5433` (or configured `DB_PORT`) and automatically execute `init-db/01-init-roles.sh` to establish:
-* `stockguard_owner` (migration credentials)
-* `stockguard_app` (runtime DML credentials)
-
-### 2. Run the Verification Suites
-
-#### Backend Test Suite (JUnit 5 + Testcontainers + Spring MVC Test)
-Run the complete unit, integration, and security filter test suite against a fresh PostgreSQL Testcontainer:
-
-```bash
-cd backend
-./mvnw clean verify
-```
-
-*(On Windows, use `mvnw.cmd clean verify -DDB_PORT=5433` if port 5432 is bound to local PostgreSQL).*
-
-#### Frontend Test Suite (Vitest + React Testing Library)
-Run the component and unit test suite:
-
-```bash
-cd frontend
-npm test
-```
-
-#### Browser Acceptance Verification (Playwright / Puppeteer Browser Suite)
-With backend and frontend running, execute the automated browser acceptance and 3D visual verification suites:
-
-```bash
-cd frontend
-# 1. End-to-end user workflows, 10-module exploration, and demo mode enforcement
-node scripts/run-acceptance.mjs
-
-# 2. 3D Living Warehouse WebGL context, camera transitions, and theme persistence
-node scripts/verify-3d-warehouse.mjs
-```
-
-### 3. Run the Applications Locally
-
-#### Backend (Spring Boot 4 / Java 21)
+### 2. Run the Backend
 ```bash
 cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
+On Windows:
+```cmd
+cd backend
+mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+```
 
-#### Frontend (React 19 / Vite / Tailwind CSS v4)
+### 3. Run the Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The frontend development server will launch at `http://localhost:5173`.
+The frontend launches at `http://localhost:5173` and proxies API requests to `http://localhost:8080`.
 
-### 4. Run the Full Production Docker Stack
+### Initial Administrator Bootstrap
+On first startup, the backend initializes an administrator account if enabled.
+To reset or synchronize the local administrator password during development:
+```bash
+# Linux / macOS
+STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET=true ./mvnw spring-boot:run
 
-To validate the unified production deployment topology with strict network isolation (reverse proxy, Spring Boot backend, PostgreSQL 16, and Prometheus):
+# Windows PowerShell
+$env:STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET="true"
+.\mvnw.cmd spring-boot:run
+```
+*(Password reset is forbidden in production and disabled by default).*
+
+---
+
+## Staging and Production Deployment
+
+STOCKGUARD supports three deployment modes:
+
+| Dimension | Local Development | Isolated Staging | Production |
+|---|---|---|---|
+| **Target** | Local JVM + Node (`dev` profile) | `docker-compose.staging.yml` | `docker-compose.prod.yml` |
+| **Compose Project** | `stockguard` | `stockguard-staging` | `stockguard` |
+| **Ingress** | `localhost:5173` / `localhost:8080` | `https://localhost:8443` (HTTP `8088` redirects) | `https://your-domain.com:443` |
+| **TLS** | Disabled | Self-signed with SAN (`localhost`, `127.0.0.1`) | CA-signed (Let's Encrypt or commercial CA) |
+| **Database Port** | Host `5433` | Internal network only | Internal network only |
+| **Demo Mode** | Enabled by default | Disabled (`403 Forbidden`) | Disabled |
+| **Cookie Security** | `Secure=false`, `SameSite=Lax` | `Secure=true`, `SameSite=Strict` | `Secure=true`, `SameSite=Strict` |
+
+### Running the Isolated Staging Stack
+The staging Compose layer runs alongside existing host services without port conflicts:
 
 ```bash
-# Set required production environment variables (or copy from .env.example)
-docker compose -f docker-compose.prod.yml up --build -d
+# 1. Generate local staging TLS certificates
+./scripts/generate-dev-certs.sh       # Linux / macOS
+.\scripts\generate-dev-certs.ps1     # Windows PowerShell
+
+# 2. Configure environment variables
+cp .env.staging.example .env.staging
+
+# 3. Launch isolated staging containers
+docker compose -p stockguard-staging \
+  -f docker-compose.prod.yml \
+  -f docker-compose.staging.yml \
+  --env-file .env.staging up -d --build
 ```
+Access the application at `https://localhost:8443`. Port `8088` redirects to HTTPS.
 
-### 4. Administrator Bootstrap & Local Password Recovery
+### Production Deployment
+Production requires valid domain certificates, strong generated secrets, and network isolation:
 
-Initial root tenant setup is managed via the idempotent `AdminBootstrapRunner`.
-
-* **Idempotent by Default:** Once initialized, subsequent startups skip without modifying user accounts or credentials.
-* **Safe Local Recovery:** If local development administrator credentials need to be synchronized or recovered, set the opt-in flag for that specific run:
-  ```bash
-  # Linux / macOS
-  STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET=true ./mvnw spring-boot:run
-
-  # Windows PowerShell
-  $env:STOCKGUARD_BOOTSTRAP_ALLOW_PASSWORD_RESET="true"
-  .\mvnw.cmd spring-boot:run
-  ```
-* **Security & Invariants:** Password recovery is disabled by default in all profiles, strictly forbidden in `prod` (fails fast on startup), uses BCrypt hashing, logs zero plaintext credentials, and records an immutable audit record in `audit_logs`.
-
-### 5. Public Demonstration Mode (Portfolio Showcase)
-
-STOCKGUARD includes an unauthenticated public exploration journey for portfolio and technical evaluation:
-* **One-Click Exploration:** Visitors click **"Explore Live Demo"** on the landing page or login view to enter the synthetic **Acme Industrial Supply Pvt. Ltd.** enterprise tenant immediately without creating an account.
-* **Full Read-Only Access:** Visitors hold the `VIEWER` role with visibility across all 10 operational modules, the Living Warehouse 3D digital twin, multi-warehouse inventory, double-entry ledger transactions, MVCC reconciliations, and immutable audit logs.
-* **Server-Side Protection:** The backend `DemoModeMutationGuardFilter` interceptor enforces strict read-only access by rejecting all HTTP mutations (`POST`, `PUT`, `PATCH`, `DELETE`) with `403 Forbidden` (`DEMO_MODE_MUTATION_PROHIBITED`).
-* **Rate-Limited Authentication:** The `POST /api/auth/demo-login` endpoint is rate-limited to 10 requests per minute per IP.
-* **Controlled Activation:** Governed by `STOCKGUARD_PUBLIC_DEMO_ENABLED` (enabled by default in `dev`, disabled by default in `prod`).
-
-
----
-
-## Configuration Reference
-
-### Profiles
-
-* **`dev` (default):** Configured for local development. Includes SQL formatting, relaxed development cookie security (`Secure=false` for `localhost`), debug logging, and dev database connection defaults.
-* **`prod`:** Hardened production profile. Enforces `Secure=true`, `SameSite=Strict`, no committed fallback secrets, disabled SQL logging, Hikari connection pool tuning, and actuator information protection.
-* **`test`:** Test slice profile using Testcontainers and mocked security contexts where appropriate.
-
-### Key Environment Variables
-
-| Variable | Description | Default (Dev) | Production Requirement |
-|---|---|---|:---:|
-| `SPRING_DATASOURCE_URL` | JDBC URL for application connection | `jdbc:postgresql://localhost:5432/stockguard` | **Required** |
-| `SPRING_DATASOURCE_USERNAME` | Application DB user (role: `stockguard_app`) | `stockguard_app` | **Required** |
-| `SPRING_DATASOURCE_PASSWORD` | Application DB password | `test_app_pass` | **Required** |
-| `FLYWAY_URL` | JDBC URL for Flyway migrations | Same as datasource URL | **Required** |
-| `FLYWAY_USER` | Migration DB user (role: `stockguard_owner`) | `stockguard_owner` | **Required** |
-| `FLYWAY_PASSWORD` | Migration DB password | `test_owner_pass` | **Required** |
-| `STOCKGUARD_JWT_ACTIVE_SECRET` | 256-bit Base64 HMAC signing secret | Provided dev secret | **Required** (Random 32+ bytes) |
-| `STOCKGUARD_JWT_ACTIVE_KEY_ID` | Active JWT Key Identifier | `sg-2026-v1` | Recommended (`sg-prod-v1`) |
-| `STOCKGUARD_COOKIE_SECURE` | Enforce HTTPS-only refresh cookies | `false` (in dev) | **`true`** |
-| `STOCKGUARD_COOKIE_SAME_SITE` | Cookie SameSite policy | `Lax` (in dev) | **`Strict`** |
-| `STOCKGUARD_CORS_ALLOWED_ORIGINS` | Comma-separated CORS allowed origins | `http://localhost:5173` | **Strict exact origins** |
-| `STOCKGUARD_TRUSTED_PROXIES` | Upstream reverse proxy IPs / CIDR blocks | Empty (rejects forwarding) | Required if behind proxy |
-| `STOCKGUARD_PUBLIC_DEMO_ENABLED` | Public read-only demo access toggle | `true` (in dev) | Optional (`false` by default) |
-| `PORT` | HTTP server port | `8080` | Optional |
-
----
-
-## Security Architecture & API Protocol
-
-### 1. Request Security Headers
-
-Every API request must follow strict transport and security conventions:
-
-* **`Authorization: Bearer <JWT>`**
-  Mandatory for all authenticated endpoints. Carries user ID, session ID, and issued/expiration timestamps.
-* **`X-Organization-Id: <UUID>`**
-  Mandatory for all tenant-scoped business endpoints (e.g., `/api/organizations/current/**`). Missing header yields `400 Bad Request`. Inactive membership yields `403 Forbidden`.
-* **`X-StockGuard-CSRF: 1`**
-  Mandatory custom header for state-changing, cookie-bound requests (`POST /api/auth/refresh` and `POST /api/auth/logout`) to prevent Cross-Site Request Forgery (ADR-010).
-
-### 2. Cookie Security Specification
-
-Refresh tokens are never exposed in JSON response bodies:
-
-* **Name:** `__Secure-stockguard_refresh` (in prod) / `stockguard_refresh` (in dev)
-* **Path:** `/api/auth`
-* **HttpOnly:** `true` (prohibits JavaScript access)
-* **Secure:** `true` (enforced over HTTPS)
-* **SameSite:** `Strict`
-
-### 3. Centralized Error Handling
-
-All controller errors and unhandled exceptions are intercepted by `GlobalExceptionHandler` and rendered in a standardized, RFC-compliant format without leaking internal stack traces:
-
-```json
-{
-  "timestamp": "2026-11-13T12:00:00Z",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Field 'email' must not be blank",
-  "path": "/api/auth/login"
-}
-```
-
----
-
-## Implemented API Catalog
-
-### 1. Authentication Endpoints (`/api/auth`)
-
-| Method | Endpoint | Security / Headers | Description |
-|---|---|---|---|
-| `POST` | `/api/auth/login` | Public; Rate limited (5/min) | Authenticates credentials, sets HttpOnly refresh cookie, returns JWT. |
-| `POST` | `/api/auth/refresh` | Cookie + `X-StockGuard-CSRF: 1`; Rate limited (20/min) | Rotates refresh token, detects replay attacks, returns fresh JWT. |
-| `POST` | `/api/auth/logout` | Cookie or Bearer JWT + `X-StockGuard-CSRF: 1` | Revokes the current session and clears the refresh cookie. |
-| `GET` | `/api/auth/me` | Bearer JWT | Returns current user profile and active organization memberships. |
-| `POST` | `/api/auth/switch-org` | Bearer JWT | Validates membership in target tenant and returns organization context. |
-
-### 2. Organization Membership Management (`/api/organizations/current`)
-
-*All membership endpoints require `Authorization: Bearer <JWT>` and `X-Organization-Id: <UUID>`.*
-
-| Method | Endpoint | Required Authority | Description |
-|---|---|---|---|
-| `GET` | `/api/organizations/current/memberships` | `membership:view` | Lists all active members and assigned roles for the current organization. |
-| `POST` | `/api/organizations/current/members` | `membership:manage` | Adds a user to the organization with an assigned role (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`). |
-| `PUT` | `/api/organizations/current/members/{userId}/role` | `membership:manage` | Updates an existing member's role (enforces atomic Last-Admin protection). |
-| `DELETE` | `/api/organizations/current/members/{userId}` | `membership:manage` | Soft-deactivates an organization membership (enforces Last-Admin protection). |
-
-### 3. Operational & Health Probes (`/actuator`)
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/actuator/health` | Overall system health status. |
-| `GET` | `/actuator/health/liveness` | Container orchestration liveness probe. |
-| `GET` | `/actuator/health/readiness` | Container orchestration readiness probe (validates DB connectivity). |
-| `GET` | `/actuator/info` | Application build and version metadata. |
-
----
-
-## Role-Based Access Control (RBAC) Matrix
-
-STOCKGUARD enforces a deterministic 23-permission authorization matrix across four tenant-scoped roles:
-
-| Domain | Permission Code | ADMIN | MANAGER | OPERATOR | VIEWER |
-|---|---|:---:|:---:|:---:|:---:|
-| **Dashboard** | `dashboard:view` | ✅ | ✅ | ✅ | ✅ |
-| **Reports** | `reports:view` | ✅ | ✅ | ✅ | ✅ |
-| **Inventory** | `inventory:view` | ✅ | ✅ | ✅ | ✅ |
-| | `inventory:receive` | ✅ | ✅ | ✅ | ❌ |
-| | `inventory:adjust` | ✅ | ✅ | ✅ | ❌ |
-| | `inventory:reconcile` | ✅ | ✅ | ❌ | ❌ |
-| **Product** | `product:view` | ✅ | ✅ | ✅ | ✅ |
-| | `product:manage` | ✅ | ✅ | ❌ | ❌ |
-| **Warehouse** | `warehouse:view` | ✅ | ✅ | ✅ | ✅ |
-| | `warehouse:manage` | ✅ | ✅ | ❌ | ❌ |
-| **Transfer** | `transfer:view` | ✅ | ✅ | ✅ | ✅ |
-| | `transfer:execute` | ✅ | ✅ | ✅ | ❌ |
-| **Order** | `order:view` | ✅ | ✅ | ✅ | ✅ |
-| | `order:create` | ✅ | ✅ | ✅ | ❌ |
-| | `order:confirm` | ✅ | ✅ | ✅ | ❌ |
-| | `order:fulfill` | ✅ | ✅ | ✅ | ❌ |
-| | `order:cancel` | ✅ | ✅ | ✅ | ❌ |
-| **Reservation** | `reservation:view` | ✅ | ✅ | ✅ | ✅ |
-| | `reservation:create` | ✅ | ✅ | ✅ | ❌ |
-| | `reservation:release` | ✅ | ✅ | ✅ | ❌ |
-| **Membership** | `membership:view` | ✅ | ✅ | ✅ | ✅ |
-| | `membership:manage` | **✅ Only** | ❌ | ❌ | ❌ |
-| **Audit** | `audit:view` | ✅ | ✅ | ❌ | ❌ |
-
-### Last-Admin Protection Guarantee
-
-To prevent organizations from becoming permanently orphaned, demoting or deactivating an administrator requires acquiring an atomic row-level lock on the tenant row (`SELECT id FROM organizations WHERE id = :orgId FOR UPDATE`). If the target user is the sole remaining active `ADMIN`, the operation is rejected with HTTP `409 Conflict` (`CANNOT_DEMOTE_SOLE_ADMIN`).
-
----
-
-## Core Inventory Engine & Domain APIs (Milestone 5A)
-
-### 1. Product Catalog & Warehouse Management
-
-* **Product Management (`/api/products`)**:
-  * `POST /api/products`: Create a product (`sku`, `name`, `description`). SKU is automatically normalized (`upper(trim(sku))`). Unique normalized SKU per tenant (`uq_products_org_sku`).
-  * `GET /api/products`: Search and list products with tenant isolation (`q`, `activeOnly` query parameters).
-  * `GET /api/products/{id}`: Retrieve product details by ID within the current tenant.
-  * `PUT /api/products/{id}`: Update mutable details (`name`, `description`). SKU is immutable.
-  * `DELETE /api/products/{id}`: Soft deactivation (`active = false`). Preserves referential integrity for historical ledgers.
-  * *Required permissions*: `product:manage` (mutations), `product:view` (read).
-
-* **Warehouse Management (`/api/warehouses`)**:
-  * `POST /api/warehouses`: Create a facility (`code`, `name`, `location`, `priority`). Code is normalized (`upper(trim(code))`). Unique normalized code per tenant (`uq_warehouses_org_code`).
-  * `GET /api/warehouses`: List active warehouses ordered by priority ascending (`priority ASC, name ASC`).
-  * `GET /api/warehouses/{id}`: Retrieve warehouse details by ID within the current tenant.
-  * `PUT /api/warehouses/{id}`: Update warehouse metadata (`name`, `location`, `priority`). Code is immutable.
-  * `DELETE /api/warehouses/{id}`: Soft deactivation (`active = false`).
-  * *Required permissions*: `warehouse:manage` (mutations), `warehouse:view` (read).
-
-### 2. Transactional Inventory Engine & Dual-Delta Ledger
-
-STOCKGUARD's inventory balances represent materialized views that are strictly derived from and reconcilable with the append-only ledger:
-
-$$\text{Available} = \text{On Hand} - \text{Reserved}$$
-
-* **Atomic Stock Operations**:
-  * `POST /api/inventory/opening-balances`: Sets initial on-hand stock for a product in a warehouse. Creates an `OPENING_BALANCE` transaction and ledger entry. Rejected if an opening balance has already been recorded historically for the given product and warehouse, even if current on-hand stock has subsequently returned to zero.
-  * `POST /api/inventory/receipts`: Ingests inbound stock receipts. Increments `on_hand` and inserts an immutable `RECEIPT` ledger entry.
-  * `POST /api/inventory/adjustments`: Records cycle count corrections and manual shrinkage adjustments. Supports positive or negative deltas with mandatory textual reason and actor attribution. Fails closed (`409 Conflict`) if an adjustment would cause $\text{on\_hand} < 0$ or $\text{on\_hand} < \text{reserved}$.
-  * `GET /api/inventory/balances`: Lists live balances across all facilities.
-  * `GET /api/inventory/balances/{productId}/{warehouseId}`: Fetches specific balance.
-  * `GET /api/inventory/transactions`: Lists recent inventory transactions and their associated ledger lines.
-  * `GET /api/inventory/transactions/{id}`: Retrieves specific transaction and its ledger entries.
-  * `GET /api/inventory/reconciliation`: Read-only mathematical reconciliation comparing current balance snapshots against `SUM(on_hand_delta)` and `SUM(reserved_delta)` across the entire historical ledger. Detects `DELTA_MISMATCH`, `MISSING_BALANCE_ROW`, and `ORPHAN_BALANCE_ROW`.
-  * *Required permissions*: `inventory:receive`, `inventory:adjust`, `inventory:view`, `inventory:reconcile`.
-
-### 3. Concurrency, Locking & Idempotency Guarantees
-
-* **Canonical Lock Ordering (ADR-003)**:
-  * Multi-item or multi-facility inventory mutations sort locks strictly by:
-    $$\text{product\_id ASC}, \text{warehouse\_id ASC}$$
-  * Row locks are acquired via `SELECT ... FOR UPDATE` using Spring JDBC before any ledger insertions or balance modifications occur.
-  * *Concurrency Scope & Deadlock Semantics*: Canonical locking establishes deterministic acquisition order for the specified warehouse, product and inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not guarantee system-wide deadlock freedom. Eligible transient database failures are handled through fresh-transaction retries.
-* **Database Ledger Immutability (ADR-002)**:
-  * Triggers defined in `V2__enforce_append_only_ledgers.sql` reject all `UPDATE`, `DELETE`, and `TRUNCATE` operations on `inventory_ledger_entries`. Ledger history is append-only and cryptographically auditable.
-* **Distributed Idempotency (ADR-007)**:
-  * Critical write APIs support the `Idempotency-Key` HTTP header.
-  * Uses `idempotency_records` table with row-level locks and SHA-256 payload hashing to prevent duplicate mutations, detect in-flight concurrent execution, and safely replay prior responses for identical retries.
-
-### 4. Advanced Inventory Operations: Warehouse Transfers (Milestone 5B)
-
-STOCKGUARD supports immediate, atomic multi-item inter-warehouse inventory transfers without intermediate staging states or phantom stock drift:
-
-* **Transfer REST APIs (`/api/transfers`)**:
-  * `POST /api/transfers`: Executes an atomic multi-item transfer between two distinct warehouses within the current tenant organization. Accepts `sourceWarehouseId`, `destinationWarehouseId`, `notes`, and a non-empty list of items (`productId`, `quantity`).
-  * `GET /api/transfers`: Lists recent transfers within the current tenant organization (supports optional `warehouseId` filter and `limit` parameter, default 50, max 200).
-  * `GET /api/transfers/{transferId}`: Retrieves specific transfer details, line items, and associated inventory transaction reference.
-  * *Required permissions*: `transfer:execute` (`ADMIN`, `MANAGER`, `OPERATOR`), `transfer:view` (`ADMIN`, `MANAGER`, `OPERATOR`, `VIEWER`).
-
-* **Transfer Transaction & Integrity Invariants**:
-  1. **Facility Validation**: Rejects transfers if source or destination warehouse is not found or is inactive.
-  2. **Distinct Facilities**: Source and destination warehouses must be different (`chk_transfers_distinct_warehouses`).
-  3. **Product Validation**: All products in transfer lines must exist, belong to the tenant, and be active.
-  4. **Strict Positivity & Uniqueness**: Item quantities must be strictly positive (`quantity > 0`), and duplicate product IDs within a single transfer request are rejected.
-  5. **Destination Row Pre-Creation**: Balance rows at the destination warehouse are idempotently pre-created (`ensureBalanceRowExists` via `INSERT ... ON CONFLICT DO NOTHING`) prior to locking, ensuring transfers succeed even for products stocked at a facility for the first time.
-  6. **Canonical Balance Locking (ADR-003)**: Row-level locks (`SELECT ... FOR UPDATE`) are acquired across all source and destination balances in global canonical order:
-     $$\text{product\_id ASC}, \text{warehouse\_id ASC}$$
-  7. **Reserved Stock Protection**: Transfers strictly verify available stock:
-     $$\text{Available} = \text{On Hand} - \text{Reserved} \ge \text{Quantity}$$
-     Reserved stock allocated to customer orders is never consumed by transfers.
-  8. **Physical Stock Conservation**: Source balance is debited (`on_hand -= quantity`) and destination balance is credited (`on_hand += quantity`) atomically; net physical stock across facilities is strictly conserved ($\Delta \text{OnHand} = 0$).
-  9. **Header & Item Persistence**: Creates one `transfers` header and $N$ `transfer_items` rows.
-  10. **Inventory Transaction Linking**: Creates one `inventory_transactions` header with `transaction_type = 'TRANSFER'`, `reference_type = 'TRANSFER'`, and `reference_id = transfer.id`.
-  11. **Deterministic Dual-Delta Ledger Entries**: Creates exactly $2N$ sequential ledger entries:
-      * Line $j$ OUT: `entry_number = 2j - 1`, $\Delta \text{on\_hand} = -\text{qty}$, $\Delta \text{reserved} = 0$, `transfer_direction = 'OUT'`.
-      * Line $j$ IN: `entry_number = 2j`, $\Delta \text{on\_hand} = +\text{qty}$, $\Delta \text{reserved} = 0$, `transfer_direction = 'IN'`.
-      * All transfer ledger entries enforce $\Delta \text{reserved} = 0$.
-  12. **Pre-Commit Integrity Verification**: Verifies pair completeness ($1 \text{ OUT} + 1 \text{ IN}$ per item), matching warehouses, correct products, opposite deltas, and zero net delta before transaction commit.
-  13. **Distributed Idempotency & Concurrency Retries**: Integrates with `IdempotencyService`. Concurrent identical requests wait for in-flight execution and replay the committed response; payload mismatches return HTTP 409 Conflict. If transient PostgreSQL deadlocks or serialization failures occur (`40P01`, `40001`, `55P03`), the service automatically retries in a fresh transaction with jittered backoff.
-  14. **Deadlock Limitations Notice**: Canonical locking establishes deterministic acquisition order for the specified warehouse, product and inventory-balance rows. It substantially reduces deadlock risk within those lock domains, but does not guarantee system-wide deadlock freedom. Eligible transient database failures are handled through fresh-transaction retries.
-
----
-
-## Production Deployment & Operational Architecture (Milestone 9B)
-
-STOCKGUARD provides a fully automated, production-hardened Docker Compose deployment topology enforcing strict three-network isolation (ADR-014), dual-role least privilege (ADR-002), and continuous Prometheus observability.
-
-### Quick Start Production Stack
 ```bash
-# 1. Copy and populate production secrets template
+# 1. Populate production secrets
 cp .env.example .env
-# Edit .env with secure random secrets generated via openssl
+# Set random secrets generated via: openssl rand -base64 32
 
-# 2. Build and launch the isolated production containers
+# 2. Place signed certificates in nginx/ssl/
+# (fullchain.pem and privkey.pem)
+
+# 3. Launch the stack
 docker compose -f docker-compose.prod.yml up -d --build
-
-# 3. Verify container health status
-docker compose -f docker-compose.prod.yml ps
 ```
 
-### Comprehensive Deployment & Operational Runbooks
-Detailed architectural and operational documentation is maintained in [`docs/deployment/`](docs/deployment/):
-
-* [**Production Architecture Specification**](docs/deployment/production-architecture.md): Topology diagrams, network isolation boundaries, container resource limits.
-* [**Environment Configuration Matrix**](docs/deployment/environment-configuration.md): Complete environment variable guide, fail-fast rules, secret generation.
-* [**Docker Deployment Runbook**](docs/deployment/docker-deployment.md): Step-by-step deployment guide, first-time boot, rolling upgrades.
-* [**Domain & TLS/HTTPS Provisioning**](docs/deployment/domain-and-https.md): DNS setup, Let's Encrypt / Certbot automated renewals, commercial TLS certs.
-* [**Database Backup, Restoration & DR**](docs/deployment/database-backup-and-restore.md): `pg_dump -Fc` scripts, non-destructive restore test, RPO (1h) and RTO (15m).
-* [**Prometheus Metrics, SLIs & Alerting**](docs/deployment/monitoring-and-alerting.md): 14 Micrometer metrics catalog, SLI alert expressions, Alertmanager routing.
-* [**Production Security Checklist**](docs/deployment/security-checklist.md): Pre-deployment gate, OWASP Top 10 mitigations, secret rotation runbook.
-* [**Production Release Runbook**](docs/deployment/release-runbook.md): Release staging, verification checklist, smoke testing, rollback protocol.
-* [**Disaster Recovery Plan**](docs/deployment/disaster-recovery.md): Business continuity, server loss, secret compromise, quarterly drill protocol.
+### Database Backup and Restore
+* **Backup:** `scripts/backup-db.sh` or `scripts/backup-db.ps1` takes a logical snapshot using `pg_dump -Fc` and computes a SHA-256 checksum:
+  ```bash
+  ./scripts/backup-db.sh [CONTAINER_NAME] [OUTPUT_DIR]
+  ```
+* **Restore:** `scripts/restore-db.sh` or `scripts/restore-db.ps1` validates the container and archive before restoring into the target database:
+  ```bash
+  ./scripts/restore-db.sh [BACKUP_FILE] [CONTAINER_NAME]
+  ```
 
 ---
 
-## Testing & Verification
+## Testing
 
-STOCKGUARD maintains comprehensive verification across all architectural layers:
+* **Backend test suite (JUnit 5 + Testcontainers):**
+  Runs 520 tests covering unit tests, security filters, concurrent locking, and database migrations against PostgreSQL containers:
+  ```bash
+  cd backend
+  ./mvnw clean verify
+  ```
+  *(On Windows, run `mvnw.cmd clean verify`).*
 
-```bash
-# 1. Backend Verification (JUnit 5 + Testcontainers + Spring MVC Test)
-cd backend
-./mvnw clean verify
+* **Frontend test suite (Vitest + React Testing Library):**
+  Runs 40 unit and component tests:
+  ```bash
+  cd frontend
+  npm test
+  ```
 
-# 2. Frontend Unit & Component Tests (Vitest + React Testing Library)
-cd frontend
-npm test
+* **Frontend production build:**
+  Compiles TypeScript and bundles client assets with Vite:
+  ```bash
+  cd frontend
+  npm run build
+  ```
 
-# 3. Automated Browser Acceptance Suite (Node.js ESM runner against running stack)
-cd frontend
-node scripts/run-acceptance.mjs
+* **Browser acceptance tests (Puppeteer):**
+  Runs automated end-to-end user journeys against a running staging instance:
+  ```bash
+  cd frontend
+  node scripts/m13-browser-acceptance.mjs
+  ```
 
-# 4. 3D Living Warehouse Visual Verification (WebGL context, camera modes & theme tests)
-cd frontend
-node scripts/verify-3d-warehouse.mjs
-```
+---
 
-* **Backend Test Suite:** Comprehensive unit, integration, and security test coverage across domain modules, covering JWT token lifecycle, key rotation, claims extraction, rate limit window counters, CIDR subnet matching, password hashing, Flyway schema migrations, MVCC snapshot reconciliations, atomic reservation allocation and lifecycle management, and concurrent last-admin protection.
-* **Frontend Test Suite:** Unit and component tests verifying navigation, auth state restoration, inventory ledger views, order management, theme switching, and responsive design.
-* **Acceptance Suite:** End-to-end browser test runner exercising the complete 10-module user journey, demo mode mutation protection, and state synchronization.
-* **3D Visual Suite:** Visual verification runner confirming zero WebGL context loss during theme toggles, raycast hit detection, and camera perspective transitions.
+## Security and Operational Notes
+
+* **Dual database roles:** Flyway migrations run under `stockguard_owner` (DDL privileges). The application runs under `stockguard_app` (DML only: `SELECT`, `INSERT`, `UPDATE`, `DELETE`).
+* **Session and cookie security:** Access tokens expire in 15 minutes. Refresh tokens are stored in `HttpOnly`, `SameSite=Strict`, `Secure` cookies with the `__Secure-` prefix in production and staging.
+* **Scraper authentication:** Prometheus metrics (`/actuator/prometheus`) require HTTP Basic Auth credentials over an internal Docker network. The security filter returns fresh `UserDetails` instances per request to prevent Spring Security from wiping credentials in memory.
+* **Audit trail:** Sensitive operations (logins, role changes, inventory adjustments, and reconciliation sweeps) record structured events in `audit_logs`.
+* **Rate limiting:** Authentication endpoints restrict login attempts per IP to limit brute-force attempts.
+
+---
+
+## Current Limitations
+
+* **Deadlock mitigation:** Canonical lock ordering (`product_id ASC, warehouse_id ASC`) prevents deadlocks within its lock domain. It does not eliminate deadlocks system-wide. Transient database failures are handled via application-level retries.
+* **Single-instance PostgreSQL:** Designed for a single PostgreSQL primary. Does not currently support distributed partitioning or read replicas.
+* **Staging certificates:** Local staging uses self-signed TLS certificates. Production requires certificates signed by a trusted certificate authority.
+* **Demonstration mode:** Public demo mode is designed for portfolio walkthroughs and local evaluation. It is not an enterprise multi-tenant customer onboarding flow and is disabled by default in staging and production.
 
 ---
 
@@ -434,90 +264,51 @@ node scripts/verify-3d-warehouse.mjs
 stockguard/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                    # GitHub Actions CI workflow (backend, frontend, container validation)
+│       └── ci.yml                    # GitHub Actions CI workflow
 ├── backend/
 │   ├── Dockerfile                    # Multi-stage production container build (Java 21 Alpine)
 │   ├── init-db/
-│   │   └── 01-init-roles.sh          # PostgreSQL dual-role privilege initialization (secure environment-driven)
+│   │   └── 01-init-roles.sh          # PostgreSQL dual-role privilege initialization
 │   ├── mvnw / mvnw.cmd / .mvn/       # Maven build wrapper
 │   ├── pom.xml                       # Maven build descriptor (Java 21, Spring Boot 4.1.2)
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/stockguard/
-│   │   │   │   ├── audit/            # Security and operational audit logging
-│   │   │   │   ├── common/           # Shared identifiers and entities
-│   │   │   │   ├── demo/             # Synthetic Acme Industrial Supply tenant & seeder
-│   │   │   │   ├── inventory/        # Balances, ledger entries, transactions, reconciliation
-│   │   │   │   ├── order/            # Order engine, status progression, line items
-│   │   │   │   ├── organization/     # Tenants, memberships, last-admin protection
-│   │   │   │   ├── product/          # Product catalog and normalized SKU management
-│   │   │   │   ├── reservation/      # Two-phase reservation engine & background expiry
-│   │   │   │   ├── security/         # JWT, sessions, filters, RBAC, exception handlers
-│   │   │   │   ├── shared/           # Common exceptions and distributed idempotency engine
-│   │   │   │   ├── transfer/         # Multi-item inter-warehouse transfers
-│   │   │   │   └── warehouse/        # Facility management, priority routing, codes
-│   │   │   └── resources/
-│   │   │       ├── db/migration/     # Flyway immutable migrations (V1 through V4)
-│   │   │       ├── application.yml   # Base application configuration
-│   │   │       ├── application-dev.yml # Local development overrides
-│   │   │       └── application-prod.yml # Hardened production configuration
-│   │   └── test/                     # Unit, integration, and security test suites
-│   └── docker-compose.yml            # Local PostgreSQL 16 container definition
-├── docs/                             # Architecture Decision Records (ADR 001-014), specs, and runbooks
-│   ├── api/                          # OpenAPI 3.0 specification (openapi.yaml)
+│   └── src/                          # Application source and test suites
+├── docs/                             # Architecture Decision Records (ADRs), database design, runbooks
 │   ├── architecture/                 # System architecture overview & ADRs 001-014
-│   ├── archive/                      # Historical milestone plans & intermediate proposals
 │   ├── database/                     # Data dictionary, schema specification, transaction design
-│   ├── deployment/                   # Production architecture, runbooks, security checklist
-│   ├── project-bible/                # Domain models, engineering principles, invariants
-│   └── runbooks/                     # Operational runbooks (deployment, DR, monitoring)
+│   ├── deployment/                   # Runbooks, security checklist, and configuration
+│   └── screenshots/                  # Verified product visual acceptance captures (M13)
+│       └── m13/                      # High-resolution screenshots of 10 modules & viewports
 ├── frontend/
 │   ├── Dockerfile                    # Multi-stage production container build (Vite + Nginx Alpine)
-│   ├── entrypoint.sh                 # Production fail-closed TLS verification entrypoint
+│   ├── entrypoint.sh                 # Fail-closed TLS verification entrypoint
 │   ├── nginx.conf                    # Nginx reverse proxy, security headers & SPA routing
-│   ├── package.json / package-lock.json # React 19, Vite 8, Tailwind CSS v4, Three.js 0.187
-│   ├── scripts/                      # Active browser test runners & legacy archive
-│   │   ├── run-acceptance.mjs        # Browser acceptance test runner
-│   │   ├── verify-3d-warehouse.mjs   # 3D Living Warehouse visual verification runner
-│   │   └── legacy/                   # Archived historical acceptance test scripts
-│   ├── src/                          # React 19 SPA, 3D Warehouse canvas, pages, components
-│   └── verification_evidence/        # Historical audit screenshots (M8, M9A, M10)
+│   ├── package.json                  # React 19, Vite 8, Tailwind CSS v4, Three.js 0.187
+│   ├── scripts/                      # Active browser test runners
+│   │   └── m13-browser-acceptance.mjs # Browser acceptance suite
+│   └── src/                          # React SPA, 3D Warehouse canvas, pages, components
 ├── nginx/
 │   ├── README.md                     # Gateway architecture documentation
-│   └── ssl/                          # Host volume mount point for production TLS certificates
+│   └── ssl/                          # Mount point for production TLS certificates
 ├── prometheus/
 │   ├── alerts.yml                    # SLI alerting rules and Prometheus thresholds
 │   ├── prometheus.env.example        # Environment variable template for Prometheus
 │   └── prometheus.yml                # Scrape configuration for Spring Boot actuator metrics
 ├── scripts/
-│   ├── backup-db.sh                  # Non-destructive database backup utility (Bash)
-│   ├── backup-db.ps1                 # Non-destructive database backup utility (PowerShell)
-│   ├── generate-dev-certs.sh         # Development self-signed TLS cert generator (Bash)
-│   ├── generate-dev-certs.ps1        # Development self-signed TLS cert generator (PowerShell)
-│   ├── restore-db.sh                 # Database restore utility with safety pre-checks (Bash)
-│   └── restore-db.ps1                # Database restore utility with safety pre-checks (PowerShell)
-│   └── seed_demo.sh                  # Acme Industrial Supply demo seeder runner
-├── .dockerignore                     # Root Docker build ignore specification
+│   ├── backup-db.sh / .ps1           # Non-destructive database backup utility
+│   ├── generate-dev-certs.sh / .ps1  # Development self-signed TLS cert generator
+│   └── restore-db.sh / .ps1          # Database restore utility with safety pre-checks
+├── .dockerignore                     # Docker build ignore specification
 ├── .env.example                      # Production environment variable template
-├── .gitignore                        # Root Git ignore specification
+├── .env.staging.example              # Staging environment variable template
+├── .gitattributes                    # Line ending and binary attribute configuration
+├── .gitignore                        # Git ignore specification
 ├── CODE_OF_CONDUCT.md                # Community standards and code of conduct
 ├── docker-compose.prod.yml           # Production multi-container topology (3-network isolation)
+├── docker-compose.staging.yml        # Isolated staging multi-container topology overlay
 ├── LICENSE                           # MIT License
 ├── README.md                         # Primary project documentation
 └── SECURITY.md                       # Security policy and vulnerability disclosure protocol
 ```
-
----
-
-## Security Policy
-
-STOCKGUARD prioritizes platform integrity, data consistency, and responsible disclosure. If you identify a potential security vulnerability or invariant violation, please review our [Security Policy](SECURITY.md) for supported versions, reporting guidelines, and private disclosure coordination via GitHub Private Vulnerability Reporting.
-
----
-
-## Community & Contributing
-
-We welcome constructive technical contributions, architectural discussions, and issue reports. All participants are expected to adhere to the standards outlined in our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 

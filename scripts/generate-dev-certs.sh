@@ -10,24 +10,37 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SSL_DIR="${REPO_ROOT}/nginx/ssl"
+SSL_DIR="${SSL_DIR:-${REPO_ROOT}/nginx/ssl}"
 CERT_FILE="${SSL_DIR}/cert.pem"
 KEY_FILE="${SSL_DIR}/key.pem"
 DAYS_VALID=365
 FORCE=false
 
-for arg in "$@"; do
-    case "$arg" in
+while [ $# -gt 0 ]; do
+    case "$1" in
         --force|-f)
             FORCE=true
+            shift
+            ;;
+        --target-dir|-t)
+            SSL_DIR="$2"
+            CERT_FILE="${SSL_DIR}/cert.pem"
+            KEY_FILE="${SSL_DIR}/key.pem"
+            shift 2
+            ;;
+        --target-dir=*)
+            SSL_DIR="${1#*=}"
+            CERT_FILE="${SSL_DIR}/cert.pem"
+            KEY_FILE="${SSL_DIR}/key.pem"
+            shift
             ;;
         --help|-h)
-            echo "Usage: $0 [--force]"
+            echo "Usage: $0 [--force] [--target-dir PATH]"
             echo "Generates local self-signed TLS certificates in ${SSL_DIR}."
             exit 0
             ;;
         *)
-            echo "Unknown argument: $arg" >&2
+            echo "Unknown argument: $1" >&2
             exit 1
             ;;
     esac

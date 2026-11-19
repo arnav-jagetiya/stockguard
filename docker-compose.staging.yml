@@ -1,0 +1,107 @@
+# ==============================================================================
+# STOCKGUARD — Staging Docker Compose Override
+# Project Namespace: stockguard-staging
+# Strict Three-Network Isolation Architecture (ADR-014)
+# ==============================================================================
+# This override layer is merged onto docker-compose.prod.yml for isolated staging:
+#   docker compose -p stockguard-staging \
+#     -f docker-compose.prod.yml \
+#     -f docker-compose.staging.yml \
+#     --env-file .env.staging config
+#
+# GUARANTEES:
+# 1. Zero resource collisions with running production containers or databases.
+# 2. Dedicated staging container names (stockguard-staging-*).
+# 3. Dedicated staging volumes (stockguard-staging-postgres-data, etc.).
+# 4. Dedicated staging networks (stockguard-staging-*, non-overlapping 172.29.0.0/24).
+# 5. Non-conflicting host ports: 8088 (HTTP) and 8443 (HTTPS).
+# 6. Database and internal service ports remain completely internal.
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 Database (Staging Instance)
+  # ----------------------------------------------------------------------------
+  postgres:
+    container_name: stockguard-staging-postgres
+    volumes:
+      - stockguard-postgres-data:/var/lib/postgresql/data
+      - ./backend/init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - stockguard-app-db
+
+  # ----------------------------------------------------------------------------
+  # 2. Spring Boot Backend Application (Staging Instance)
+  # ----------------------------------------------------------------------------
+  stockguard-app:
+    container_name: stockguard-staging-app
+    environment:
+      STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED: ${STOCKGUARD_BOOTSTRAP_ADMIN_ENABLED:-true}
+      STOCKGUARD_BOOTSTRAP_ADMIN_EMAIL: ${STOCKGUARD_BOOTSTRAP_ADMIN_EMAIL:-admin@stockguard.local}
+      STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD: ${STOCKGUARD_BOOTSTRAP_ADMIN_PASSWORD}
+      STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME: ${STOCKGUARD_BOOTSTRAP_ADMIN_FULL_NAME:-Platform Administrator}
+      STOCKGUARD_BOOTSTRAP_ORG_NAME: ${STOCKGUARD_BOOTSTRAP_ORG_NAME:-StockGuard Staging}
+      STOCKGUARD_MONITORING_SCRAPER_USERNAME: ${STOCKGUARD_MONITORING_SCRAPER_USERNAME:-stockguard-prometheus}
+      STOCKGUARD_MONITORING_SCRAPER_PASSWORD: ${PROMETHEUS_SCRAPER_SECRET}
+      PROMETHEUS_SCRAPER_SECRET: ${PROMETHEUS_SCRAPER_SECRET}
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: ${LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY:-INFO}
+    networks:
+      - stockguard-public
+      - stockguard-app-db
+      - stockguard-monitoring
+
+  # ----------------------------------------------------------------------------
+  # 3. Nginx Reverse Proxy & Frontend SPA Server (Staging Instance)
+  # ----------------------------------------------------------------------------
+  nginx:
+    container_name: stockguard-staging-web
+    ports:
+      - "${STOCKGUARD_HTTP_PORT:-8088}:80"
+      - "${STOCKGUARD_HTTPS_PORT:-8443}:443"
+    volumes:
+      - ./nginx/ssl-staging:/etc/nginx/ssl:ro
+    networks:
+      stockguard-public:
+        ipv4_address: 172.29.0.10
+
+  # ----------------------------------------------------------------------------
+  # 4. Prometheus Monitoring Engine (Staging Instance)
+  # ----------------------------------------------------------------------------
+  prometheus:
+    container_name: stockguard-staging-prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - stockguard-prometheus-data:/prometheus
+    networks:
+      - stockguard-monitoring
+
+# ------------------------------------------------------------------------------
+# Staging Isolated Network Topology (Subnet 172.29.0.0/24)
+# ------------------------------------------------------------------------------
+networks:
+  stockguard-public:
+    name: stockguard-staging-public
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.29.0.0/24
+          gateway: 172.29.0.1
+  stockguard-app-db:
+    name: stockguard-staging-app-db
+    driver: bridge
+    internal: true
+  stockguard-monitoring:
+    name: stockguard-staging-monitoring
+    driver: bridge
+    internal: true
+
+# ------------------------------------------------------------------------------
+# Staging Persistent Volume Storage (Strictly Isolated Names)
+# ------------------------------------------------------------------------------
+volumes:
+  stockguard-postgres-data:
+    name: stockguard-staging-postgres-data
+  stockguard-prometheus-data:
+    name: stockguard-staging-prometheus-data

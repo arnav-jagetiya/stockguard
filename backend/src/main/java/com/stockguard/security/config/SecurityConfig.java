@@ -159,15 +159,15 @@ public class SecurityConfig {
         String scraperPass = monitoringProperties.getScraperPassword();
         String encodedPass = passwordEncoder.encode(scraperPass);
 
-        UserDetails monitoringUser = org.springframework.security.core.userdetails.User
-                .withUsername(scraperUser)
-                .password(encodedPass)
-                .authorities("ROLE_MONITORING")
-                .build();
-
         return username -> {
             if (scraperUser != null && scraperUser.equals(username)) {
-                return monitoringUser;
+                // Return a fresh UserDetails instance on every authentication call to prevent
+                // ProviderManager.eraseCredentials() from wiping the singleton password in-memory (ADR-014).
+                return org.springframework.security.core.userdetails.User
+                        .withUsername(scraperUser)
+                        .password(encodedPass)
+                        .authorities("ROLE_MONITORING")
+                        .build();
             }
             throw new UsernameNotFoundException("User not found: " + username);
         };
