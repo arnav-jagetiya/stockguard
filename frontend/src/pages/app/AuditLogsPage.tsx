@@ -78,8 +78,6 @@ export const AuditLogsPage: React.FC = () => {
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setLoading(true);
-    setError(null);
     try {
       const params: AuditLogFilterParams = {
         page,
@@ -104,28 +102,44 @@ export const AuditLogsPage: React.FC = () => {
       }
 
       const res = await getAuditLogsApi(params);
-      setData(res);
+      if (!controller.signal.aborted) {
+        setData(res);
+        setError(null);
+      }
     } catch (err: unknown) {
       if (isAbortError(err)) return;
-      setError(err instanceof Error ? err.message : 'Failed to retrieve audit log entries');
+      if (!controller.signal.aborted) {
+        setError(err instanceof Error ? err.message : 'Failed to retrieve audit log entries');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [page, size, debouncedAction, debouncedEntityType, debouncedEntityId, debouncedActorUserId, startDateFilter, endDateFilter, isDateRangeValid, entityIdFilter, actorUserIdFilter]);
 
+  const currentFilterKey = `${debouncedAction}|${debouncedEntityType}|${debouncedEntityId}|${debouncedActorUserId}|${startDateFilter}|${endDateFilter}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(currentFilterKey);
+  if (prevFilterKey !== currentFilterKey) {
+    setPrevFilterKey(currentFilterKey);
+    setPage(0);
+  }
+
   useEffect(() => {
-    fetchLogs();
+    const run = async () => {
+      try {
+        await fetchLogs();
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
   }, [fetchLogs]);
-
-  // Reset page when search filters change
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedAction, debouncedEntityType, debouncedEntityId, debouncedActorUserId, startDateFilter, endDateFilter]);
 
   const handleResetFilters = () => {
     setActionFilter('');
@@ -187,7 +201,7 @@ export const AuditLogsPage: React.FC = () => {
           <Button 
             variant="secondary" 
             size="sm" 
-            onClick={fetchLogs} 
+            onClick={() => void fetchLogs()}
             loading={loading}
             icon={<RotateCw className="w-3.5 h-3.5" />}
           >
@@ -368,7 +382,7 @@ export const AuditLogsPage: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={fetchLogs}
+              onClick={() => void fetchLogs()}
               className="text-xs"
             >
               Apply Filter

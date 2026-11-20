@@ -50,18 +50,30 @@ export const ProductsPage: React.FC = () => {
     setError(null);
     try {
       const data = await listProductsApi(debouncedSearch.trim() || undefined, activeOnly, signal);
-      setProducts(data);
+      if (!signal?.aborted) {
+        setProducts(data);
+        setError(null);
+      }
     } catch (err: unknown) {
       if (isAbortError(err)) return;
-      if (err instanceof Error) setError(err.message);
+      if (!signal?.aborted && err instanceof Error) setError(err.message);
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [debouncedSearch, activeOnly]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchProducts(controller.signal);
+    const run = async () => {
+      try {
+        await fetchProducts(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
     return () => controller.abort();
   }, [fetchProducts]);
 
@@ -78,6 +90,7 @@ export const ProductsPage: React.FC = () => {
       setIsCreateOpen(false);
       resetForm();
       toast.success('Product created', `SKU ${formSku.trim()} was successfully added to catalog.`);
+      setIsLoading(true);
       await fetchProducts();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -99,6 +112,7 @@ export const ProductsPage: React.FC = () => {
       toast.success('Product updated', `Product ${editingProduct.sku} has been updated.`);
       setEditingProduct(null);
       resetForm();
+      setIsLoading(true);
       await fetchProducts();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -114,6 +128,7 @@ export const ProductsPage: React.FC = () => {
       await deactivateProductApi(deactivatingProduct.id);
       toast.success('Product deactivated', `SKU ${deactivatingProduct.sku} is now inactive.`);
       setDeactivatingProduct(null);
+      setIsLoading(true);
       await fetchProducts();
     } catch (err: unknown) {
       if (err instanceof Error) toast.error('Deactivation failed', err.message);
@@ -161,8 +176,15 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs rounded-lg">
-          {error}
+        <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => void fetchProducts()}
+            className="inline-flex items-center gap-1 font-medium underline hover:opacity-80 cursor-pointer"
+          >
+            <RotateCcw className="w-3 h-3" /> Retry
+          </button>
         </div>
       )}
 
@@ -176,13 +198,17 @@ export const ProductsPage: React.FC = () => {
             type="text"
             placeholder="Filter by SKU or name..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+            }}
             className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
           />
           {search && (
             <button
               type="button"
-              onClick={() => setSearch('')}
+              onClick={() => {
+                setSearch('');
+              }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
               title="Clear search"
             >
@@ -196,7 +222,9 @@ export const ProductsPage: React.FC = () => {
             <input
               type="checkbox"
               checked={activeOnly}
-              onChange={(e) => setActiveOnly(e.target.checked)}
+              onChange={(e) => {
+                setActiveOnly(e.target.checked);
+              }}
               className="rounded border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] text-[#456B1F] dark:text-[#C6F36B] focus:ring-0 cursor-pointer"
             />
             Show Active Only
@@ -205,7 +233,10 @@ export const ProductsPage: React.FC = () => {
           {(search || activeOnly) && (
             <button
               type="button"
-              onClick={() => { setSearch(''); setActiveOnly(false); }}
+              onClick={() => {
+                setSearch('');
+                setActiveOnly(false);
+              }}
               className="inline-flex items-center gap-1 text-xs text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />

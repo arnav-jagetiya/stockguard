@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { isAbortError } from '../../api/client';
 import { getDashboardSummaryApi, getWarehouseDashboardApi } from '../../api/dashboard';
 import { listWarehousesApi } from '../../api/warehouses';
 import { useAuth } from '../../context/AuthContext';
@@ -36,48 +37,72 @@ export const DashboardPage: React.FC = () => {
   const canCreateProduct = hasPermission('product:manage');
   const canManageWarehouse = hasPermission('warehouse:manage');
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchDashboardData = useCallback(async (signal?: AbortSignal) => {
     try {
       const [sumRes, whList] = await Promise.all([
-        getDashboardSummaryApi(),
-        listWarehousesApi(undefined, true),
+        getDashboardSummaryApi(signal),
+        listWarehousesApi(undefined, true, signal),
       ]);
-      setSummary(sumRes);
-      setWarehouses(whList);
-      if (whList.length > 0 && !selectedWarehouseId) {
-        setSelectedWarehouseId(whList[0].id);
+      if (!signal?.aborted) {
+        setSummary(sumRes);
+        setWarehouses(whList);
+        setSelectedWarehouseId((prev) => (whList.length > 0 && !prev ? whList[0].id : prev));
+        setError(null);
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Failed to load operational dashboard summary.');
+      if (isAbortError(err)) return;
+      if (!signal?.aborted) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('Failed to load operational dashboard summary.');
+        }
       }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
   }, []);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await fetchDashboardData(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
     if (!selectedWarehouseId) return;
+    const controller = new AbortController();
     const fetchDrilldown = async () => {
       setIsDrilldownLoading(true);
       try {
-        const data = await getWarehouseDashboardApi(selectedWarehouseId);
-        setWarehouseDrilldown(data);
-      } catch {
+        const data = await getWarehouseDashboardApi(selectedWarehouseId, controller.signal);
+        if (!controller.signal.aborted) {
+          setWarehouseDrilldown(data);
+        }
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
         // Fallback silently if warehouse drilldown unavailable
       } finally {
-        setIsDrilldownLoading(false);
+        if (!controller.signal.aborted) {
+          setIsDrilldownLoading(false);
+        }
       }
     };
-    fetchDrilldown();
+    void fetchDrilldown();
+    return () => {
+      controller.abort();
+    };
   }, [selectedWarehouseId]);
 
   if (isLoading) {
@@ -111,7 +136,7 @@ export const DashboardPage: React.FC = () => {
           Command Centre Telemetry Unavailable
         </div>
         <p className="text-xs text-rose-700 dark:text-rose-400">{error || 'Unable to retrieve live tenant snapshot.'}</p>
-        <Button size="sm" variant="outline" onClick={fetchDashboardData} icon={<RotateCw className="w-3.5 h-3.5" />}>
+        <Button size="sm" variant="outline" onClick={() => void fetchDashboardData()} icon={<RotateCw className="w-3.5 h-3.5" />}>
           Retry Connection
         </Button>
       </div>
@@ -334,7 +359,7 @@ export const DashboardPage: React.FC = () => {
             <span>Synced: {new Date(summary.generatedAt).toLocaleTimeString()}</span>
           </div>
 
-          <Button size="sm" variant="outline" onClick={fetchDashboardData} icon={<RotateCw className="w-3.5 h-3.5" />}>
+          <Button size="sm" variant="outline" onClick={() => void fetchDashboardData()} icon={<RotateCw className="w-3.5 h-3.5" />}>
             Refresh
           </Button>
         </div>

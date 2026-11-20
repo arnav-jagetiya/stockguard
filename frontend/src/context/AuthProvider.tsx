@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import type { OrganizationSummary, RegisterRequest, Role, UserSummary } from '../types/auth';
 import {
   loginApi,
@@ -13,25 +13,7 @@ import {
   setActiveOrganizationId,
   setOnUnauthorized,
 } from '../api/client';
-
-export interface AuthContextType {
-  user: UserSummary | null;
-  organizations: OrganizationSummary[];
-  currentOrg: OrganizationSummary | null;
-  permissions: Set<string>;
-  role: Role | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  isDemoVisitor: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
-  logout: () => Promise<void>;
-  loginDemoVisitor: () => Promise<void>;
-  switchOrganization: (orgId: string) => Promise<void>;
-  hasPermission: (permission: string) => boolean;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './AuthContext';
 
 const ACTIVE_ORG_STORAGE_KEY = 'stockguard_active_org_id';
 let inFlightRefreshPromise: Promise<boolean> | null = null;
@@ -108,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initSession();
   }, [handleSilentRefresh]);
 
-  const login = async (email: string, pass: string) => {
+  const login = useCallback(async (email: string, pass: string) => {
     setIsLoading(true);
     try {
       const res = await loginApi(email, pass);
@@ -126,9 +108,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applyOrganization]);
 
-  const register = async (data: RegisterRequest) => {
+  const register = useCallback(async (data: RegisterRequest) => {
     setIsLoading(true);
     try {
       const res = await registerApi(data);
@@ -144,9 +126,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applyOrganization]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await logoutApi();
     } catch {
@@ -160,12 +142,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setActiveOrganizationId(null);
       localStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
     }
-  };
+  }, []);
 
-  const loginDemoVisitor = async () => {
+  const loginDemoVisitor = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const res = await demoLoginApi();
+      const res = await demoLoginApi(signal);
       const orgs = res.availableOrganizations || res.organizations || [];
       setAuthToken(res.accessToken);
       setUser(res.user);
@@ -183,52 +165,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [applyOrganization]);
 
-  const switchOrganization = async (orgId: string) => {
+  const switchOrganization = useCallback(async (orgId: string) => {
     const org = organizations.find((o) => o.id === orgId);
     if (!org) return;
     await applyOrganization(org);
-  };
+  }, [organizations, applyOrganization]);
 
-  const hasPermission = (permission: string): boolean => {
+  const hasPermission = useCallback((permission: string): boolean => {
     if (!currentOrg) return false;
     if (currentOrg.role === 'ADMIN') return true;
     return permissions.has(permission);
-  };
+  }, [currentOrg, permissions]);
 
   const isDemoVisitor = user?.email === 'demo.visitor@stockguard.dev';
 
+  const contextValue = useMemo(
+    () => ({
+      user,
+      organizations,
+      currentOrg,
+      permissions,
+      role: currentOrg ? currentOrg.role : null,
+      isAuthenticated: !!user && !!currentOrg,
+      isLoading,
+      isDemoVisitor,
+      login,
+      register,
+      logout,
+      loginDemoVisitor,
+      switchOrganization,
+      hasPermission,
+    }),
+    [
+      user,
+      organizations,
+      currentOrg,
+      permissions,
+      isLoading,
+      isDemoVisitor,
+      login,
+      register,
+      logout,
+      loginDemoVisitor,
+      switchOrganization,
+      hasPermission,
+    ]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        organizations,
-        currentOrg,
-        permissions,
-        role: currentOrg ? currentOrg.role : null,
-        isAuthenticated: !!user && !!currentOrg,
-        isLoading,
-        isDemoVisitor,
-        login,
-        register,
-        logout,
-        loginDemoVisitor,
-        switchOrganization,
-        hasPermission,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
 
 function getDefaultPermissionsForRole(role: Role): Set<string> {

@@ -8,16 +8,20 @@ import type {
 } from '../types/inventory';
 import type { ReconciliationReport } from '../types/discrepancy';
 
-export async function getBalancesApi(productId?: string, warehouseId?: string): Promise<InventoryBalance[]> {
+export async function getBalancesApi(
+  productId?: string,
+  warehouseId?: string,
+  signal?: AbortSignal
+): Promise<InventoryBalance[]> {
   const q = new URLSearchParams();
   if (productId) q.append('productId', productId);
   if (warehouseId) q.append('warehouseId', warehouseId);
   const qs = q.toString() ? `?${q.toString()}` : '';
-  return apiClient<InventoryBalance[]>(`/api/inventory/balances${qs}`);
+  return apiClient<InventoryBalance[]>(`/api/inventory/balances${qs}`, { signal });
 }
 
-export async function getTransactionsApi(limit: number = 50): Promise<InventoryTransaction[]> {
-  return apiClient<InventoryTransaction[]>(`/api/inventory/transactions?limit=${limit}`);
+export async function getTransactionsApi(limit: number = 50, signal?: AbortSignal): Promise<InventoryTransaction[]> {
+  return apiClient<InventoryTransaction[]>(`/api/inventory/transactions?limit=${limit}`, { signal });
 }
 
 export const listTransactionsApi = getTransactionsApi;

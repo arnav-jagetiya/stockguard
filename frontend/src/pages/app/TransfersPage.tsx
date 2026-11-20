@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isAbortError } from '../../api/client';
 import { listTransfersApi, executeTransferApi } from '../../api/transfers';
 import { listWarehousesApi } from '../../api/warehouses';
 import { listProductsApi } from '../../api/products';
@@ -39,35 +40,52 @@ export const TransfersPage: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [items, setItems] = useState<TransferItemRequest[]>([]);
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       const [txList, whList, prodList] = await Promise.all([
-        listTransfersApi(selectedWarehouse || undefined, 50),
-        listWarehousesApi(undefined, true),
-        listProductsApi(undefined, true),
+        listTransfersApi(selectedWarehouse || undefined, 50, signal),
+        listWarehousesApi(undefined, true, signal),
+        listProductsApi(undefined, true, signal),
       ]);
-      setTransfers(txList);
-      setWarehouses(whList);
-      setProducts(prodList);
+      if (!signal?.aborted) {
+        setTransfers(txList);
+        setWarehouses(whList);
+        setProducts(prodList);
 
-      if (whList.length >= 2 && !sourceWh) {
-        setSourceWh(whList[0].id);
-        setDestWh(whList[1].id);
-      }
-      if (items.length === 0 && prodList.length > 0) {
-        setItems([{ productId: prodList[0].id, quantity: 5 }]);
+        if (whList.length >= 2) {
+          setSourceWh((prev) => (!prev ? whList[0].id : prev));
+          setDestWh((prev) => (!prev ? whList[1].id : prev));
+        }
+        if (prodList.length > 0) {
+          setItems((prev) => (prev.length === 0 ? [{ productId: prodList[0].id, quantity: 5 }] : prev));
+        }
       }
     } catch (err: unknown) {
-      if (err instanceof Error) toast.error(err.message);
+      if (isAbortError(err)) return;
+      if (!signal?.aborted && err instanceof Error) {
+        toast.error(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [selectedWarehouse, toast]);
 
   useEffect(() => {
-    loadData();
-  }, [selectedWarehouse]);
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await loadData(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
+  }, [loadData]);
 
   const handleExecuteTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +117,7 @@ export const TransfersPage: React.FC = () => {
       setIsCreateOpen(false);
       setNotes('');
       toast.success('Inter-facility transfer executed and dual ledger entries posted.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -164,7 +183,10 @@ export const TransfersPage: React.FC = () => {
           <Select
             label="Filter by Facility"
             value={selectedWarehouse}
-            onChange={(e) => setSelectedWarehouse(e.target.value)}
+            onChange={(e) => {
+              setIsLoading(true);
+              setSelectedWarehouse(e.target.value);
+            }}
             options={[
               { value: '', label: 'All Warehouses' },
               ...warehouses.map((w) => ({ value: w.id, label: `${w.code} (${w.name})` })),
@@ -179,7 +201,10 @@ export const TransfersPage: React.FC = () => {
           {selectedWarehouse && (
             <button
               type="button"
-              onClick={() => setSelectedWarehouse('')}
+              onClick={() => {
+                setIsLoading(true);
+                setSelectedWarehouse('');
+              }}
               className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />

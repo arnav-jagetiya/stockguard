@@ -22,6 +22,7 @@ import { Modal } from '../../components/common/Modal';
 import { TableSkeleton } from '../../components/common/Skeleton';
 import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 import { EmptyState } from '../../components/common/EmptyState';
+import { isAbortError } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { 
@@ -92,21 +93,38 @@ export const TeamPage: React.FC = () => {
     setStatusFilter('ALL');
   };
 
-  const fetchMembers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchMembers = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await getMembershipsApi();
-      setMembers(res);
+      const res = await getMembershipsApi(signal);
+      if (!signal?.aborted) {
+        setMembers(res);
+        setError(null);
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to retrieve organization memberships');
+      if (isAbortError(err)) return;
+      if (!signal?.aborted) {
+        setError(err instanceof Error ? err.message : 'Failed to retrieve organization memberships');
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchMembers();
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await fetchMembers(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
   }, [fetchMembers]);
 
   const copyToClipboard = (text: string, key: string) => {
@@ -132,6 +150,7 @@ export const TeamPage: React.FC = () => {
       setAddUserId('');
       setAddRole('OPERATOR');
       toast.success('Member access granted successfully.');
+      setLoading(true);
       await fetchMembers();
     } catch (err: unknown) {
       setAddError(err instanceof Error ? err.message : 'Failed to add member');
@@ -151,6 +170,7 @@ export const TeamPage: React.FC = () => {
       });
       setEditingMember(null);
       toast.success('Member role updated successfully.');
+      setLoading(true);
       await fetchMembers();
     } catch (err: unknown) {
       setEditError(err instanceof Error ? err.message : 'Failed to update member role');
@@ -166,6 +186,7 @@ export const TeamPage: React.FC = () => {
       await deactivateMemberApi(deactivatingMember.userId);
       toast.success('Member access revoked.');
       setDeactivatingMember(null);
+      setLoading(true);
       await fetchMembers();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to deactivate member');
@@ -215,7 +236,7 @@ export const TeamPage: React.FC = () => {
           <Button 
             variant="secondary" 
             size="sm" 
-            onClick={fetchMembers} 
+            onClick={() => void fetchMembers()}
             loading={loading}
             icon={<RotateCw className="w-3.5 h-3.5" />}
           >

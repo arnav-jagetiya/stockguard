@@ -94,8 +94,45 @@ describe('LoginPage Public Demo Experience', () => {
 
     await waitFor(() => {
       expect(loginDemoVisitor).toHaveBeenCalledTimes(1);
+      const passedSignal = loginDemoVisitor.mock.calls[0][0];
+      expect(passedSignal).toBeInstanceOf(AbortSignal);
       expect(mockNavigate).toHaveBeenCalledWith('/app/dashboard');
     });
+  });
+
+  it('aborts demo auto-login and does not navigate when unmounted during in-flight request', async () => {
+    let capturedSignal: AbortSignal | undefined;
+    let resolveLogin: () => void = () => {};
+    const loginDemoVisitor = vi.fn((signal?: AbortSignal) => {
+      capturedSignal = signal;
+      return new Promise<void>((resolve) => {
+        resolveLogin = resolve;
+      });
+    });
+    const auth = createMockAuth({ loginDemoVisitor });
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/login?demo=true']}>
+        <ThemeProvider>
+          <AuthContext.Provider value={auth}>
+            <LoginPage />
+          </AuthContext.Provider>
+        </ThemeProvider>
+      </MemoryRouter>
+    );
+
+    expect(loginDemoVisitor).toHaveBeenCalledTimes(1);
+    expect(capturedSignal).toBeDefined();
+    expect(capturedSignal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
+
+    resolveLogin();
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('displays user-friendly error message when demo login fails', async () => {

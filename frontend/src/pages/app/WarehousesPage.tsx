@@ -48,18 +48,29 @@ export const WarehousesPage: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await listWarehousesApi(debouncedSearch.trim() || undefined, activeOnly, signal);
-      setWarehouses(data);
+      if (!signal?.aborted) {
+        setWarehouses(data);
+      }
     } catch (err: unknown) {
       if (isAbortError(err)) return;
-      if (err instanceof Error) toast.error('Failed to load warehouses', err.message);
+      if (!signal?.aborted && err instanceof Error) toast.error('Failed to load warehouses', err.message);
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, [debouncedSearch, activeOnly, toast]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchWarehouses(controller.signal);
+    const run = async () => {
+      try {
+        await fetchWarehouses(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
     return () => controller.abort();
   }, [fetchWarehouses]);
 
@@ -76,6 +87,7 @@ export const WarehousesPage: React.FC = () => {
       setIsCreateOpen(false);
       resetForm();
       toast.success('Warehouse created', `Facility ${formCode.trim().toUpperCase()} added.`);
+      setIsLoading(true);
       await fetchWarehouses();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -97,6 +109,7 @@ export const WarehousesPage: React.FC = () => {
       toast.success('Warehouse updated', `Facility ${editingWarehouse.code} updated.`);
       setEditingWarehouse(null);
       resetForm();
+      setIsLoading(true);
       await fetchWarehouses();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -112,6 +125,7 @@ export const WarehousesPage: React.FC = () => {
       await deactivateWarehouseApi(deactivatingWarehouse.id);
       toast.success('Warehouse deactivated', `Facility ${deactivatingWarehouse.code} is now inactive.`);
       setDeactivatingWarehouse(null);
+      setIsLoading(true);
       await fetchWarehouses();
     } catch (err: unknown) {
       if (err instanceof Error) toast.error('Deactivation failed', err.message);
@@ -168,13 +182,17 @@ export const WarehousesPage: React.FC = () => {
             type="text"
             placeholder="Filter by code or name..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+            }}
             className="w-full bg-[#F9FAF7] dark:bg-[#16221E] text-xs text-[#18231D] dark:text-[#EEF3EA] caret-[#18231D] dark:caret-[#EEF3EA] rounded-lg pl-9 pr-8 py-2 border border-[#D9E1D7] dark:border-[#26362E] outline-none focus:border-[#456B1F] dark:focus:border-[#C6F36B] focus:ring-2 focus:ring-[#456B1F]/20 dark:focus:ring-[#C6F36B]/20 transition-colors"
           />
           {search && (
             <button
               type="button"
-              onClick={() => setSearch('')}
+              onClick={() => {
+                setSearch('');
+              }}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8A988E] hover:text-[#18231D] dark:hover:text-[#EEF3EA] p-0.5 rounded cursor-pointer"
               title="Clear search"
             >
@@ -188,7 +206,9 @@ export const WarehousesPage: React.FC = () => {
             <input
               type="checkbox"
               checked={activeOnly}
-              onChange={(e) => setActiveOnly(e.target.checked)}
+              onChange={(e) => {
+                setActiveOnly(e.target.checked);
+              }}
               className="rounded border-[#D9E1D7] dark:border-[#26362E] bg-white dark:bg-[#111A17] text-[#456B1F] dark:text-[#C6F36B] focus:ring-0 cursor-pointer"
             />
             Show Active Only
@@ -197,7 +217,10 @@ export const WarehousesPage: React.FC = () => {
           {(search || activeOnly) && (
             <button
               type="button"
-              onClick={() => { setSearch(''); setActiveOnly(false); }}
+              onClick={() => {
+                setSearch('');
+                setActiveOnly(false);
+              }}
               className="inline-flex items-center gap-1 text-xs text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />

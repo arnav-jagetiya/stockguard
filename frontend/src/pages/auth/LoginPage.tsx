@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { isAbortError } from '../../api/client';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 import { ThemeTray } from '../../components/common/ThemeTray';
@@ -19,19 +20,27 @@ import {
 const SAVED_EMAIL_KEY = 'stockguard_saved_email';
 
 export const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const [email, setEmail] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    return localStorage.getItem(SAVED_EMAIL_KEY) || '';
+  });
   const [password, setPassword] = useState('');
-  const [rememberEmail, setRememberEmail] = useState(false);
+  const [rememberEmail, setRememberEmail] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem(SAVED_EMAIL_KEY);
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDemoVisitorLoading, setIsDemoVisitorLoading] = useState(false);
+  const [isDemoVisitorLoading, setIsDemoVisitorLoading] = useState(
+    () => searchParams.get('demo') === 'true'
+  );
 
   const { login, loginDemoVisitor } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
-  const handleDemoVisitorLogin = async () => {
+  const handleDemoVisitorLogin = useCallback(async () => {
     setErrorMessage(null);
     setIsDemoVisitorLoading(true);
     try {
@@ -46,21 +55,33 @@ export const LoginPage: React.FC = () => {
     } finally {
       setIsDemoVisitorLoading(false);
     }
-  };
+  }, [loginDemoVisitor, navigate]);
 
-  // Auto-login if demo=true query parameter is present or load saved email
+  // Auto-login if demo=true query parameter is present on mount
   useEffect(() => {
-    if (searchParams.get('demo') === 'true') {
-      handleDemoVisitorLogin();
-      return;
-    }
+    if (searchParams.get('demo') !== 'true') return;
 
-    const saved = localStorage.getItem(SAVED_EMAIL_KEY);
-    if (saved) {
-      setEmail(saved);
-      setRememberEmail(true);
-    }
-  }, []);
+    const controller = new AbortController();
+    loginDemoVisitor(controller.signal)
+      .then(() => {
+        if (!controller.signal.aborted) {
+          navigate('/app/dashboard');
+        }
+      })
+      .catch((err: unknown) => {
+        if (isAbortError(err)) return;
+        if (!controller.signal.aborted) {
+          setIsDemoVisitorLoading(false);
+          setErrorMessage(
+            err instanceof Error ? err.message : 'Failed to establish public demo session.'
+          );
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [searchParams, loginDemoVisitor, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

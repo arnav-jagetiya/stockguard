@@ -248,6 +248,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
 
   // Main Three.js Scene Setup (Mounts once, never destroyed on camera/theme change)
   useEffect(() => {
+    let isMounted = true;
     const container = mountRef.current;
     if (!container) return;
 
@@ -272,8 +273,14 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     } catch {
-      setWebglError(true);
-      return;
+      void Promise.resolve().then(() => {
+        if (isMounted) {
+          setWebglError(true);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
     }
 
     renderer.setSize(width, height);
@@ -657,6 +664,7 @@ export const WarehouseVisualizer: React.FC<{ className?: string }> = ({ classNam
     window.addEventListener('resize', handleResize);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('resize', handleResize);
       container.removeEventListener('mousemove', handlePointerMove);
       container.removeEventListener('touchstart', handleTouch);

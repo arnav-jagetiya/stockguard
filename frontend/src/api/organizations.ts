@@ -1,8 +1,8 @@
 import { apiClient } from './client';
 import type { AddMemberRequest, OrganizationMember, UpdateMemberRoleRequest } from '../types/organization';
 
-export async function getMembershipsApi(): Promise<OrganizationMember[]> {
-  return apiClient<OrganizationMember[]>('/api/organizations/current/memberships');
+export async function getMembershipsApi(signal?: AbortSignal): Promise<OrganizationMember[]> {
+  return apiClient<OrganizationMember[]>('/api/organizations/current/memberships', { signal });
 }
 
 export async function addMemberApi(data: AddMemberRequest): Promise<OrganizationMember> {

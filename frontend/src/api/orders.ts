@@ -2,12 +2,16 @@ import { apiClient } from './client';
 import type { CreateOrderRequest, Order, OrderDetail, OrderStatus } from '../types/order';
 import type { Reservation } from '../types/reservation';
 
-export async function getOrdersApi(status?: OrderStatus, limit: number = 50): Promise<Order[]> {
+export async function getOrdersApi(
+  status?: OrderStatus,
+  limit: number = 50,
+  signal?: AbortSignal
+): Promise<Order[]> {
   const q = new URLSearchParams();
   if (status) q.append('status', status);
   q.append('limit', limit.toString());
   const qs = `?${q.toString()}`;
-  return apiClient<Order[]>(`/api/orders${qs}`);
+  return apiClient<Order[]>(`/api/orders${qs}`, { signal });
 }
 
 export const listOrdersApi = getOrdersApi;

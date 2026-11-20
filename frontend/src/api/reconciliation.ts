@@ -16,6 +16,7 @@ export interface DiscrepancyFilterParams {
   size?: number;
   limit?: number;
   offset?: number;
+  signal?: AbortSignal;
 }
 
 export async function getDiscrepanciesApi(params: DiscrepancyFilterParams = {}): Promise<DiscrepancyPageResponse> {
@@ -32,7 +33,9 @@ export async function getDiscrepanciesApi(params: DiscrepancyFilterParams = {}):
   q.append('offset', offset.toString());
 
   const qs = `?${q.toString()}`;
-  return apiClient<DiscrepancyPageResponse>(`/api/inventory/reconciliation/discrepancies${qs}`);
+  return apiClient<DiscrepancyPageResponse>(`/api/inventory/reconciliation/discrepancies${qs}`, {
+    signal: params.signal,
+  });
 }
 
 export const listDiscrepanciesApi = getDiscrepanciesApi;

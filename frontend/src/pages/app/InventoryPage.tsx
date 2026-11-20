@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isAbortError } from '../../api/client';
 import {
   getBalancesApi,
   listTransactionsApi,
@@ -69,46 +70,70 @@ export const InventoryPage: React.FC = () => {
 
   // 1. Fetch catalogs (products & warehouses) once on component mount
   useEffect(() => {
-    let isMounted = true;
+    const controller = new AbortController();
     const loadCatalogs = async () => {
       try {
         const [prods, whs] = await Promise.all([
-          listProductsApi(undefined, true),
-          listWarehousesApi(undefined, true),
+          listProductsApi(undefined, true, controller.signal),
+          listWarehousesApi(undefined, true, controller.signal),
         ]);
-        if (isMounted) {
+        if (!controller.signal.aborted) {
           setProducts(prods);
           setWarehouses(whs);
         }
       } catch (err: unknown) {
-        if (isMounted && err instanceof Error) toast.error('Failed to load catalogs', err.message);
+        if (isAbortError(err)) return;
+        if (!controller.signal.aborted && err instanceof Error) {
+          toast.error('Failed to load catalogs', err.message);
+        }
       }
     };
-    loadCatalogs();
-    return () => { isMounted = false; };
+    void loadCatalogs();
+    return () => {
+      controller.abort();
+    };
   }, [toast]);
 
   // 2. Load tab-specific inventory data when activeTab or server filters change
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       if (activeTab === 'balances') {
-        const balData = await getBalancesApi(selectedProduct || undefined, selectedWarehouse || undefined);
-        setBalances(balData);
+        const balData = await getBalancesApi(selectedProduct || undefined, selectedWarehouse || undefined, signal);
+        if (!signal?.aborted) {
+          setBalances(balData);
+        }
       } else {
-        const txData = await listTransactionsApi(100);
-        setTransactions(txData);
+        const txData = await listTransactionsApi(100, signal);
+        if (!signal?.aborted) {
+          setTransactions(txData);
+        }
       }
     } catch (err: unknown) {
-      if (err instanceof Error) toast.error(err.message);
+      if (isAbortError(err)) return;
+      if (!signal?.aborted && err instanceof Error) {
+        toast.error(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [activeTab, selectedProduct, selectedWarehouse, toast]);
 
   useEffect(() => {
-    loadData();
-  }, [activeTab, selectedProduct, selectedWarehouse]);
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await loadData(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
+  }, [loadData]);
 
   const handleReceiveStock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,6 +148,7 @@ export const InventoryPage: React.FC = () => {
       });
       setIsReceiveOpen(false);
       toast.success('Stock received and ledger entry recorded successfully.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -144,6 +170,7 @@ export const InventoryPage: React.FC = () => {
       });
       setIsAdjustOpen(false);
       toast.success('Stock adjusted with mandatory audit reason recorded.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -165,6 +192,7 @@ export const InventoryPage: React.FC = () => {
       });
       setIsOpeningOpen(false);
       toast.success('Opening balance established successfully.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setFormError(err.message);
@@ -274,7 +302,10 @@ export const InventoryPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-[#D9E1D7] dark:border-[#26362E]">
         <button
-          onClick={() => setActiveTab('balances')}
+          onClick={() => {
+            setIsLoading(true);
+            setActiveTab('balances');
+          }}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'balances'
               ? 'border-[#456B1F] dark:border-[#C6F36B] text-[#456B1F] dark:text-[#C6F36B]'
@@ -284,7 +315,10 @@ export const InventoryPage: React.FC = () => {
           Facility Balances
         </button>
         <button
-          onClick={() => setActiveTab('transactions')}
+          onClick={() => {
+            setIsLoading(true);
+            setActiveTab('transactions');
+          }}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors cursor-pointer ${
             activeTab === 'transactions'
               ? 'border-[#456B1F] dark:border-[#C6F36B] text-[#456B1F] dark:text-[#C6F36B]'
@@ -328,7 +362,10 @@ export const InventoryPage: React.FC = () => {
             <Select
               label="Filter by Product"
               value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
+              onChange={(e) => {
+                setIsLoading(true);
+                setSelectedProduct(e.target.value);
+              }}
               options={[
                 { value: '', label: 'All Products' },
                 ...products.map((p) => ({ value: p.id, label: `${p.sku} — ${p.name}` })),
@@ -338,7 +375,10 @@ export const InventoryPage: React.FC = () => {
             <Select
               label="Filter by Warehouse"
               value={selectedWarehouse}
-              onChange={(e) => setSelectedWarehouse(e.target.value)}
+              onChange={(e) => {
+                setIsLoading(true);
+                setSelectedWarehouse(e.target.value);
+              }}
               options={[
                 { value: '', label: 'All Facilities' },
                 ...warehouses.map((w) => ({ value: w.id, label: `${w.code} — ${w.name}` })),
@@ -353,7 +393,12 @@ export const InventoryPage: React.FC = () => {
             {(selectedProduct || selectedWarehouse || searchQuery) && (
               <button
                 type="button"
-                onClick={() => { setSelectedProduct(''); setSelectedWarehouse(''); setSearchQuery(''); }}
+                onClick={() => {
+                  setIsLoading(true);
+                  setSelectedProduct('');
+                  setSelectedWarehouse('');
+                  setSearchQuery('');
+                }}
                 className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
               >
                 <RotateCcw className="w-3 h-3" />

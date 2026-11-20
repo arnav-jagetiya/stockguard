@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isAbortError } from '../../api/client';
 import {
   listOrdersApi,
   getOrderApi,
@@ -63,28 +64,43 @@ export const OrdersPage: React.FC = () => {
   const [currency, setCurrency] = useState('USD');
   const [items, setItems] = useState<OrderItemRequest[]>([]);
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
+  const fetchOrders = useCallback(async (signal?: AbortSignal) => {
     try {
       const [orderList, prodList] = await Promise.all([
-        listOrdersApi((selectedStatus as OrderStatus) || undefined, 50),
-        listProductsApi(undefined, true),
+        listOrdersApi((selectedStatus as OrderStatus) || undefined, 50, signal),
+        listProductsApi(undefined, true, signal),
       ]);
-      setOrders(orderList);
-      setProducts(prodList);
-      if (items.length === 0 && prodList.length > 0) {
-        setItems([{ productId: prodList[0].id, quantity: 1, unitPrice: 10.0 }]);
+      if (!signal?.aborted) {
+        setOrders(orderList);
+        setProducts(prodList);
+        setItems((prev) => (prev.length === 0 && prodList.length > 0 ? [{ productId: prodList[0].id, quantity: 1, unitPrice: 10.0 }] : prev));
       }
     } catch (err: unknown) {
-      if (err instanceof Error) toast.error(err.message);
+      if (isAbortError(err)) return;
+      if (!signal?.aborted && err instanceof Error) {
+        toast.error(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [selectedStatus, toast]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [selectedStatus]);
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await fetchOrders(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
+  }, [fetchOrders]);
 
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +119,7 @@ export const OrdersPage: React.FC = () => {
       setIsCreateOpen(false);
       setCustomerRef('');
       toast.success('Order created successfully.');
+      setIsLoading(true);
       await fetchOrders();
     } catch (err: unknown) {
       if (err instanceof Error) setActionError(err.message);
@@ -125,6 +142,7 @@ export const OrdersPage: React.FC = () => {
     try {
       await reserveOrderApi(orderId);
       toast.success('Stock reserved for order.');
+      setIsLoading(true);
       await fetchOrders();
       if (inspectOrder?.id === orderId) handleInspect(orderId);
     } catch (err: unknown) {
@@ -136,6 +154,7 @@ export const OrdersPage: React.FC = () => {
     try {
       await confirmOrderApi(orderId);
       toast.success('Order confirmed.');
+      setIsLoading(true);
       await fetchOrders();
       if (inspectOrder?.id === orderId) handleInspect(orderId);
     } catch (err: unknown) {
@@ -147,6 +166,7 @@ export const OrdersPage: React.FC = () => {
     try {
       await fulfillOrderApi(orderId);
       toast.success('Order fulfilled and inventory ledger deducted.');
+      setIsLoading(true);
       await fetchOrders();
       if (inspectOrder?.id === orderId) handleInspect(orderId);
     } catch (err: unknown) {
@@ -160,6 +180,7 @@ export const OrdersPage: React.FC = () => {
     try {
       await cancelOrderApi(orderToCancel);
       toast.success('Order cancelled and reserved stock released.');
+      setIsLoading(true);
       await fetchOrders();
       if (inspectOrder?.id === orderToCancel) handleInspect(orderToCancel);
       setOrderToCancel(null);
@@ -274,7 +295,10 @@ export const OrdersPage: React.FC = () => {
           <Select
             label="Filter by Status"
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => {
+              setIsLoading(true);
+              setSelectedStatus(e.target.value);
+            }}
             options={[
               { value: '', label: 'All Lifecycle States' },
               { value: 'PENDING', label: 'Pending' },
@@ -294,7 +318,11 @@ export const OrdersPage: React.FC = () => {
           {(selectedStatus || searchQuery) && (
             <button
               type="button"
-              onClick={() => { setSelectedStatus(''); setSearchQuery(''); }}
+              onClick={() => {
+                setIsLoading(true);
+                setSelectedStatus('');
+                setSearchQuery('');
+              }}
               className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />

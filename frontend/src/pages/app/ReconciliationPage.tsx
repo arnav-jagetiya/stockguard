@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { isAbortError } from '../../api/client';
 import {
   triggerReconciliationApi,
   listDiscrepanciesApi,
@@ -67,34 +68,55 @@ export const ReconciliationPage: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [reason, setReason] = useState('');
 
-  const loadData = async () => {
-    setIsLoading(true);
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       const [discPage, prodList, whList, memList] = await Promise.all([
         listDiscrepanciesApi({
           status: (selectedStatus as DiscrepancyStatus) || undefined,
           limit: pageSize,
           offset: page * pageSize,
+          signal,
         }),
-        listProductsApi(undefined, true),
-        listWarehousesApi(undefined, true),
-        getMembershipsApi().catch(() => []),
+        listProductsApi(undefined, true, signal),
+        listWarehousesApi(undefined, true, signal),
+        getMembershipsApi(signal).catch((err: unknown) => {
+          if (isAbortError(err)) throw err;
+          return [];
+        }),
       ]);
-      setDiscrepancies(discPage.items || discPage.content || []);
-      setTotalElements(discPage.totalCount !== undefined ? discPage.totalCount : (discPage.totalElements || 0));
-      setProducts(prodList);
-      setWarehouses(whList);
-      setMembers(memList);
+      if (!signal?.aborted) {
+        setDiscrepancies(discPage.items || discPage.content || []);
+        setTotalElements(discPage.totalCount !== undefined ? discPage.totalCount : (discPage.totalElements || 0));
+        setProducts(prodList);
+        setWarehouses(whList);
+        setMembers(memList);
+      }
     } catch (err: unknown) {
-      if (err instanceof Error) toast.error(err.message);
+      if (isAbortError(err)) return;
+      if (!signal?.aborted && err instanceof Error) {
+        toast.error(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [selectedStatus, page, toast]);
 
   useEffect(() => {
-    loadData();
-  }, [selectedStatus, page]);
+    const controller = new AbortController();
+    const run = async () => {
+      try {
+        await loadData(controller.signal);
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+      }
+    };
+    void run();
+    return () => {
+      controller.abort();
+    };
+  }, [loadData]);
 
   const handleTriggerSweep = async () => {
     setIsSweepConfirmOpen(false);
@@ -103,6 +125,7 @@ export const ReconciliationPage: React.FC = () => {
       const report = await triggerReconciliationApi();
       setTriggerReport(report);
       toast.success('Reconciliation sweep executed successfully.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) toast.error(`Sweep failed: ${err.message}`);
@@ -142,6 +165,7 @@ export const ReconciliationPage: React.FC = () => {
       });
       setIsTriageOpen(false);
       toast.success('Discrepancy decision persisted successfully.');
+      setIsLoading(true);
       await loadData();
     } catch (err: unknown) {
       if (err instanceof Error) setTriageError(err.message);
@@ -245,6 +269,7 @@ export const ReconciliationPage: React.FC = () => {
             label="Filter by Discrepancy Status"
             value={selectedStatus}
             onChange={(e) => {
+              setIsLoading(true);
               setSelectedStatus(e.target.value);
               setPage(0);
             }}
@@ -266,7 +291,11 @@ export const ReconciliationPage: React.FC = () => {
           {selectedStatus !== 'OPEN' && (
             <button
               type="button"
-              onClick={() => { setSelectedStatus('OPEN'); setPage(0); }}
+              onClick={() => {
+                setIsLoading(true);
+                setSelectedStatus('OPEN');
+                setPage(0);
+              }}
               className="inline-flex items-center gap-1 text-[#456B1F] dark:text-[#C6F36B] hover:underline font-medium cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
@@ -360,7 +389,10 @@ export const ReconciliationPage: React.FC = () => {
               size="sm"
               variant="outline"
               disabled={page === 0 || isLoading}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              onClick={() => {
+                setIsLoading(true);
+                setPage((p) => Math.max(0, p - 1));
+              }}
               icon={<ChevronLeft className="w-3.5 h-3.5" />}
             >
               Previous
@@ -369,7 +401,10 @@ export const ReconciliationPage: React.FC = () => {
               size="sm"
               variant="outline"
               disabled={(page + 1) * pageSize >= totalElements || isLoading}
-              onClick={() => setPage((p) => p + 1)}
+              onClick={() => {
+                setIsLoading(true);
+                setPage((p) => p + 1);
+              }}
               icon={<ChevronRight className="w-3.5 h-3.5" />}
               className="flex-row-reverse"
             >

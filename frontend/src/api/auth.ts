@@ -38,8 +38,9 @@ export async function getMeApi(): Promise<UserMeResponse> {
   return apiClient<UserMeResponse>('/api/auth/me');
 }
 
-export async function demoLoginApi(): Promise<AuthTokenResponse> {
+export async function demoLoginApi(signal?: AbortSignal): Promise<AuthTokenResponse> {
   return apiClient<AuthTokenResponse>('/api/auth/demo-login', {
     method: 'POST',
+    signal,
   });
 }
